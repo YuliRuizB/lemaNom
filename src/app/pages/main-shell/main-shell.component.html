@@ -33,7 +33,13 @@
         </button>
 
         <div class="shell-nav__children" *ngIf="isCatalogsOpen">
-          <span class="shell-nav__child shell-nav__child--placeholder">Clientes</span>
+          <a
+            class="shell-nav__child"
+            routerLink="/app/clients"
+            routerLinkActive="shell-nav__child--active"
+          >
+            Clientes
+          </a>
           <a
             class="shell-nav__child"
             routerLink="/app/equipo-medicion"

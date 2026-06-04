@@ -1,0 +1,65 @@
+<div class="modal-backdrop" (click)="cancel()"></div>
+
+<div class="modal">
+  <header class="modal__header">
+    <div>
+      <p class="modal__eyebrow">Catálogo</p>
+      <h2 class="modal__title">Agregar cliente</h2>
+    </div>
+    <button class="modal__close" type="button" (click)="cancel()">&#x2715;</button>
+  </header>
+
+  <form class="modal__body" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="form-row">
+      <div class="field">
+        <label class="field__label" for="c-name">Nombre comercial <span class="field__req">*</span></label>
+        <input id="c-name" class="field__input" type="text" formControlName="name" autocomplete="off" />
+        @if (isFieldInvalid('name')) {
+          <p class="field__error">Obligatorio (mín. 2 caracteres).</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label" for="c-legal">Razón social <span class="field__req">*</span></label>
+        <input id="c-legal" class="field__input" type="text" formControlName="legalName" autocomplete="off" />
+        @if (isFieldInvalid('legalName')) {
+          <p class="field__error">Obligatorio (mín. 2 caracteres).</p>
+        }
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label class="field__label" for="c-rfc">RFC</label>
+        <input id="c-rfc" class="field__input" type="text" formControlName="rfc" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label class="field__label" for="c-email">Correo</label>
+        <input id="c-email" class="field__input" type="email" formControlName="email" autocomplete="off" />
+        @if (isFieldInvalid('email')) {
+          <p class="field__error">Correo no válido.</p>
+        }
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label class="field__label" for="c-phone">Teléfono</label>
+        <input id="c-phone" class="field__input" type="text" formControlName="phone" autocomplete="off" />
+      </div>
+      <div class="field field--inline">
+        <span class="field__label">Activo</span>
+        <label class="toggle">
+          <input type="checkbox" formControlName="active" />
+          <span class="toggle__track"></span>
+        </label>
+      </div>
+    </div>
+
+    <footer class="modal__footer">
+      <button class="btn btn--ghost" type="button" (click)="cancel()">Cancelar</button>
+      <button class="btn btn--primary" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </footer>
+  </form>
+</div>

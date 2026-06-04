@@ -1,0 +1,314 @@
+<section class="clients-page">
+
+  <!-- Toolbar -->
+  <div class="clients-page__toolbar">
+    <input
+      class="search-input"
+      type="search"
+      placeholder="Buscar por nombre, razón social, RFC o correo…"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)"
+    />
+    <button class="btn-add" type="button" (click)="openAddForm()">+ Agregar cliente</button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="clients-table-wrapper">
+    <table class="clients-table">
+      <thead>
+        <tr>
+          <th>Nombre comercial</th>
+          <th>Razón social</th>
+          <th>RFC</th>
+          <th>Correo</th>
+          <th>Plantas</th>
+          <th>Activo</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="6" class="clients-table__state">Cargando…</td></tr>
+        } @else {
+          @for (client of pagedClients(); track client.idDoc) {
+            <tr
+              class="clients-table__row"
+              [class.clients-table__row--selected]="selectedClient()?.idDoc === client.idDoc"
+              (click)="selectClient(client)"
+            >
+              <td class="clients-table__name">{{ client.name }}</td>
+              <td class="clients-table__secondary">{{ client.legalName }}</td>
+              <td>{{ client.rfc || '—' }}</td>
+              <td class="clients-table__secondary">{{ client.email || '—' }}</td>
+              <td class="clients-table__center">{{ client.plants?.length ?? 0 }}</td>
+              <td>
+                <span class="badge" [class.badge--active]="client.active" [class.badge--inactive]="!client.active">
+                  {{ client.active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="clients-table__state">Sin clientes registrados.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+
+    <!-- Paginación -->
+    <div class="pagination">
+      <span class="pagination__info">
+        Página {{ currentPage() }} de {{ totalPages() }}
+        &nbsp;·&nbsp; {{ filteredClients().length }} clientes
+      </span>
+      <div class="pagination__controls">
+        <button class="pagination__btn" type="button" (click)="prevPage()" [disabled]="currentPage() === 1">&#8592;</button>
+        <button class="pagination__btn" type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()">&#8594;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de detalle -->
+  @if (selectedClient(); as client) {
+    <div class="client-detail">
+
+      <div class="client-detail__header">
+        <div>
+          <p class="client-detail__eyebrow">Cliente</p>
+          <h3 class="client-detail__title">{{ client.name }}</h3>
+          <p class="client-detail__subtitle">{{ client.legalName }}</p>
+        </div>
+        <button class="client-detail__close" type="button" (click)="selectClient(client)">&#x2715;</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="client-detail__tabs">
+        <button class="tab" [class.tab--active]="activeTab() === 'info'" type="button" (click)="setTab('info')">
+          Información General
+        </button>
+        <button class="tab" [class.tab--active]="activeTab() === 'plants'" type="button" (click)="setTab('plants')">
+          Plantas <span class="tab__badge">{{ client.plants?.length ?? 0 }}</span>
+        </button>
+      </div>
+
+      <!-- Tab: Info general -->
+      @if (activeTab() === 'info') {
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-item__label">RFC</span>
+            <span class="info-item__value">{{ client.rfc || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Correo</span>
+            <span class="info-item__value">{{ client.email || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Teléfono</span>
+            <span class="info-item__value">{{ client.phone || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Empresa</span>
+            <span class="info-item__value">{{ client.customerName || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Activo</span>
+            <span class="badge" [class.badge--active]="client.active" [class.badge--inactive]="!client.active">
+              {{ client.active ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Creado</span>
+            <span class="info-item__value">{{ client.createdAt | date: 'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Actualizado</span>
+            <span class="info-item__value">{{ client.updatedAt ? (client.updatedAt | date: 'dd/MM/yyyy') : '—' }}</span>
+          </div>
+        </div>
+      }
+
+      <!-- Tab: Plantas -->
+      @if (activeTab() === 'plants') {
+        <div class="plants-list">
+          <div class="plants-list__toolbar">
+            <button class="btn-add-plant" type="button" (click)="openPlantModal()">+ Agregar planta</button>
+          </div>
+          @if (!client.plants?.length) {
+            <p class="plants-list__empty">Este cliente no tiene plantas registradas.</p>
+          }
+          @for (plant of client.plants; track plant.idDoc) {
+            <div class="plant-card" [class.plant-card--open]="expandedPlantId() === plant.idDoc">
+
+              <button class="plant-card__header" type="button" (click)="togglePlant(plant.idDoc)">
+                <div class="plant-card__header-info">
+                  <span class="plant-card__name">{{ plant.name }}</span>
+                  @if (plant.description) {
+                    <span class="plant-card__desc">{{ plant.description }}</span>
+                  }
+                </div>
+                <div class="plant-card__header-right">
+                  <span class="badge" [class.badge--active]="plant.active" [class.badge--inactive]="!plant.active">
+                    {{ plant.active ? 'Activa' : 'Inactiva' }}
+                  </span>
+                  <span class="plant-card__chevron" [class.plant-card__chevron--open]="expandedPlantId() === plant.idDoc"></span>
+                </div>
+              </button>
+
+              @if (expandedPlantId() === plant.idDoc) {
+                <div class="plant-card__body">
+
+                  <!-- Contacto -->
+                  @if (plant.contactName || plant.contactEmail || plant.contactPhone) {
+                    <div class="plant-section">
+                      <p class="plant-section__title">Contacto</p>
+                      <div class="plant-grid">
+                        <div class="info-item">
+                          <span class="info-item__label">Nombre</span>
+                          <span class="info-item__value">{{ plant.contactName || '—' }}</span>
+                        </div>
+                        <div class="info-item">
+                          <span class="info-item__label">Puesto</span>
+                          <span class="info-item__value">{{ plant.contactPosition || '—' }}</span>
+                        </div>
+                        <div class="info-item">
+                          <span class="info-item__label">Correo</span>
+                          <span class="info-item__value">{{ plant.contactEmail || '—' }}</span>
+                        </div>
+                        <div class="info-item">
+                          <span class="info-item__label">Teléfono</span>
+                          <span class="info-item__value">{{ plant.contactPhone || '—' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Dirección -->
+                  @if (plant.street || plant.municipality || plant.state) {
+                    <div class="plant-section">
+                      <p class="plant-section__title">Dirección</p>
+                      <div class="plant-grid">
+                        <div class="info-item info-item--full">
+                          <span class="info-item__label">Calle</span>
+                          <span class="info-item__value">
+                            {{ plant.street || '' }} {{ plant.exteriorNumber || '' }}
+                            @if (plant.interiorNumber) { Int. {{ plant.interiorNumber }} }
+                          </span>
+                        </div>
+                        <div class="info-item">
+                          <span class="info-item__label">Colonia</span>
+                          <span class="info-item__value">{{ plant.colony || '—' }}</span>
+                        </div>
+                        <div class="info-item">
+                          <span class="info-item__label">Municipio</span>
+                          <span class="info-item__value">{{ plant.municipality || '—' }}</span>
+                        </div>
+                        <div class="info-item">
+                          <span class="info-item__label">Estado</span>
+                          <span class="info-item__value">{{ plant.state || '—' }}</span>
+                        </div>
+                        <div class="info-item">
+                          <span class="info-item__label">C.P.</span>
+                          <span class="info-item__value">{{ plant.postalCode || '—' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Turnos -->
+                  @if (plant.shifts?.length) {
+                    <div class="plant-section">
+                      <p class="plant-section__title">Turnos</p>
+                      <div class="shifts-list">
+                        @for (shift of plant.shifts; track shift.idDoc) {
+                          <div class="shift-chip" [class.shift-chip--diurnal]="shift.type === 'diurnal'" [class.shift-chip--nocturnal]="shift.type === 'nocturnal'">
+                            <span class="shift-chip__icon">{{ shift.type === 'diurnal' ? '☀️' : '🌙' }}</span>
+                            <div>
+                              <p class="shift-chip__name">{{ shift.name }}</p>
+                              <p class="shift-chip__time">{{ shift.startTime }} – {{ shift.endTime }}</p>
+                            </div>
+                            <span class="badge" [class.badge--active]="shift.active" [class.badge--inactive]="!shift.active">
+                              {{ shift.active ? 'Activo' : 'Inactivo' }}
+                            </span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+    </div>
+  }
+
+  <!-- Panel: Agregar cliente -->
+  @if (showAddForm()) {
+    <div class="add-panel">
+      <div class="add-panel__header">
+        <div>
+          <p class="add-panel__eyebrow">Nuevo registro</p>
+          <h3 class="add-panel__title">Agregar cliente</h3>
+        </div>
+        <button class="add-panel__close" type="button" (click)="cancelAdd()">&#x2715;</button>
+      </div>
+
+      <form class="add-panel__body" [formGroup]="addForm" (ngSubmit)="submitAdd()">
+        <div class="add-form-row">
+          <div class="add-field">
+            <label class="add-field__label">Nombre comercial <span class="add-field__req">*</span></label>
+            <input class="add-field__input" type="text" formControlName="name" autocomplete="off" />
+            @if (isFieldInvalid('name')) {
+              <p class="add-field__error">Obligatorio (mín. 2 caracteres).</p>
+            }
+          </div>
+          <div class="add-field">
+            <label class="add-field__label">Razón social <span class="add-field__req">*</span></label>
+            <input class="add-field__input" type="text" formControlName="legalName" autocomplete="off" />
+            @if (isFieldInvalid('legalName')) {
+              <p class="add-field__error">Obligatorio (mín. 2 caracteres).</p>
+            }
+          </div>
+          <div class="add-field">
+            <label class="add-field__label">RFC</label>
+            <input class="add-field__input" type="text" formControlName="rfc" autocomplete="off" />
+          </div>
+          <div class="add-field">
+            <label class="add-field__label">Correo</label>
+            <input class="add-field__input" type="email" formControlName="email" autocomplete="off" />
+            @if (isFieldInvalid('email')) {
+              <p class="add-field__error">Correo no válido.</p>
+            }
+          </div>
+          <div class="add-field">
+            <label class="add-field__label">Teléfono</label>
+            <input class="add-field__input" type="text" formControlName="phone" autocomplete="off" />
+          </div>
+          <div class="add-field add-field--inline">
+            <span class="add-field__label">Activo</span>
+            <label class="toggle">
+              <input type="checkbox" formControlName="active" />
+              <span class="toggle__track"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="add-panel__footer">
+          <button class="btn btn--ghost" type="button" (click)="cancelAdd()">Cancelar</button>
+          <button class="btn btn--primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+</section>
+
+@if (showPlantModal() && selectedClient()) {
+  <app-plant-modal
+    [clientId]="selectedClient()!.idDoc"
+    (closed)="onPlantModalClosed($event)"
+  />
+}

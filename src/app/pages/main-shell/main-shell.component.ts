@@ -130,6 +130,12 @@ export class MainShellComponent {
       return;
     }
 
+    if (url.includes('/app/clients')) {
+      this.headerTitle = 'Clientes';
+      this.headerDescription = 'Catálogo de clientes del sistema.';
+      return;
+    }
+
     if (url.includes('/app/equipo-medicion')) {
       this.headerTitle = 'Equipo de Medición';
       this.headerDescription = 'Catálogo de equipos de medición del sistema.';

@@ -1,0 +1,129 @@
+<div class="modal-backdrop" (click)="cancel()"></div>
+
+<div class="modal">
+  <header class="modal__header">
+    <div>
+      <p class="modal__eyebrow">Nueva planta</p>
+      <h2 class="modal__title">Agregar planta</h2>
+    </div>
+    <button class="modal__close" type="button" (click)="cancel()">&#x2715;</button>
+  </header>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="modal__body">
+
+      <!-- General -->
+      <div class="section">
+        <p class="section__title">General</p>
+        <div class="form-row form-row--general">
+          <div class="field">
+            <label class="field__label">Nombre <span class="field__req">*</span></label>
+            <input class="field__input" type="text" formControlName="name" autocomplete="off" />
+            @if (isFieldInvalid('name')) {
+              <p class="field__error">Obligatorio (mín. 2 caracteres).</p>
+            }
+          </div>
+          <div class="field">
+            <label class="field__label">Descripción</label>
+            <input class="field__input" type="text" formControlName="description" autocomplete="off" />
+          </div>
+          <div class="field field--checks">
+            <span class="field__label">Turnos</span>
+            <div class="checks-row">
+              <label class="check-label">
+                <input type="checkbox" formControlName="shiftDiurnal" />
+                <span>☀️ Diurno</span>
+              </label>
+              <label class="check-label">
+                <input type="checkbox" formControlName="shiftNocturnal" />
+                <span>🌙 Nocturno</span>
+              </label>
+            </div>
+          </div>
+          <div class="field field--inline">
+            <span class="field__label">Activo</span>
+            <label class="toggle">
+              <input type="checkbox" formControlName="active" />
+              <span class="toggle__track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contacto -->
+      <div class="section">
+        <p class="section__title">Contacto</p>
+        <div class="form-row form-row--2">
+          <div class="field">
+            <label class="field__label">Nombre</label>
+            <input class="field__input" type="text" formControlName="contactName" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label">Puesto</label>
+            <input class="field__input" type="text" formControlName="contactPosition" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label">Correo</label>
+            <input class="field__input" type="email" formControlName="contactEmail" autocomplete="off" />
+            @if (isFieldInvalid('contactEmail')) {
+              <p class="field__error">Correo no válido.</p>
+            }
+          </div>
+          <div class="field">
+            <label class="field__label">Teléfono</label>
+            <input class="field__input" type="text" formControlName="contactPhone" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Dirección -->
+      <div class="section">
+        <p class="section__title">Dirección</p>
+        <div class="addr-row addr-row--r1">
+          <div class="field">
+            <label class="field__label">Calle</label>
+            <input class="field__input" type="text" formControlName="street" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label">Colonia</label>
+            <input class="field__input" type="text" formControlName="colony" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label">Núm. ext.</label>
+            <input class="field__input" type="text" formControlName="exteriorNumber" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label">Núm. int.</label>
+            <input class="field__input" type="text" formControlName="interiorNumber" autocomplete="off" />
+          </div>
+        </div>
+        <div class="addr-row addr-row--r2">
+          <div class="field">
+            <label class="field__label">C.P.</label>
+            <input class="field__input" type="text" formControlName="postalCode" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label">Municipio</label>
+            <input class="field__input" type="text" formControlName="municipality" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label">Estado</label>
+            <input class="field__input" type="text" formControlName="state" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label">País</label>
+            <input class="field__input" type="text" formControlName="country" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <footer class="modal__footer">
+      <button class="btn btn--ghost" type="button" (click)="cancel()">Cancelar</button>
+      <button class="btn btn--primary" type="submit" [disabled]="saving()">
+        {{ saving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </footer>
+  </form>
+</div>
