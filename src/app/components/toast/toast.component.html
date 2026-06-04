@@ -1,0 +1,26 @@
+<div class="toast-stack" *ngIf="toastService.toasts().length">
+  <article
+    class="toast"
+    *ngFor="let toast of toastService.toasts()"
+    [class.toast--success]="toast.type === 'success'"
+    [class.toast--error]="toast.type === 'error'"
+    [class.toast--warning]="toast.type === 'warning'"
+  >
+    <div class="toast__content">
+      <strong class="toast__title">
+        {{
+          toast.type === 'success'
+            ? 'Confirmacion'
+            : toast.type === 'error'
+              ? 'Error'
+              : 'Advertencia'
+        }}
+      </strong>
+      <p>{{ toast.message }}</p>
+    </div>
+
+    <button type="button" class="toast__close" (click)="toastService.remove(toast.id)">
+      Cerrar
+    </button>
+  </article>
+</div>

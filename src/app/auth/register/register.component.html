@@ -1,0 +1,209 @@
+<main class="register-shell">
+  <section class="register-card">
+    <div class="register-card__topbar">
+      <a routerLink="/auth/login" class="text-link">Volver a iniciar sesión</a>
+    </div>
+
+    <div class="register-card__header">
+      <p class="eyebrow">Registro de usuarios</p>
+      <h1>Crear cuenta</h1>
+      <p>
+        Primero valida tu clave de cliente y después completa los datos del usuario
+        que quedará asociado a esa empresa.
+      </p>
+    </div>
+
+    <div class="register-section">
+      <div class="register-section__header">
+        <span class="step-pill">Paso 1</span>
+        <h2>Validar cliente</h2>
+      </div>
+
+      <div class="register-form register-form--inline">
+        <label class="field">        
+          <input
+            type="text"
+            name="customerCode"
+            [(ngModel)]="customerCode"
+            (ngModelChange)="saveDraft()"
+            placeholder="Ej. LEMA001"
+          />
+        </label>
+
+        <button
+          type="button"
+          class="validate-button"
+          [disabled]="isValidatingCustomer"
+          (click)="validateCustomerCode()"
+        >
+          {{ isValidatingCustomer ? 'Validando...' : 'Validar' }}
+        </button>
+      </div>
+
+      <p
+        class="status-message"
+        [class.status-message--success]="customerValidated"
+        [class.status-message--error]="customerValidationMessage && !customerValidated"
+        *ngIf="customerValidationMessage"
+      >
+        {{ customerValidationMessage }}
+      </p>
+
+      <div class="customer-summary" *ngIf="customerFound">
+        <span class="customer-summary__label">Razón social</span>
+        <strong>{{ customerFound.businessName }}</strong>
+      </div>
+    </div>
+
+    <form class="register-section register-form register-form--details" *ngIf="customerValidated">
+      <div class="register-section__header">
+        <span class="step-pill">Paso 2</span>
+        <h2>Datos del usuario</h2>
+      </div>
+
+      <div class="form-grid">
+        <label class="field">
+          <span>Nombre</span>
+          <input
+            type="text"
+            name="firstName"
+            [(ngModel)]="registerForm.firstName"
+            (ngModelChange)="saveDraft()"
+            placeholder="Nombre"
+          />
+        </label>
+
+        <label class="field">
+          <span>Apellidos</span>
+          <input
+            type="text"
+            name="lastName"
+            [(ngModel)]="registerForm.lastName"
+            (ngModelChange)="saveDraft()"
+            placeholder="Apellidos"
+          />
+        </label>
+
+        <label class="field field--full">
+          <span>Nombre para mostrar</span>
+          <input
+            type="text"
+            name="displayName"
+            [(ngModel)]="registerForm.displayName"
+            (ngModelChange)="saveDraft()"
+            placeholder="Nombre visible del usuario"
+          />
+        </label>
+
+        <label class="field field--full">
+          <span>Correo electrónico</span>
+          <input
+            type="email"
+            name="email"
+            [(ngModel)]="registerForm.email"
+            (ngModelChange)="saveDraft()"
+            placeholder="nombre@empresa.com"
+          />
+        </label>
+
+        <label class="field">
+          <span>Teléfono</span>
+          <input
+            type="tel"
+            name="phone"
+            [(ngModel)]="registerForm.phone"
+            (ngModelChange)="saveDraft()"
+            placeholder="81 0000 0000"
+          />
+        </label>
+
+        <label class="field">
+          <span>Rol</span>
+          <select
+            name="roleId"
+            [(ngModel)]="registerForm.roleId"
+            (ngModelChange)="saveDraft()"
+            [disabled]="isLoadingRoles"
+          >
+            <option value="">
+              {{ isLoadingRoles ? 'Cargando roles...' : 'Selecciona un rol' }}
+            </option>
+            <option *ngFor="let role of roles" [value]="role.idDoc">
+              {{ role.name }}
+            </option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Contraseña</span>
+          <div class="password-field">
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              name="password"
+              [(ngModel)]="registerForm.password"
+              (ngModelChange)="saveDraft()"
+              placeholder="••••••••••••"
+            />
+            <button
+              type="button"
+              class="password-toggle"
+              (click)="togglePasswordVisibility('password')"
+            >
+              {{ showPassword ? 'Ocultar' : 'Ver' }}
+            </button>
+          </div>
+        </label>
+
+        <label class="field">
+          <span>Confirmar contraseña</span>
+          <div class="password-field">
+            <input
+              [type]="showConfirmPassword ? 'text' : 'password'"
+              name="confirmPassword"
+              [(ngModel)]="registerForm.confirmPassword"
+              (ngModelChange)="saveDraft()"
+              placeholder="••••••••••••"
+            />
+            <button
+              type="button"
+              class="password-toggle"
+              (click)="togglePasswordVisibility('confirmPassword')"
+            >
+              {{ showConfirmPassword ? 'Ocultar' : 'Ver' }}
+            </button>
+          </div>
+        </label>
+
+        <label class="field field--full field--checkbox">
+          <span>Autorización</span>
+          <span class="checkbox-row">
+            <input
+              type="checkbox"
+              name="termsAccepted"
+              [(ngModel)]="registerForm.termsAccepted"
+              (ngModelChange)="saveDraft()"
+            />
+            <span class="checkbox-copy">
+              Acepto los
+              <a
+                routerLink="/terms"
+                [queryParams]="{ returnTo: '/auth/register' }"
+                class="inline-link"
+                >términos y condiciones de uso</a
+              >
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <button
+        type="button"
+        class="submit-button"
+        [disabled]="isSubmittingRegister"
+        (click)="submitRegister()"
+      >
+        {{ isSubmittingRegister ? 'Creando acceso...' : 'Continuar registro' }}
+      </button>
+    </form>
+  </section>
+</main>

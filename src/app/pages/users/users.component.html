@@ -1,0 +1,78 @@
+<section class="users-page">
+  <div class="users-page__search">
+    <input
+      class="search-input"
+      type="search"
+      placeholder="Buscar por nombre, apellido o correo…"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)"
+    />
+  </div>
+
+  <div class="users-table-wrapper">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Apellido</th>
+          <th>Nombre visible</th>
+          <th>Correo</th>
+          <th>Teléfono</th>
+          <th>Rol</th>
+          <th>Activo</th>
+          <th>Aprobado</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr>
+            <td colspan="8" class="users-table__state">Cargando…</td>
+          </tr>
+        } @else {
+          @for (user of pagedUsers(); track user.idDoc) {
+            <tr class="users-table__row" (click)="selectUser(user)">
+              <td>{{ user.firstName }}</td>
+              <td>{{ user.lastName }}</td>
+              <td class="users-table__secondary">{{ user.displayName }}</td>
+              <td>{{ user.email }}</td>
+              <td class="users-table__secondary">{{ user.phone ?? '—' }}</td>
+              <td>{{ user.roleName ?? '—' }}</td>
+              <td>
+                <span class="badge" [class.badge--active]="user.active" [class.badge--inactive]="!user.active">
+                  {{ user.active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td>
+                <span class="badge" [class.badge--active]="user.approved" [class.badge--inactive]="!user.approved">
+                  {{ user.approved ? 'Sí' : 'No' }}
+                </span>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" class="users-table__state">Sin resultados.</td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <span class="pagination__info">
+        Página {{ currentPage() }} de {{ totalPages() }}
+        &nbsp;·&nbsp; {{ filteredUsers().length }} usuarios
+      </span>
+      <div class="pagination__controls">
+        <button class="pagination__btn" type="button" (click)="prevPage()" [disabled]="currentPage() === 1">&#8592;</button>
+        <button class="pagination__btn" type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()">&#8594;</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+@if (selectedUser()) {
+  <app-user-role-modal
+    [user]="selectedUser()!"
+    (closed)="onModalClosed($event)"
+  />
+}

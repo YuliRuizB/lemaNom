@@ -1,0 +1,207 @@
+<section class="equipo-page">
+  <div class="equipo-page__toolbar">
+    <input
+      class="search-input"
+      type="search"
+      placeholder="Buscar por nombre, identificador, marca o modelo…"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)"
+    />
+    <button class="btn-add" type="button" (click)="openModal()">+ Agregar equipo</button>
+  </div>
+
+  <div class="equipo-table-wrapper">
+    <table class="equipo-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Identificador</th>
+          <th>Marca</th>
+          <th>Modelo</th>
+          <th>NS</th>
+          <th>Rango</th>
+          <th>Activo</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="7" class="equipo-table__state">Cargando…</td></tr>
+        } @else {
+          @for (item of pagedEquipments(); track item.idDoc) {
+            <tr
+              class="equipo-table__row"
+              [class.equipo-table__row--selected]="selectedEquipment()?.idDoc === item.idDoc"
+              (click)="selectEquipment(item)"
+            >
+              <td>{{ item.name }}</td>
+              <td>{{ item.identifier }}</td>
+              <td class="equipo-table__secondary">{{ item.brand ?? '—' }}</td>
+              <td class="equipo-table__secondary">{{ item.model ?? '—' }}</td>
+              <td>{{ item.ns }}</td>
+              <td class="equipo-table__secondary">{{ item.range ?? '—' }}</td>
+              <td>
+                <span class="badge" [class.badge--active]="item.active" [class.badge--inactive]="!item.active">
+                  {{ item.active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="equipo-table__state">Sin equipos registrados.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    <span class="pagination__info">
+      Página {{ currentPage() }} de {{ totalPages() }}
+      &nbsp;·&nbsp; {{ filteredEquipments().length }} registros
+    </span>
+    <div class="pagination__controls">
+      <button class="pagination__btn" type="button" (click)="prevPage()" [disabled]="currentPage() === 1">&#8592;</button>
+      <button class="pagination__btn" type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()">&#8594;</button>
+    </div>
+  </div>
+
+  @if (selectedEquipment(); as eq) {
+    <div class="equipo-detail">
+
+      <!-- Encabezado -->
+      <div class="equipo-detail__header">
+        <span class="equipo-detail__title">{{ eq.name }}</span>
+        <div class="equipo-detail__header-actions">
+          @if (!editMode()) {
+            <button class="btn-detail btn-detail--edit" type="button" (click)="startEdit()">Editar</button>
+          }
+          <button class="equipo-detail__close" type="button" (click)="selectEquipment(eq)">&#x2715;</button>
+        </div>
+      </div>
+
+      <!-- MODO VISTA -->
+      @if (!editMode()) {
+        <div class="equipo-detail__grid">
+          <div class="detail-item">
+            <span class="detail-item__label">Nombre</span>
+            <span class="detail-item__value">{{ eq.name }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Identificador</span>
+            <span class="detail-item__value">{{ eq.identifier }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">NS</span>
+            <span class="detail-item__value">{{ eq.ns }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Marca</span>
+            <span class="detail-item__value">{{ eq.brand || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Modelo</span>
+            <span class="detail-item__value">{{ eq.model || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Rango</span>
+            <span class="detail-item__value">{{ eq.range || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Empresa</span>
+            <span class="detail-item__value">{{ eq.customerName || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Activo</span>
+            <span class="badge" [class.badge--active]="eq.active" [class.badge--inactive]="!eq.active">
+              {{ eq.active ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Creado</span>
+            <span class="detail-item__value">{{ eq.createdAt | date: 'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-item__label">Actualizado</span>
+            <span class="detail-item__value">{{ eq.updatedAt ? (eq.updatedAt | date: 'dd/MM/yyyy') : '—' }}</span>
+          </div>
+        </div>
+      }
+
+      <!-- MODO EDICIÓN -->
+      @if (editMode()) {
+        <form class="equipo-detail__edit-form" [formGroup]="editForm" (ngSubmit)="saveEdit()">
+          <div class="edit-grid">
+            <div class="edit-field">
+              <label class="edit-field__label">Nombre <span class="edit-field__req">*</span></label>
+              <input class="edit-field__input" type="text" formControlName="name" />
+              @if (editForm.get('name')?.invalid && editForm.get('name')?.touched) {
+                <p class="edit-field__error">Obligatorio (mín. 2 caracteres).</p>
+              }
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">Identificador <span class="edit-field__req">*</span></label>
+              <input class="edit-field__input" type="text" formControlName="identifier" />
+              @if (editForm.get('identifier')?.invalid && editForm.get('identifier')?.touched) {
+                <p class="edit-field__error">Obligatorio.</p>
+              }
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">NS <span class="edit-field__req">*</span></label>
+              <input class="edit-field__input" type="text" formControlName="ns" />
+              @if (editForm.get('ns')?.invalid && editForm.get('ns')?.touched) {
+                <p class="edit-field__error">Obligatorio.</p>
+              }
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">Marca</label>
+              <input class="edit-field__input" type="text" formControlName="brand" />
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">Modelo</label>
+              <input class="edit-field__input" type="text" formControlName="model" />
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">Rango</label>
+              <input class="edit-field__input" type="text" formControlName="range" />
+            </div>
+            <div class="edit-field edit-field--inline">
+              <span class="edit-field__label">Activo</span>
+              <label class="toggle">
+                <input type="checkbox" formControlName="active" />
+                <span class="toggle__track"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="edit-actions">
+            <button class="btn-detail btn-detail--cancel" type="button" (click)="cancelEdit()">Cancelar</button>
+            <button class="btn-detail btn-detail--save" type="submit" [disabled]="saving()">
+              {{ saving() ? 'Guardando…' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
+      }
+
+      <!-- Certificado (siempre visible) -->
+      <div class="equipo-detail__certificate">
+        <span class="detail-item__label">Certificado</span>
+        <div class="certificate-actions">
+          @if (eq.certificateUrl) {
+            <a class="btn-cert btn-cert--view" [href]="eq.certificateUrl" target="_blank" rel="noopener">
+              Ver / Descargar
+            </a>
+          }
+          <label class="btn-cert btn-cert--upload" [class.btn-cert--loading]="uploading()">
+            {{ uploading() ? 'Subiendo…' : (eq.certificateUrl ? 'Reemplazar' : 'Subir certificado') }}
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none"
+              [disabled]="uploading()" (change)="onCertificateSelected($event)" />
+          </label>
+        </div>
+      </div>
+
+    </div>
+  }
+</section>
+
+@if (showModal()) {
+  <app-equipment-modal (closed)="onModalClosed($event)" />
+}

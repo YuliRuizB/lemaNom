@@ -1,0 +1,135 @@
+:host {
+  display: block;
+}
+
+.home-page {
+  display: grid;
+  gap: 1.5rem;
+  min-height: 100%;
+}
+
+.eyebrow,
+.home-hero__eyebrow,
+.home-card__label {
+  margin: 0;
+  color: #a6a6a6;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-hero__copy h2,
+.home-card h3 {
+  margin: 0;
+  color: #193050;
+  font-family: "Aptos Display", "Trebuchet MS", "Segoe UI", sans-serif;
+}
+.home-hero__copy p,
+.home-hero__copy p,
+.home-card p {
+  color: #6f7a88;
+}
+
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(14rem, 0.7fr);
+  gap: 1.5rem;
+  padding: 1.6rem;
+  border: 1px solid rgba(25, 48, 80, 0.08);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(135deg, rgba(25, 48, 80, 0.98) 0%, rgba(25, 48, 80, 0.92) 100%);
+}
+
+.home-hero__copy {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.home-hero__eyebrow {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.home-hero__copy h2,
+.home-hero__copy p {
+  color: #ffffff;
+}
+
+.home-hero__copy h2 {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1.08;
+}
+
+.home-hero__copy p {
+  margin: 0;
+  max-width: 42rem;
+  line-height: 1.75;
+}
+
+.home-hero__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.home-hero__mark img {
+  width: min(100%, 13rem);
+  height: auto;
+  display: block;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.home-card {
+  display: grid;
+  gap: 0.8rem;
+  min-height: 13rem;
+  padding: 1.4rem;
+  border: 1px solid rgba(25, 48, 80, 0.08);
+  border-radius: 1.35rem;
+  background-color: #ffffff;
+}
+
+.home-card--wide {
+  grid-column: 1 / -1;
+}
+
+.home-card h3 {
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.home-card p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+@media (max-width: 960px) {
+  .home-hero,
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-page {
+    gap: 1rem;
+  }
+
+  .home-hero,
+  .home-card {
+    padding: 1.15rem;
+  }
+
+  .home-card {
+    min-height: auto;
+  }
+}

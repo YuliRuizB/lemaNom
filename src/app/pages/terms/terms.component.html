@@ -1,0 +1,92 @@
+<main class="terms-shell">
+  <section class="terms-card">
+    <div class="terms-header">
+      <div class="terms-brand">
+        <img class="terms-brand__logo" src="assets/6.png" alt="LEMA Gestion Normativa" />
+        <p class="eyebrow">LEMA GESTION NORMATIVA</p>
+      </div>
+      <h1>Términos y condiciones de uso</h1>
+      <p>
+        Este documento establece las condiciones generales para el acceso y uso de la
+        plataforma por parte de usuarios internos, operativos y clientes autorizados.
+      </p>
+    </div>
+
+    <div class="terms-content">
+      <section class="terms-section">
+        <h2>1. Aceptación del servicio</h2>
+        <p>
+          El uso de la plataforma implica la aceptación expresa de estas condiciones.
+          Si el usuario no está de acuerdo con alguno de los términos aquí descritos,
+          deberá abstenerse de utilizar el sistema.
+        </p>
+      </section>
+
+      <section class="terms-section">
+        <h2>2. Uso autorizado</h2>
+        <p>
+          El acceso está limitado a personal y clientes previamente autorizados por
+          la organización. Cada cuenta es personal e intransferible, y debe utilizarse
+          únicamente para actividades relacionadas con la gestión normativa, operativa
+          y documental.
+        </p>
+      </section>
+
+      <section class="terms-section">
+        <h2>3. Responsabilidad del usuario</h2>
+        <p>
+          El usuario es responsable de mantener la confidencialidad de sus credenciales,
+          resguardar la información consultada dentro del sistema y reportar de forma
+          inmediata cualquier acceso no autorizado o uso sospechoso de su cuenta.
+        </p>
+      </section>
+
+      <section class="terms-section">
+        <h2>4. Protección de la información</h2>
+        <p>
+          La información registrada en la plataforma puede incluir datos operativos,
+          administrativos y de cumplimiento. Su tratamiento deberá realizarse conforme
+          a las políticas internas de seguridad de la información y a la normativa
+          aplicable en materia de privacidad y protección de datos.
+        </p>
+      </section>
+
+      <section class="terms-section">
+        <h2>5. Restricciones de uso</h2>
+        <p>
+          Queda prohibido alterar, copiar, distribuir, extraer, compartir o utilizar
+          la información del sistema con fines distintos a los autorizados. También
+          se prohíbe cualquier intento de vulnerar la seguridad, disponibilidad o
+          integridad de la plataforma.
+        </p>
+      </section>
+
+      <section class="terms-section">
+        <h2>6. Actualizaciones y cambios</h2>
+        <p>
+          La organización podrá actualizar estos términos en cualquier momento para
+          reflejar ajustes operativos, técnicos o legales. La continuidad en el uso
+          del sistema después de dichos cambios será considerada como aceptación de
+          la versión vigente.
+        </p>
+      </section>
+
+      <section class="terms-section">
+        <h2>7. Suspensión o cancelación de acceso</h2>
+        <p>
+          El incumplimiento de estas condiciones podrá derivar en la suspensión temporal
+          o definitiva del acceso, sin perjuicio de las acciones administrativas o
+          legales que correspondan.
+        </p>
+      </section>
+    </div>
+
+    <div class="terms-footer" *ngIf="showReturnSection">
+      <p>
+        Para dudas relacionadas con este documento, consulta con el área responsable
+        de administración de la plataforma.
+      </p>
+      <a [routerLink]="returnTo" class="back-link">{{ backLabel }}</a>
+    </div>
+  </section>
+</main>

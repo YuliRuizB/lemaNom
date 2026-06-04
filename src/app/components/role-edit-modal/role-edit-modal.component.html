@@ -1,0 +1,44 @@
+<div class="modal-backdrop" (click)="cancel()"></div>
+
+<div class="modal">
+  <header class="modal__header">
+    <div>
+      <p class="modal__eyebrow">Editar rol</p>
+      <h2 class="modal__title">{{ role.name }}</h2>
+    </div>
+    <button class="modal__close" type="button" (click)="cancel()" aria-label="Cerrar">&#x2715;</button>
+  </header>
+
+  <form class="modal__body" [formGroup]="form" (ngSubmit)="save()">
+    <div class="field">
+      <label class="field__label" for="edit-name">Nombre <span class="field__required">*</span></label>
+      <input
+        id="edit-name"
+        class="field__input"
+        type="text"
+        formControlName="name"
+        autocomplete="off"
+      />
+      @if (form.get('name')?.invalid && form.get('name')?.touched) {
+        <p class="field__error">El nombre es obligatorio (mínimo 2 caracteres).</p>
+      }
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="edit-desc">Descripción</label>
+      <textarea
+        id="edit-desc"
+        class="field__input field__input--textarea"
+        formControlName="description"
+        rows="3"
+      ></textarea>
+    </div>
+
+    <footer class="modal__footer">
+      <button class="btn btn--ghost" type="button" (click)="cancel()">Cancelar</button>
+      <button class="btn btn--primary" type="submit" [disabled]="form.invalid || !hasChanged || saving()">
+        {{ saving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </footer>
+  </form>
+</div>

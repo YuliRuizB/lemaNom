@@ -1,0 +1,132 @@
+<section class="profile-page">
+  <div class="profile-grid" *ngIf="!isLoading && user; else loadingOrEmpty">
+    <article class="profile-card profile-card--avatar">
+      <header class="profile-card__header">
+        <h2>Perfil</h2>
+        <p>Información general del usuario autenticado.</p>
+      </header>
+
+      <div class="profile-avatar-block">
+        <div class="profile-avatar-block__image">
+          <img
+            *ngIf="profileForm.photoUrl; else avatarFallback"
+            [src]="profileForm.photoUrl"
+            [alt]="profileForm.displayName || profileForm.firstName"
+          />
+          <ng-template #avatarFallback>
+            <span>{{ (profileForm.displayName || profileForm.firstName || 'U').charAt(0) }}</span>
+          </ng-template>
+        </div>
+
+        <div class="profile-avatar-block__meta">
+          <span class="profile-badge">{{ profileForm.active ? 'Activo' : 'Inactivo' }}</span>
+          <span class="profile-hint">Avatar del usuario</span>
+          <label class="profile-upload-button">
+            <input type="file" accept="image/*" (change)="onPhotoSelected($event)" />
+            {{ isUploadingPhoto ? 'Subiendo...' : 'Subir imagen' }}
+          </label>
+        </div>
+      </div>
+    </article>
+
+    <article class="profile-card profile-card--details">
+      <header class="profile-card__header">
+        <h2>Datos principales</h2>
+        <p>Estructura base para consulta y futura edición del perfil.</p>
+      </header>
+
+      <form class="profile-form-grid">
+        <label class="field">
+          <span>Nombre</span>
+          <input type="text" name="firstName" [(ngModel)]="profileForm.firstName" />
+        </label>
+
+        <label class="field">
+          <span>Apellidos</span>
+          <input type="text" name="lastName" [(ngModel)]="profileForm.lastName" />
+        </label>
+
+        <label class="field field--full">
+          <span>Nombre para mostrar</span>
+          <input type="text" name="displayName" [(ngModel)]="profileForm.displayName" />
+        </label>
+
+        <label class="field field--full">
+          <span>Correo electrónico</span>
+          <input type="email" name="email" [(ngModel)]="profileForm.email" disabled />
+        </label>
+      </form>
+    </article>
+  </div>
+
+  <div class="profile-card profile-card--extra" *ngIf="!isLoading && user">
+    <header class="profile-card__header">
+      <h2>Datos complementarios</h2>
+      <p>Información operativa y de referencia del usuario dentro de la plataforma.</p>
+    </header>
+
+    <form class="profile-form-grid">
+      <label class="field">
+        <span>Teléfono</span>
+        <input type="text" name="phone" [(ngModel)]="profileForm.phone" />
+      </label>
+
+      <label class="field">
+        <span>Empresa</span>
+        <input type="text" [ngModel]="profileForm.customerName" name="customerName" readonly />
+      </label>
+
+      <label class="field">
+        <span>Rol</span>
+        <input type="text" [ngModel]="profileForm.roleName" name="roleName" readonly />
+      </label>
+
+      <label class="field field--flag">
+        <span>Estatus</span>
+        <span class="flag-field">
+          <input type="checkbox" name="active" [(ngModel)]="profileForm.active" disabled />
+          <span>{{ profileForm.active ? 'Activo' : 'Inactivo' }}</span>
+        </span>
+      </label>
+
+      <label class="field field--flag">
+        <span>Términos aceptados</span>
+        <span class="flag-field">
+          <input
+            type="checkbox"
+            name="termsAccepted"
+            [(ngModel)]="profileForm.termsAccepted"
+            disabled
+          />
+          <span>{{ profileForm.termsAccepted ? 'Sí' : 'No' }}</span>
+        </span>
+      </label>
+    </form>
+
+    <div class="profile-actions">
+      <button
+        type="button"
+        class="save-button"
+        [disabled]="isSaving"
+        (click)="saveProfile()"
+      >
+        {{ isSaving ? 'Guardando...' : 'Guardar cambios' }}
+      </button>
+    </div>
+  </div>
+
+  <ng-template #loadingOrEmpty>
+    <section class="profile-empty">
+      <div class="profile-empty__card">
+        <h2>{{ isLoading ? 'Cargando perfil...' : 'No se encontró información de perfil' }}</h2>
+        <p>
+          {{
+            isLoading
+              ? 'Estamos consultando la información del usuario autenticado.'
+              : 'No existe información disponible para este perfil en este momento.'
+          }}
+        </p>
+      </div>
+    </section>
+  </ng-template>
+</section>

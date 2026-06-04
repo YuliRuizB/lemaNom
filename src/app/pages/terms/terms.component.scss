@@ -1,0 +1,134 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+}
+
+.terms-shell {
+  min-height: 100dvh;
+  padding: clamp(1rem, 3vw, 2rem);
+  background:
+    radial-gradient(circle at top, #ffffff 0%, #f4f5f7 58%, #eef2f7 100%);
+}
+
+.terms-card {
+  width: min(100%, 70rem);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 3rem);
+  background-color: #ffffff;
+  border: 1px solid rgba(164, 164, 164, 0.24);
+  border-radius: 1.2rem;
+  box-shadow: 0 24px 70px rgba(22, 46, 78, 0.08);
+}
+
+.terms-header,
+.terms-footer,
+.terms-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.terms-header {
+  margin-bottom: 2rem;
+}
+
+.terms-brand {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+}
+
+.terms-brand__logo {
+  width: clamp(10rem, 20vw, 16rem);
+  height: auto;
+  display: block;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #0052cc;
+}
+
+.terms-header h1,
+.terms-section h2 {
+  margin: 0;
+  color: #162e4e;
+  font-family: "Aptos Display", "Trebuchet MS", "Segoe UI", sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.terms-header h1 {
+  font-size: clamp(1.75rem, 3vw, 2.4rem);
+  line-height: 1.08;
+}
+
+.terms-header p,
+.terms-section p,
+.terms-footer p {
+  margin: 0;
+  color: #5b6675;
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.terms-content {
+  gap: 1.5rem;
+}
+
+.terms-section {
+  padding: 1.4rem 1.5rem;
+  border: 1px solid rgba(164, 164, 164, 0.18);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafc 100%);
+}
+
+.terms-section h2 {
+  margin-bottom: 0.75rem;
+  font-size: 1.2rem;
+}
+
+.terms-footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(164, 164, 164, 0.2);
+}
+
+.back-link {
+  width: fit-content;
+  color: #0052cc;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .terms-card {
+    padding: 1.25rem;
+  }
+
+  .terms-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .terms-header p,
+  .terms-section p,
+  .terms-footer p {
+    font-size: 0.96rem;
+    line-height: 1.7;
+  }
+
+  .terms-section {
+    padding: 1.1rem 1rem;
+  }
+
+  .terms-section h2 {
+    font-size: 1.08rem;
+  }
+}

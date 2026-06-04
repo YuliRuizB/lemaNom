@@ -1,0 +1,133 @@
+:host {
+  display: block;
+}
+
+.catalogs-page {
+  display: grid;
+  gap: 1.5rem;
+  min-height: 100%;
+}
+
+.catalogs-page__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.eyebrow,
+.catalogs-intro__eyebrow,
+.catalog-card__label {
+  margin: 0;
+  color: #a6a6a6;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.catalogs-page__header h1,
+.catalogs-intro__copy h2,
+.catalog-card h3 {
+  margin: 0;
+  color: #193050;
+  font-family: "Aptos Display", "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.catalogs-page__header h1 {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1.05;
+}
+
+.catalogs-page__caption,
+.catalogs-intro__copy p,
+.catalog-card p {
+  color: #6f7a88;
+}
+
+.catalogs-page__caption {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.catalogs-intro {
+  padding: 1.6rem;
+  border: 1px solid rgba(25, 48, 80, 0.08);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 247, 250, 0.98) 100%);
+}
+
+.catalogs-intro__copy {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 48rem;
+}
+
+.catalogs-intro__copy h2 {
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+  line-height: 1.1;
+}
+
+.catalogs-intro__copy p {
+  margin: 0;
+  line-height: 1.75;
+}
+
+.catalogs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.catalog-card {
+  display: grid;
+  gap: 0.8rem;
+  min-height: 12.5rem;
+  padding: 1.35rem;
+  border: 1px solid rgba(25, 48, 80, 0.08);
+  border-radius: 1.3rem;
+  background-color: #ffffff;
+}
+
+.catalog-card h3 {
+  font-size: 1.2rem;
+  line-height: 1.15;
+}
+
+.catalog-card p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+@media (max-width: 960px) {
+  .catalogs-page__header,
+  .catalogs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .catalogs-page__header {
+    display: grid;
+  }
+
+  .catalogs-page__caption {
+    text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .catalogs-page {
+    gap: 1rem;
+  }
+
+  .catalogs-intro,
+  .catalog-card {
+    padding: 1.15rem;
+  }
+
+  .catalog-card {
+    min-height: auto;
+  }
+}

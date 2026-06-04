@@ -1,0 +1,142 @@
+<main class="main-shell" [class.main-shell--collapsed]="isSidebarCollapsed">
+  <aside class="shell-sidebar">
+    <div class="shell-sidebar__brand">
+      <img class="shell-sidebar__logo" src="assets/5.png" alt="LEMA Gestion Normativa" />
+    </div>
+
+    <nav class="shell-nav" aria-label="Menu principal">
+      <section class="shell-nav__group">
+        <button type="button" class="shell-nav__heading" (click)="toggleSection('home')">
+          <span>Home</span>
+          <span class="shell-nav__chevron" [class.shell-nav__chevron--open]="isHomeOpen"></span>
+        </button>
+
+        <div class="shell-nav__children" *ngIf="isHomeOpen">
+          <a
+            class="shell-nav__child shell-nav__child--active"
+            routerLink="/app/home"
+            routerLinkActive="shell-nav__child--active"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            Home
+          </a>
+        </div>
+      </section>
+
+      <section class="shell-nav__group">
+        <button type="button" class="shell-nav__heading" (click)="toggleSection('catalogs')">
+          <span>Catalogos</span>
+          <span
+            class="shell-nav__chevron"
+            [class.shell-nav__chevron--open]="isCatalogsOpen"
+          ></span>
+        </button>
+
+        <div class="shell-nav__children" *ngIf="isCatalogsOpen">
+          <span class="shell-nav__child shell-nav__child--placeholder">Clientes</span>
+          <a
+            class="shell-nav__child"
+            routerLink="/app/equipo-medicion"
+            routerLinkActive="shell-nav__child--active"
+          >
+            Equipo de Medición
+          </a>
+          <a
+            class="shell-nav__child"
+            routerLink="/app/users"
+            routerLinkActive="shell-nav__child--active"
+          >
+            Usuarios
+          </a>
+        </div>
+      </section>
+
+      <section class="shell-nav__group" *ngIf="canViewAdminMenu">
+        <button type="button" class="shell-nav__heading" (click)="toggleSection('admin')">
+          <span>Administrador</span>
+          <span class="shell-nav__chevron" [class.shell-nav__chevron--open]="isAdminOpen"></span>
+        </button>
+
+        <div class="shell-nav__children" *ngIf="isAdminOpen">
+          <a
+            class="shell-nav__child"
+            routerLink="/app/customer"
+            routerLinkActive="shell-nav__child--active"
+          >
+            Empresa
+          </a>
+          <a
+            class="shell-nav__child"
+            routerLink="/app/role"
+            routerLinkActive="shell-nav__child--active"
+          >
+            Roles
+          </a>
+        </div>
+      </section>
+
+      <section class="shell-nav__group">
+        <button type="button" class="shell-nav__heading" (click)="toggleSection('settings')">
+          <span>Configuracion</span>
+          <span
+            class="shell-nav__chevron"
+            [class.shell-nav__chevron--open]="isSettingsOpen"
+          ></span>
+        </button>
+
+        <div class="shell-nav__children" *ngIf="isSettingsOpen">
+          <a
+            class="shell-nav__child"
+            routerLink="/app/profile"
+            routerLinkActive="shell-nav__child--active"
+          >
+            Perfil
+          </a>
+        </div>
+      </section>
+    </nav>
+  </aside>
+
+  <section class="shell-main">
+    <header class="shell-header">
+      <div class="shell-header__left">
+        <button type="button" class="sidebar-toggle" (click)="toggleSidebar()">
+          <span class="sidebar-toggle__line"></span>
+          <span class="sidebar-toggle__line"></span>
+          <span class="sidebar-toggle__line"></span>
+        </button>
+      </div>
+
+      <div class="shell-header__title">
+        <div class="shell-header__title-block">
+          <span class="shell-header__title-text">{{ headerTitle }}</span>
+          <p class="shell-header__description">{{ headerDescription }}</p>
+        </div>
+      </div>
+
+      <div class="shell-header__right">
+        <div class="profile-menu">
+          <button type="button" class="profile-menu__trigger" (click)="toggleProfileMenu()">
+            <span class="profile-avatar">A</span>
+          </button>
+          <div class="profile-menu__meta">
+            <span class="profile-menu__name">{{ displayName }}</span>
+            <span class="profile-menu__company" *ngIf="customerName">{{ customerName }}</span>
+          </div>
+
+          <div class="profile-menu__dropdown" *ngIf="isProfileMenuOpen">
+            <button type="button" class="profile-menu__item" (click)="logout()">
+              {{ isClosingSession ? 'Cerrando...' : 'Cerrar Sesión' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="shell-content">
+      <div class="shell-content__canvas">
+        <router-outlet></router-outlet>
+      </div>
+    </div>
+  </section>
+</main>

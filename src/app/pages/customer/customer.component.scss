@@ -1,0 +1,238 @@
+:host {
+  display: block;
+}
+
+.customer-page {
+  min-height: 100%;
+}
+
+.customer-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.8fr) minmax(24rem, 1.2fr);
+  gap: 5px;
+  max-width: 72rem;
+}
+
+.customer-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid rgba(25, 48, 80, 0.08);
+  border-radius: 1.5rem;
+  background-color: #ffffff;
+}
+
+.customer-card__header {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.customer-card__header h2 {
+  margin: 0;
+  color: #193050;
+  font-family: "Aptos Display", "Trebuchet MS", "Segoe UI", sans-serif;
+  font-size: clamp(1.4rem, 2.2vw, 2rem);
+}
+
+.customer-card__header p,
+.field span,
+.customer-empty__card p,
+.customer-code {
+  margin: 0;
+  color: #6f7a88;
+}
+
+.customer-card__header p,
+.customer-empty__card p {
+  line-height: 1.7;
+}
+
+.customer-brand {
+  display: grid;
+  gap: 0.8rem;
+  align-content: center;
+  justify-items: center;
+  min-height: 100%;
+}
+
+.customer-brand__logo {
+  display: grid;
+  place-items: center;
+  width: clamp(7rem, 12vw, 9.5rem);
+  height: clamp(7rem, 12vw, 9.5rem);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(25, 48, 80, 0.1) 0%, rgba(25, 48, 80, 0.04) 100%);
+  overflow: hidden;
+}
+
+.customer-brand__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.customer-brand__logo span {
+  color: #193050;
+  font-size: 3rem;
+  font-weight: 800;
+}
+
+.customer-brand__actions {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+}
+
+.customer-badge {
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  background-color: #193050;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.customer-code {
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.customer-hint {
+  color: #a6a6a6;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.logo-upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 10rem;
+  min-height: 2.85rem;
+  padding: 0 1rem;
+  border: 1px solid rgba(25, 48, 80, 0.18);
+  border-radius: 0.95rem;
+  color: #193050;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  background-color: #ffffff;
+}
+
+.logo-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.customer-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.field span {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.field input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(25, 48, 80, 0.12);
+  border-radius: 1rem;
+  background-color: #ffffff;
+  color: #193050;
+  font-size: 1rem;
+  outline: none;
+  line-height: 1.5;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.field input:focus {
+  border-color: #193050;
+  box-shadow: 0 0 0 4px rgba(25, 48, 80, 0.08);
+}
+
+.customer-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.save-button {
+  min-width: 12rem;
+  min-height: 3.1rem;
+  padding: 0 1.2rem;
+  border: 0;
+  border-radius: 0.95rem;
+  background-color: #193050;
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.save-button:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.customer-empty {
+  display: grid;
+}
+
+.customer-empty__card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(25, 48, 80, 0.08);
+  border-radius: 1.5rem;
+  background-color: #ffffff;
+}
+
+.customer-empty__card h2 {
+  margin: 0;
+  color: #193050;
+  font-family: "Aptos Display", "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+@media (max-width: 960px) {
+  .customer-grid,
+  .customer-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field--full {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .customer-card,
+  .customer-empty__card {
+    padding: 1.15rem;
+  }
+
+  .customer-actions {
+    justify-content: stretch;
+  }
+
+  .save-button {
+    width: 100%;
+  }
+}

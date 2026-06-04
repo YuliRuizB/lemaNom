@@ -1,0 +1,99 @@
+<div class="modal-backdrop" (click)="cancel()"></div>
+
+<div class="modal">
+  <header class="modal__header">
+    <div>
+      <p class="modal__eyebrow">Detalle de usuario</p>
+      <h2 class="modal__title">{{ user.firstName }} {{ user.lastName }}</h2>
+      <p class="modal__subtitle">{{ user.email }}</p>
+    </div>
+    <button class="modal__close" type="button" (click)="cancel()" aria-label="Cerrar">&#x2715;</button>
+  </header>
+
+  <div class="modal__body">
+
+    <!-- Info de solo lectura -->
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="info-item__label">Nombre visible</span>
+        <span class="info-item__value">{{ user.displayName || '—' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-item__label">Teléfono</span>
+        <span class="info-item__value">{{ user.phone || '—' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-item__label">Empresa</span>
+        <span class="info-item__value">{{ user.customerName || '—' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-item__label">Términos aceptados</span>
+        <span class="info-item__value">{{ user.termsAccepted ? 'Sí' : 'No' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-item__label">Registro</span>
+        <span class="info-item__value">{{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-item__label">Último acceso</span>
+        <span class="info-item__value">{{ user.lastLoginAt ? (user.lastLoginAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
+      </div>
+    </div>
+
+    <div class="modal__divider"></div>
+
+    <!-- Campos editables -->
+    @if (isSuperAdmin) {
+      <p class="modal__locked">
+        Este usuario tiene el rol <strong>Super Admin</strong> y no puede ser modificado.
+      </p>
+    } @else {
+      <div class="edit-grid">
+        <div class="field">
+          <label class="field__label" for="role-select">Rol</label>
+          @if (loadingRoles()) {
+            <p class="field__loading">Cargando roles…</p>
+          } @else {
+            <select
+              id="role-select"
+              class="field__select"
+              [ngModel]="selectedRoleId()"
+              (ngModelChange)="selectedRoleId.set($event)"
+            >
+              <option value="" disabled>Selecciona un rol</option>
+              @for (role of roles(); track role.idDoc) {
+                <option [value]="role.idDoc">{{ role.name }}</option>
+              }
+            </select>
+          }
+        </div>
+
+        <div class="field field--inline">
+          <span class="field__label">Aprobado</span>
+          <label class="toggle">
+            <input
+              type="checkbox"
+              [ngModel]="selectedApproved()"
+              (ngModelChange)="selectedApproved.set($event)"
+            />
+            <span class="toggle__track"></span>
+          </label>
+        </div>
+      </div>
+    }
+  </div>
+
+  <footer class="modal__footer">
+    <button class="btn btn--ghost" type="button" (click)="cancel()">Cerrar</button>
+    @if (!isSuperAdmin) {
+      <button
+        class="btn btn--primary"
+        type="button"
+        [disabled]="!hasChanged || saving() || loadingRoles()"
+        (click)="save()"
+      >
+        {{ saving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    }
+  </footer>
+</div>

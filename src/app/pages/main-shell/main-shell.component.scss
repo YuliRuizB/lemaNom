@@ -1,0 +1,426 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+}
+
+.main-shell {
+  --shell-navy: #193050;
+  --shell-gray: #a6a6a6;
+  --shell-white: #ffffff;
+  --shell-border: rgba(25, 48, 80, 0.1);
+  --shell-panel: #f7f8fa;
+
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 15.25rem minmax(0, 1fr);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+  transition: grid-template-columns 220ms ease;
+}
+
+.main-shell--collapsed {
+  grid-template-columns: 4.9rem minmax(0, 1fr);
+}
+
+.shell-sidebar,
+.shell-main,
+.shell-header,
+.shell-content {
+  display: flex;
+}
+
+.shell-sidebar {
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1.5rem 1.25rem;
+  background-color: var(--shell-white);
+  border-right: 1px solid var(--shell-border);
+  transition: padding 220ms ease;
+}
+
+.shell-sidebar__brand {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.shell-sidebar__logo {
+  width: min(100%, 6rem);
+  height: auto;
+  display: block;
+  transition: width 220ms ease;
+}
+
+.shell-sidebar__section {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.shell-nav {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.shell-nav__group {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.shell-nav__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 2.2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--shell-navy);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-align: left;
+  cursor: pointer;
+  transition: opacity 180ms ease;
+}
+
+.shell-nav__children {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 0.75rem;
+}
+
+.shell-nav__child {
+  display: flex;
+  align-items: center;
+  min-height: 2.45rem;
+  padding: 0.58rem 0.8rem;
+  border-radius: 0.95rem;
+  color: var(--shell-navy);
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+  overflow: hidden;
+}
+
+.shell-nav__child:hover {
+  background-color: rgba(25, 48, 80, 0.06);
+  transform: translateX(1px);
+}
+
+.shell-nav__child--active {
+  background-color: var(--shell-navy);
+  color: var(--shell-white);
+  box-shadow: 0 14px 28px rgba(25, 48, 80, 0.16);
+}
+
+.shell-nav__child--placeholder {
+  color: var(--shell-gray);
+  cursor: default;
+}
+
+.shell-nav__child--placeholder:hover {
+  transform: none;
+  background-color: rgba(25, 48, 80, 0.04);
+}
+
+.shell-nav__chevron {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 180ms ease;
+}
+
+.shell-nav__chevron--open {
+  transform: rotate(225deg);
+}
+
+.header-line {
+  border-radius: 999px;
+  background-color: rgba(25, 48, 80, 0.1);
+}
+
+.shell-main {
+  min-width: 0;
+  flex-direction: column;
+}
+
+.shell-header {
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.7rem;
+  padding: 0.55rem 1.1rem;
+  background-color: var(--shell-white);
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.shell-header__left,
+.shell-header__title,
+.shell-header__right {
+  display: flex;
+  align-items: center;
+}
+
+.shell-header__left {
+  flex: 0 0 auto;
+}
+
+.shell-header__title {
+  flex: 1;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+}
+
+.shell-header__title-block {
+  display: grid;
+  gap: 0.08rem;
+  max-width: min(100%, 32rem);
+}
+
+.shell-header__title-text {
+  display: inline-block;
+  max-width: 100%;
+  color: var(--shell-navy);
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.shell-header__description {
+  margin: 0;
+  color: var(--shell-gray);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.sidebar-toggle {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.26rem;
+  width: 2.9rem;
+  height: 2.9rem;
+  padding: 0 0.7rem;
+  border: 1px solid rgba(25, 48, 80, 0.1);
+  border-radius: 0.9rem;
+  background-color: var(--shell-white);
+  cursor: pointer;
+}
+
+.sidebar-toggle__line {
+  display: block;
+  width: 100%;
+  height: 0.12rem;
+  border-radius: 999px;
+  background-color: var(--shell-navy);
+}
+
+.profile-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  max-width: 16rem;
+}
+
+.profile-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 1px solid rgba(25, 48, 80, 0.1);
+  border-radius: 999px;
+  background-color: var(--shell-white);
+  cursor: pointer;
+}
+
+.profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(25, 48, 80, 0.16) 0%, rgba(25, 48, 80, 0.06) 100%);
+  color: var(--shell-navy);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.profile-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 0.75rem);
+  right: 0;
+  min-width: 12rem;
+  padding: 0.5rem;
+  border: 1px solid var(--shell-border);
+  border-radius: 1rem;
+  background-color: var(--shell-white);
+  box-shadow: 0 18px 42px rgba(25, 48, 80, 0.12);
+}
+
+.profile-menu__meta {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  justify-items: start;
+}
+
+.profile-menu__name {
+  max-width: 11rem;
+  color: var(--shell-navy);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-menu__company {
+  max-width: 11rem;
+  color: var(--shell-gray);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-menu__item {
+  width: 100%;
+  min-height: 2.9rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: transparent;
+  color: var(--shell-navy);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-menu__item:hover {
+  background-color: rgba(25, 48, 80, 0.06);
+}
+
+.shell-content {
+  flex: 1;
+  padding: 1.5rem;
+  background-color: #fbfbfc;
+}
+
+.shell-content__canvas {
+  flex: 1;
+  min-height: 24rem;
+  padding: 1.5rem;
+  border: 1px dashed rgba(25, 48, 80, 0.16);
+  border-radius: 1.6rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(247, 248, 250, 0.95) 100%);
+}
+
+.main-shell--collapsed .shell-sidebar {
+  padding-left: 0.9rem;
+  padding-right: 0.9rem;
+}
+
+.main-shell--collapsed .shell-sidebar__brand {
+  justify-content: center;
+}
+
+.main-shell--collapsed .shell-sidebar__logo {
+  width: min(100%, 3.1rem);
+}
+
+.main-shell--collapsed .shell-nav__heading {
+  font-size: 0;
+  min-height: 2.8rem;
+  padding: 0 0.45rem;
+}
+
+.main-shell--collapsed .shell-nav__children {
+  display: none;
+}
+
+.main-shell--collapsed .shell-nav__chevron {
+  margin-left: auto;
+}
+
+.main-shell--collapsed .shell-header__description {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .main-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .main-shell--collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--shell-border);
+  }
+
+  .shell-sidebar__brand {
+    align-items: flex-start;
+  }
+
+  .main-shell--collapsed .shell-sidebar {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell-sidebar,
+  .shell-header,
+  .shell-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .shell-content__canvas {
+    padding: 1rem;
+  }
+
+  .shell-header {
+    min-height: 3.35rem;
+  }
+
+  .shell-header__title-text {
+    font-size: 1.02rem;
+  }
+
+  .shell-header__description {
+    font-size: 0.82rem;
+  }
+
+  .profile-menu__name {
+    max-width: 6rem;
+    font-size: 0.76rem;
+  }
+
+  .profile-menu__company {
+    max-width: 6.4rem;
+    font-size: 0.68rem;
+  }
+}

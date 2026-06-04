@@ -1,0 +1,129 @@
+<section class="customer-page">
+  <div *ngIf="!isLoading && customer; else loadingOrEmpty">
+    <div class="customer-grid">
+      <article class="customer-card customer-card--profile">
+        <header class="customer-card__header">
+          <h2>Empresa</h2>
+          <p>Información general de la empresa asociada a tu cuenta.</p>
+        </header>
+
+        <div class="customer-brand">
+        <div class="customer-brand__logo">
+          <img *ngIf="customer.urlLogo; else logoFallback" [src]="customer.urlLogo" [alt]="customer.businessName" />
+          <ng-template #logoFallback>
+            <span>{{ customer.businessName.charAt(0) }}</span>
+          </ng-template>
+        </div>
+
+        <div class="customer-brand__actions">
+          <span class="customer-badge">{{ customer.active ? 'Activa' : 'Inactiva' }}</span>
+          <span class="customer-code">Clave {{ customerForm.code || customer.code }}</span>
+          <label class="logo-upload">
+            <input type="file" accept="image/*" (change)="onLogoSelected($event)" />
+            <span>{{ isUploadingLogo ? 'Subiendo logo...' : 'Subir logo' }}</span>
+          </label>
+        </div>
+      </div>
+      </article>
+
+      <article class="customer-card customer-card--details">
+        <header class="customer-card__header">
+          <h2>Datos principales</h2>
+          <p>Completa o actualiza la información registrada para tu empresa.</p>
+        </header>
+
+        <form class="customer-form-grid">
+          <label class="field">
+            <span>Razón social</span>
+            <input type="text" name="businessName" [(ngModel)]="customerForm.businessName" />
+          </label>
+
+          <label class="field">
+            <span>Nombre comercial</span>
+            <input type="text" name="commercialName" [(ngModel)]="customerForm.commercialName" />
+          </label>
+
+          <label class="field">
+            <span>RFC</span>
+            <input type="text" name="rfc" [(ngModel)]="customerForm.rfc" />
+          </label>
+
+          <label class="field">
+            <span>Clave cliente</span>
+            <input type="text" name="code" [(ngModel)]="customerForm.code" />
+          </label>
+        </form>
+      </article>
+    </div>
+
+    <article class="customer-card customer-card--extra">
+      <header class="customer-card__header">
+        <h2>Datos complementarios</h2>
+        <p>Información adicional de identidad visual y ubicación de la empresa.</p>
+      </header>
+
+      <form class="customer-form-grid">
+        <label class="field">
+          <span>Calle</span>
+          <input type="text" name="street" [(ngModel)]="customerForm.street" />
+        </label>
+
+        <label class="field">
+          <span>Número exterior</span>
+          <input type="text" name="exteriorNumber" [(ngModel)]="customerForm.exteriorNumber" />
+        </label>
+
+        <label class="field">
+          <span>Colonia</span>
+          <input type="text" name="colony" [(ngModel)]="customerForm.colony" />
+        </label>
+
+        <label class="field">
+          <span>Municipio</span>
+          <input type="text" name="municipality" [(ngModel)]="customerForm.municipality" />
+        </label>
+
+        <label class="field">
+          <span>Estado</span>
+          <input type="text" name="state" [(ngModel)]="customerForm.state" />
+        </label>
+
+        <label class="field">
+          <span>País</span>
+          <input type="text" name="country" [(ngModel)]="customerForm.country" />
+        </label>
+
+        <label class="field field--full">
+          <span>Código postal</span>
+          <input type="text" name="postalCode" [(ngModel)]="customerForm.postalCode" />
+        </label>
+      </form>
+
+      <div class="customer-actions">
+        <button
+          type="button"
+          class="save-button"
+          [disabled]="isSaving"
+          (click)="saveCustomer()"
+        >
+          {{ isSaving ? 'Guardando...' : 'Guardar cambios' }}
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <ng-template #loadingOrEmpty>
+    <section class="customer-empty">
+      <div class="customer-empty__card">
+        <h2>{{ isLoading ? 'Cargando empresa...' : 'No se encontró información de empresa' }}</h2>
+        <p>
+          {{
+            isLoading
+              ? 'Estamos consultando la información de la empresa asociada a tu usuario.'
+              : 'Tu cuenta no tiene una empresa asociada o todavía no existe información disponible.'
+          }}
+        </p>
+      </div>
+    </section>
+  </ng-template>
+</section>

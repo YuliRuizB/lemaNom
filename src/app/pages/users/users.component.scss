@@ -1,0 +1,142 @@
+:host {
+  display: block;
+}
+
+.users-page {
+  min-height: 100%;
+  padding: 2rem 2rem 2rem 0;
+
+  &__search {
+    margin-bottom: 1rem;
+  }
+}
+
+.search-input {
+  width: 100%;
+  max-width: 380px;
+  padding: 0.55rem 1rem;
+  border: 1px solid #dfe1e6;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--lema-navy);
+  background: var(--lema-white);
+  outline: none;
+  transition: border-color 0.15s;
+
+  &:focus {
+    border-color: var(--lema-accent);
+  }
+}
+
+.users-table-wrapper {
+  background: var(--lema-white);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  thead tr {
+    background-color: var(--lema-surface);
+    border-bottom: 1px solid #e4e6ea;
+  }
+
+  th {
+    padding: 0.875rem 1.25rem;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lema-gray);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #f0f1f3;
+    transition: background 0.15s;
+
+    &:last-child { border-bottom: none; }
+    &:hover { background-color: #f8f9fb; }
+  }
+
+  &__row {
+    cursor: pointer;
+  }
+
+  td {
+    padding: 0.875rem 1.25rem;
+    color: var(--lema-navy);
+    vertical-align: middle;
+  }
+
+  &__secondary {
+    color: var(--lema-gray);
+  }
+
+  &__state {
+    text-align: center;
+    padding: 2.5rem;
+    color: var(--lema-gray);
+    font-size: 0.875rem;
+  }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  border-top: 1px solid #f0f1f3;
+
+  &__info {
+    font-size: 0.78rem;
+    color: var(--lema-gray);
+  }
+
+  &__controls {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #dfe1e6;
+    border-radius: 0.4rem;
+    background: var(--lema-white);
+    color: var(--lema-navy);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) { background: var(--lema-surface); }
+    &:disabled { opacity: 0.35; cursor: not-allowed; }
+  }
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+
+  &--active {
+    background-color: #e3fcef;
+    color: #006644;
+  }
+
+  &--inactive {
+    background-color: #f4f5f7;
+    color: #97a0af;
+  }
+}
