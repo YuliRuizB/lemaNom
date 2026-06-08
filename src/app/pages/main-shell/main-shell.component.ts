@@ -42,6 +42,7 @@ export class MainShellComponent {
   isClosingSession = false;
   isHomeOpen = true;
   isCatalogsOpen = true;
+  isLogisticaOpen = true;
   isAdminOpen = true;
   isSettingsOpen = true;
   isSidebarCollapsed = false;
@@ -92,22 +93,11 @@ export class MainShellComponent {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
   }
 
-  toggleSection(section: 'home' | 'catalogs' | 'admin' | 'settings'): void {
-    if (section === 'home') {
-      this.isHomeOpen = !this.isHomeOpen;
-      return;
-    }
-
-    if (section === 'catalogs') {
-      this.isCatalogsOpen = !this.isCatalogsOpen;
-      return;
-    }
-
-    if (section === 'admin') {
-      this.isAdminOpen = !this.isAdminOpen;
-      return;
-    }
-
+  toggleSection(section: 'home' | 'catalogs' | 'logistica' | 'admin' | 'settings'): void {
+    if (section === 'home') { this.isHomeOpen = !this.isHomeOpen; return; }
+    if (section === 'catalogs') { this.isCatalogsOpen = !this.isCatalogsOpen; return; }
+    if (section === 'logistica') { this.isLogisticaOpen = !this.isLogisticaOpen; return; }
+    if (section === 'admin') { this.isAdminOpen = !this.isAdminOpen; return; }
     this.isSettingsOpen = !this.isSettingsOpen;
   }
 
@@ -115,6 +105,12 @@ export class MainShellComponent {
     if (url.includes('/app/profile')) {
       this.headerTitle = 'Perfil';
       this.headerDescription = 'Espacio base para la informacion y configuracion del perfil.';
+      return;
+    }
+
+    if (url.includes('/app/terms')) {
+      this.headerTitle = 'Términos';
+      this.headerDescription = 'Consulta de términos y condiciones de uso de la plataforma.';
       return;
     }
 

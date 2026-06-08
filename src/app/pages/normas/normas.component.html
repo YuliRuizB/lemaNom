@@ -71,7 +71,6 @@
     </div>
   </div>
 
-  <!-- Panel de edición -->
   @if (selectedNorm(); as norm) {
     <div class="edit-panel">
       <div class="edit-panel__header">
@@ -82,54 +81,131 @@
         <button class="edit-panel__close" type="button" (click)="cancelEdit()">&#x2715;</button>
       </div>
 
-      <form class="edit-panel__body" [formGroup]="editForm" (ngSubmit)="saveEdit()">
-        <div class="edit-row">
-          <div class="edit-field">
-            <label class="edit-field__label">Nombre <span class="edit-field__req">*</span></label>
-            <input class="edit-field__input" type="text" formControlName="name" autocomplete="off" />
-            @if (isFieldInvalid('name')) { <p class="edit-field__error">Obligatorio.</p> }
-          </div>
-          <div class="edit-field">
-            <label class="edit-field__label">Código <span class="edit-field__req">*</span></label>
-            <input class="edit-field__input" type="text" formControlName="code" autocomplete="off" />
-            @if (isFieldInvalid('code')) { <p class="edit-field__error">Obligatorio.</p> }
-          </div>
-          <div class="edit-field">
-            <label class="edit-field__label">Prefijo <span class="edit-field__req">*</span></label>
-            <input class="edit-field__input" type="text" formControlName="prefix" autocomplete="off" />
-            @if (isFieldInvalid('prefix')) { <p class="edit-field__error">Obligatorio.</p> }
-          </div>
-          <div class="edit-field">
-            <label class="edit-field__label">Categoría <span class="edit-field__req">*</span></label>
-            <select class="edit-field__input" formControlName="nomCategoryId">
-              <option value="" disabled>Selecciona</option>
-              @for (cat of categories(); track cat.idDoc) {
-                <option [value]="cat.idDoc">{{ cat.name }}</option>
-              }
-            </select>
-            @if (isFieldInvalid('nomCategoryId')) { <p class="edit-field__error">Requerido.</p> }
-          </div>
-          <div class="edit-field edit-field--inline">
-            <span class="edit-field__label">Activo</span>
-            <label class="toggle">
-              <input type="checkbox" formControlName="active" />
-              <span class="toggle__track"></span>
-            </label>
-          </div>
-        </div>
+      <div class="edit-panel__tabs">
+        <button class="edit-tab" [class.edit-tab--active]="editTab() === 'general'" type="button" (click)="setTab('general')">General</button>
+        <button class="edit-tab" [class.edit-tab--active]="editTab() === 'flujo'" type="button" (click)="setTab('flujo')">
+          Flujo
+          @if (workflowSteps().length) {
+            <span class="edit-tab__badge">{{ workflowSteps().length }}</span>
+          }
+        </button>
+      </div>
 
-        <div class="edit-field">
-          <label class="edit-field__label">Descripción</label>
-          <input class="edit-field__input" type="text" formControlName="description" autocomplete="off" />
-        </div>
+      @if (editTab() === 'general') {
+        <form class="edit-panel__body" [formGroup]="editForm" (ngSubmit)="saveEdit()">
+          <div class="edit-row">
+            <div class="edit-field">
+              <label class="edit-field__label">Nombre <span class="edit-field__req">*</span></label>
+              <input class="edit-field__input" type="text" formControlName="name" autocomplete="off" />
+              @if (isFieldInvalid('name')) { <p class="edit-field__error">Obligatorio.</p> }
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">Código <span class="edit-field__req">*</span></label>
+              <input class="edit-field__input" type="text" formControlName="code" autocomplete="off" />
+              @if (isFieldInvalid('code')) { <p class="edit-field__error">Obligatorio.</p> }
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">Prefijo <span class="edit-field__req">*</span></label>
+              <input class="edit-field__input" type="text" formControlName="prefix" autocomplete="off" />
+              @if (isFieldInvalid('prefix')) { <p class="edit-field__error">Obligatorio.</p> }
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">Categoría <span class="edit-field__req">*</span></label>
+              <select class="edit-field__input" formControlName="nomCategoryId">
+                <option value="" disabled>Selecciona</option>
+                @for (cat of categories(); track cat.idDoc) {
+                  <option [value]="cat.idDoc">{{ cat.name }}</option>
+                }
+              </select>
+              @if (isFieldInvalid('nomCategoryId')) { <p class="edit-field__error">Requerido.</p> }
+            </div>
+            <div class="edit-field edit-field--inline">
+              <span class="edit-field__label">Activo</span>
+              <label class="toggle">
+                <input type="checkbox" formControlName="active" />
+                <span class="toggle__track"></span>
+              </label>
+            </div>
+          </div>
 
-        <div class="edit-panel__footer">
-          <button class="btn btn--ghost" type="button" (click)="cancelEdit()">Cancelar</button>
-          <button class="btn btn--primary" type="submit" [disabled]="saving()">
-            {{ saving() ? 'Guardando…' : 'Guardar' }}
-          </button>
+          <div class="edit-field">
+            <label class="edit-field__label">Descripción</label>
+            <input class="edit-field__input" type="text" formControlName="description" autocomplete="off" />
+          </div>
+
+          <div class="edit-panel__footer">
+            <button class="btn btn--ghost" type="button" (click)="cancelEdit()">Cancelar</button>
+            <button class="btn btn--primary" type="submit" [disabled]="saving()">
+              {{ saving() ? 'Guardando…' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (editTab() === 'flujo') {
+        <div class="flujo-body">
+
+          @if (loadingSteps()) {
+            <p class="flujo-empty">Cargando pasos…</p>
+          } @else {
+
+            <!-- Lista de pasos -->
+            @if (workflowSteps().length === 0) {
+              <p class="flujo-empty">Sin pasos definidos. Agrega el primero.</p>
+            } @else {
+              <ol class="step-list">
+                @for (step of workflowSteps(); track step.idDoc; let i = $index; let last = $last) {
+                  <li class="step-item" [class.step-item--optional]="step.optional">
+                    <span class="step-item__order">{{ step.order }}</span>
+                    <div class="step-item__info">
+                      <span class="step-item__code">{{ step.code }}</span>
+                      <span class="step-item__name">{{ step.name }}</span>
+                    </div>
+                    <button
+                      class="step-badge"
+                      [class.step-badge--required]="!step.optional"
+                      [class.step-badge--optional]="step.optional"
+                      type="button"
+                      (click)="toggleOptional(step)"
+                      title="Clic para cambiar"
+                    >
+                      {{ step.optional ? 'Opcional' : 'Requerido' }}
+                    </button>
+                    <div class="step-item__actions">
+                      <button class="step-btn" type="button" [disabled]="i === 0" (click)="moveUp(i)" title="Subir">↑</button>
+                      <button class="step-btn" type="button" [disabled]="last" (click)="moveDown(i)" title="Bajar">↓</button>
+                      <button class="step-btn step-btn--delete" type="button" (click)="removeStep(step)" title="Eliminar">✕</button>
+                    </div>
+                  </li>
+                }
+              </ol>
+            }
+
+            <!-- Selector para agregar -->
+            <div class="step-add">
+              <select
+                class="step-add__select"
+                [ngModel]="selectedStepUid()"
+                (ngModelChange)="selectedStepUid.set($event)"
+              >
+                <option value="" disabled>Selecciona un paso del catálogo…</option>
+                @for (wf of availableCatalog(); track wf.uid) {
+                  <option [value]="wf.uid">{{ wf.code }} — {{ wf.name }}</option>
+                }
+              </select>
+              <button
+                class="step-add__btn"
+                type="button"
+                [disabled]="!selectedStepUid()"
+                (click)="addStep()"
+              >
+                + Agregar paso
+              </button>
+            </div>
+
+          }
         </div>
-      </form>
+      }
     </div>
   }
 </section>

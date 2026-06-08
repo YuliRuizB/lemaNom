@@ -24,6 +24,16 @@
       </section>
 
       <section class="shell-nav__group">
+        <button type="button" class="shell-nav__heading" (click)="toggleSection('logistica')">
+          <span>Logística</span>
+          <span class="shell-nav__chevron" [class.shell-nav__chevron--open]="isLogisticaOpen"></span>
+        </button>
+        <div class="shell-nav__children" *ngIf="isLogisticaOpen">
+          <span class="shell-nav__child shell-nav__child--placeholder">Sin módulos activos</span>
+        </div>
+      </section>
+
+      <section class="shell-nav__group">
         <button type="button" class="shell-nav__heading" (click)="toggleSection('catalogs')">
           <span>Catalogos</span>
           <span
@@ -118,6 +128,13 @@
             routerLinkActive="shell-nav__child--active"
           >
             Perfil
+          </a>
+          <a
+            class="shell-nav__child"
+            routerLink="/app/terms"
+            routerLinkActive="shell-nav__child--active"
+          >
+            Términos
           </a>
         </div>
       </section>

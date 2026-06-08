@@ -4,10 +4,14 @@ import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angu
 
 import { NormModalComponent } from '../../components/norm-modal/norm-modal.component';
 import { nomCategory } from '../../interfaces/nomCategory.interface';
+import { NormWorkflowStep } from '../../interfaces/norm-workflow-step.interface';
 import { Noms } from '../../interfaces/noms.interface';
+import { WorkflowStepCatalog } from '../../interfaces/workflow.interface';
 import { NomCategoryService } from '../../services/nom-category.service';
+import { NormWorkflowService } from '../../services/norm-workflow.service';
 import { NomsService } from '../../services/noms.service';
 import { ToastService } from '../../services/toast.service';
+import { WorkflowService } from '../../services/workflow.service';
 
 @Component({
   selector: 'app-normas',
@@ -19,6 +23,8 @@ import { ToastService } from '../../services/toast.service';
 export class NormasComponent implements OnInit {
   private nomsService = inject(NomsService);
   private nomCategoryService = inject(NomCategoryService);
+  private normWorkflowService = inject(NormWorkflowService);
+  private workflowService = inject(WorkflowService);
   private toastService = inject(ToastService);
   private fb = inject(FormBuilder);
 
@@ -28,8 +34,15 @@ export class NormasComponent implements OnInit {
   showModal = signal(false);
   selectedNorm = signal<Noms | null>(null);
   deletingId = signal<string | null>(null);
+  editTab = signal<'general' | 'flujo'>('general');
   saving = signal(false);
   categories = signal<nomCategory[]>([]);
+
+  // Flujo
+  workflowSteps = signal<NormWorkflowStep[]>([]);
+  workflowCatalog = signal<WorkflowStepCatalog[]>([]);
+  loadingSteps = signal(false);
+  selectedStepUid = signal('');
 
   readonly pageSize = 10;
   currentPage = signal(1);
@@ -61,10 +74,18 @@ export class NormasComponent implements OnInit {
     return this.filteredNorms().slice(start, start + this.pageSize);
   });
 
+  availableCatalog = computed(() => {
+    const usedUids = new Set(this.workflowSteps().map((s) => s.stepUid));
+    return this.workflowCatalog().filter((c) => !usedUids.has(c.uid) && c.active);
+  });
+
   ngOnInit(): void {
     this.loadNorms();
     this.nomCategoryService.getCategories().subscribe({
       next: (cats) => this.categories.set(cats.filter((c) => c.active)),
+    });
+    this.workflowService.getWorkflows().subscribe({
+      next: (wf) => this.workflowCatalog.set(wf),
     });
   }
 
@@ -87,6 +108,9 @@ export class NormasComponent implements OnInit {
     const isSame = this.selectedNorm()?.idDoc === norm.idDoc;
     if (isSame) { this.selectedNorm.set(null); return; }
     this.selectedNorm.set(norm);
+    this.editTab.set('general');
+    this.workflowSteps.set([]);
+    this.selectedStepUid.set('');
     this.editForm.patchValue({
       name:          norm.name,
       code:          norm.code,
@@ -97,7 +121,15 @@ export class NormasComponent implements OnInit {
     });
   }
 
-  cancelEdit(): void { this.selectedNorm.set(null); }
+  setTab(tab: 'general' | 'flujo'): void {
+    this.editTab.set(tab);
+    if (tab === 'flujo') this.loadSteps();
+  }
+
+  cancelEdit(): void {
+    this.selectedNorm.set(null);
+    this.workflowSteps.set([]);
+  }
 
   saveEdit(): void {
     if (this.editForm.invalid) { this.editForm.markAllAsTouched(); return; }
@@ -151,6 +183,105 @@ export class NormasComponent implements OnInit {
         this.toastService.error('Error al eliminar la norma.');
         this.deletingId.set(null);
       },
+    });
+  }
+
+  addStep(): void {
+    const norm = this.selectedNorm();
+    const uid = this.selectedStepUid();
+    if (!norm || !uid) return;
+
+    const catalog = this.workflowCatalog().find((c) => c.uid === uid);
+    if (!catalog) return;
+
+    const nextOrder = this.workflowSteps().length + 1;
+
+    this.normWorkflowService.addStep(norm.idDoc, {
+      order:       nextOrder,
+      stepUid:     catalog.uid,
+      code:        catalog.code,
+      name:        catalog.name,
+      description: catalog.description,
+      optional:    false,
+    }).subscribe({
+      next: () => {
+        this.selectedStepUid.set('');
+        this.loadSteps();
+      },
+      error: () => this.toastService.error('Error al agregar el paso.'),
+    });
+  }
+
+  removeStep(step: NormWorkflowStep): void {
+    const norm = this.selectedNorm();
+    if (!norm) return;
+
+    this.normWorkflowService.removeStep(norm.idDoc, step.idDoc).subscribe({
+      next: () => {
+        const remaining = this.workflowSteps()
+          .filter((s) => s.idDoc !== step.idDoc)
+          .map((s, i) => ({ ...s, order: i + 1 }));
+
+        if (remaining.length > 0) {
+          this.normWorkflowService.updateOrder(norm.idDoc, remaining).subscribe({
+            next: () => this.loadSteps(),
+          });
+        } else {
+          this.workflowSteps.set([]);
+        }
+      },
+      error: () => this.toastService.error('Error al eliminar el paso.'),
+    });
+  }
+
+  moveUp(index: number): void {
+    if (index === 0) return;
+    const steps = [...this.workflowSteps()];
+    [steps[index - 1], steps[index]] = [steps[index], steps[index - 1]];
+    this.saveOrder(steps);
+  }
+
+  moveDown(index: number): void {
+    const steps = [...this.workflowSteps()];
+    if (index === steps.length - 1) return;
+    [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
+    this.saveOrder(steps);
+  }
+
+  toggleOptional(step: NormWorkflowStep): void {
+    const norm = this.selectedNorm();
+    if (!norm) return;
+    const newValue = !step.optional;
+    this.workflowSteps.update((steps) =>
+      steps.map((s) => s.idDoc === step.idDoc ? { ...s, optional: newValue } : s)
+    );
+    this.normWorkflowService.toggleOptional(norm.idDoc, step.idDoc, newValue).subscribe({
+      error: () => {
+        this.toastService.error('Error al actualizar el paso.');
+        this.workflowSteps.update((steps) =>
+          steps.map((s) => s.idDoc === step.idDoc ? { ...s, optional: !newValue } : s)
+        );
+      },
+    });
+  }
+
+  private saveOrder(steps: NormWorkflowStep[]): void {
+    const norm = this.selectedNorm();
+    if (!norm) return;
+    const reordered = steps.map((s, i) => ({ ...s, order: i + 1 }));
+    this.workflowSteps.set(reordered);
+    this.normWorkflowService.updateOrder(norm.idDoc, reordered).subscribe({
+      error: () => this.toastService.error('Error al reordenar los pasos.'),
+    });
+  }
+
+  private loadSteps(): void {
+    const norm = this.selectedNorm();
+    if (!norm) return;
+    this.loadingSteps.set(true);
+    this.normWorkflowService.getSteps(norm.idDoc).subscribe({
+      next: (steps) => { this.workflowSteps.set(steps); this.loadingSteps.set(false); },
+      error: () => this.loadingSteps.set(false),
     });
   }
 
