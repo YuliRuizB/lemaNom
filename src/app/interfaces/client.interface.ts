@@ -11,7 +11,6 @@ export interface Client {
   // Si tu sistema maneja customer padre
   customerId?: string;
   customerName?: string;
-  witnesses?: Witness[];
   active: boolean;
   imageurl?: string;
   createdAt: Date;

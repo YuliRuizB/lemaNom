@@ -1,1 +1,139 @@
-<section class="normas-page"></section>
+<section class="normas-page">
+  <div class="normas-page__toolbar">
+    <input
+      class="search-input"
+      type="search"
+      placeholder="Buscar por nombre, código o categoría…"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)"
+    />
+    <button class="btn-add" type="button" (click)="openCreate()">+ Agregar norma</button>
+  </div>
+
+  <div class="normas-table-wrapper">
+    <table class="normas-table">
+      <thead>
+        <tr>
+          <th>Prefijo</th>
+          <th>Código</th>
+          <th>Nombre</th>
+          <th>Categoría</th>
+          <th>Activo</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="6" class="normas-table__state">Cargando…</td></tr>
+        } @else {
+          @for (norm of pagedNorms(); track norm.idDoc) {
+            <tr
+              class="normas-table__row"
+              [class.normas-table__row--selected]="selectedNorm()?.idDoc === norm.idDoc"
+              (click)="selectNorm(norm)"
+            >
+              <td class="normas-table__prefix">{{ norm.prefix }}</td>
+              <td class="normas-table__code">{{ norm.code }}</td>
+              <td>{{ norm.name }}</td>
+              <td class="normas-table__secondary">{{ norm.nomCategoryName || '—' }}</td>
+              <td>
+                <span class="badge" [class.badge--active]="norm.active" [class.badge--inactive]="!norm.active">
+                  {{ norm.active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="normas-table__actions">
+                <button
+                  class="action-btn action-btn--delete"
+                  type="button"
+                  [disabled]="deletingId() === norm.idDoc"
+                  (click)="delete(norm, $event)"
+                >
+                  {{ deletingId() === norm.idDoc ? '…' : 'Eliminar' }}
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="normas-table__state">Sin normas registradas.</td></tr>
+          }
+        }
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <span class="pagination__info">
+        Página {{ currentPage() }} de {{ totalPages() }}
+        &nbsp;·&nbsp; {{ filteredNorms().length }} normas
+      </span>
+      <div class="pagination__controls">
+        <button class="pagination__btn" type="button" (click)="prevPage()" [disabled]="currentPage() === 1">&#8592;</button>
+        <button class="pagination__btn" type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()">&#8594;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de edición -->
+  @if (selectedNorm(); as norm) {
+    <div class="edit-panel">
+      <div class="edit-panel__header">
+        <div>
+          <p class="edit-panel__eyebrow">Editar norma</p>
+          <h3 class="edit-panel__title">{{ norm.code }} — {{ norm.name }}</h3>
+        </div>
+        <button class="edit-panel__close" type="button" (click)="cancelEdit()">&#x2715;</button>
+      </div>
+
+      <form class="edit-panel__body" [formGroup]="editForm" (ngSubmit)="saveEdit()">
+        <div class="edit-row">
+          <div class="edit-field">
+            <label class="edit-field__label">Nombre <span class="edit-field__req">*</span></label>
+            <input class="edit-field__input" type="text" formControlName="name" autocomplete="off" />
+            @if (isFieldInvalid('name')) { <p class="edit-field__error">Obligatorio.</p> }
+          </div>
+          <div class="edit-field">
+            <label class="edit-field__label">Código <span class="edit-field__req">*</span></label>
+            <input class="edit-field__input" type="text" formControlName="code" autocomplete="off" />
+            @if (isFieldInvalid('code')) { <p class="edit-field__error">Obligatorio.</p> }
+          </div>
+          <div class="edit-field">
+            <label class="edit-field__label">Prefijo <span class="edit-field__req">*</span></label>
+            <input class="edit-field__input" type="text" formControlName="prefix" autocomplete="off" />
+            @if (isFieldInvalid('prefix')) { <p class="edit-field__error">Obligatorio.</p> }
+          </div>
+          <div class="edit-field">
+            <label class="edit-field__label">Categoría <span class="edit-field__req">*</span></label>
+            <select class="edit-field__input" formControlName="nomCategoryId">
+              <option value="" disabled>Selecciona</option>
+              @for (cat of categories(); track cat.idDoc) {
+                <option [value]="cat.idDoc">{{ cat.name }}</option>
+              }
+            </select>
+            @if (isFieldInvalid('nomCategoryId')) { <p class="edit-field__error">Requerido.</p> }
+          </div>
+          <div class="edit-field edit-field--inline">
+            <span class="edit-field__label">Activo</span>
+            <label class="toggle">
+              <input type="checkbox" formControlName="active" />
+              <span class="toggle__track"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="edit-field">
+          <label class="edit-field__label">Descripción</label>
+          <input class="edit-field__input" type="text" formControlName="description" autocomplete="off" />
+        </div>
+
+        <div class="edit-panel__footer">
+          <button class="btn btn--ghost" type="button" (click)="cancelEdit()">Cancelar</button>
+          <button class="btn btn--primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</section>
+
+@if (showModal()) {
+  <app-norm-modal (closed)="onModalClosed($event)" />
+}

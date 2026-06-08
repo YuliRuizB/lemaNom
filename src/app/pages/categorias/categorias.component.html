@@ -1,0 +1,257 @@
+<section class="categorias-page">
+  <div class="categorias-page__toolbar">
+    <button class="btn-add" type="button" (click)="openAddForm()">+ Agregar categoria</button>
+  </div>
+
+  <div class="categorias-table-wrapper">
+    <table class="categorias-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Prefix</th>
+          <th>Servicios</th>
+          <th>Activo</th>
+          <th>Creado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (!orderedCategories().length) {
+          <tr>
+            <td colspan="6" class="categorias-table__state">
+              Sin categorias registradas.
+            </td>
+          </tr>
+        } @else {
+          @for (category of orderedCategories(); track category.idDoc) {
+            <tr
+              class="categorias-table__row"
+              [class.categorias-table__row--selected]="selectedCategory()?.idDoc === category.idDoc"
+              (click)="selectCategory(category)"
+            >
+              <td class="categorias-table__name">{{ category.name }}</td>
+              <td>{{ category.prefix }}</td>
+              <td>{{ category.servicesCount }}</td>
+              <td>
+                <span class="badge" [class.badge--active]="category.active" [class.badge--inactive]="!category.active">
+                  {{ category.active ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td>{{ category.createdAt | date: 'dd/MM/yyyy' }}</td>
+              <td>
+                <div class="table-actions">
+                  <button class="table-action table-action--edit" type="button" (click)="$event.stopPropagation(); openEditForm(category)">
+                    Editar
+                  </button>
+                  <button class="table-action table-action--delete" type="button" (click)="$event.stopPropagation(); deleteCategory(category)">
+                    Eliminar
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (selectedCategory(); as category) {
+    <div class="category-detail">
+      <div class="category-detail__header">
+        <div>
+          <p class="category-detail__eyebrow">Categoria</p>
+          <h3 class="category-detail__title">{{ category.name }}</h3>
+          <p class="category-detail__subtitle">Prefix: {{ category.prefix }}</p>
+        </div>
+        <button class="category-detail__close" type="button" (click)="selectCategory(category)">&#x2715;</button>
+      </div>
+
+      <div class="category-detail__tabs">
+        <button class="tab" [class.tab--active]="activeTab() === 'info'" type="button" (click)="setTab('info')">
+          Información
+        </button>
+        <button class="tab" [class.tab--active]="activeTab() === 'services'" type="button" (click)="setTab('services')">
+          Servicios <span class="tab__badge">{{ category.servicesCount }}</span>
+        </button>
+      </div>
+
+      @if (activeTab() === 'info') {
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-item__label">Nombre</span>
+            <span class="info-item__value">{{ category.name }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Prefix</span>
+            <span class="info-item__value">{{ category.prefix }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Servicios</span>
+            <span class="info-item__value">{{ category.servicesCount }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Activo</span>
+            <span class="badge" [class.badge--active]="category.active" [class.badge--inactive]="!category.active">
+              {{ category.active ? 'Activo' : 'Inactivo' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Creado</span>
+            <span class="info-item__value">{{ category.createdAt | date: 'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Actualizado</span>
+            <span class="info-item__value">{{ category.updatedAt ? (category.updatedAt | date: 'dd/MM/yyyy') : '—' }}</span>
+          </div>
+        </div>
+      }
+
+      @if (activeTab() === 'services') {
+        <div class="services-panel">
+          <div class="services-panel__toolbar">
+            <button class="btn-add btn-add--small" type="button" (click)="openAddServiceForm()">
+              + Agregar servicio
+            </button>
+          </div>
+
+          @if (showAddServiceForm()) {
+            <form class="service-form" [formGroup]="serviceForm" (ngSubmit)="submitService()">
+              <div class="service-form__grid">
+                <div class="add-field">
+                  <label class="add-field__label">Nombre <span class="add-field__req">*</span></label>
+                  <input class="add-field__input" type="text" formControlName="name" autocomplete="off" />
+                  @if (isServiceFieldInvalid('name')) {
+                    <p class="add-field__error">Obligatorio (mín. 2 caracteres).</p>
+                  }
+                </div>
+
+                <div class="add-field">
+                  <label class="add-field__label">Prefix <span class="add-field__req">*</span></label>
+                  <input class="add-field__input" type="text" formControlName="prefix" maxlength="3" autocomplete="off" />
+                  @if (isServiceFieldInvalid('prefix')) {
+                    <p class="add-field__error">Debe contener 2 o 3 letras o números.</p>
+                  }
+                </div>
+
+                <div class="add-field">
+                  <label class="add-field__label">Código servicio <span class="add-field__req">*</span></label>
+                  <input class="add-field__input" type="text" formControlName="codeService" maxlength="2" inputmode="numeric" autocomplete="off" />
+                  @if (isServiceFieldInvalid('codeService')) {
+                    <p class="add-field__error">Debe contener exactamente 2 dígitos.</p>
+                  }
+                </div>
+
+                <div class="add-field">
+                  <label class="add-field__label">CodeCustomer</label>
+                  <input class="add-field__input" type="text" formControlName="codeCustomer" readonly />
+                </div>
+
+                <div class="add-field">
+                  <label class="add-field__label">Año</label>
+                  <input class="add-field__input" type="text" formControlName="year" readonly />
+                </div>
+
+                <div class="add-field add-field--inline">
+                  <span class="add-field__label">Activo</span>
+                  <label class="toggle">
+                    <input type="checkbox" formControlName="active" />
+                    <span class="toggle__track"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="service-form__actions">
+                <button class="btn btn--ghost" type="button" (click)="cancelAddService()">Cancelar</button>
+                <button class="btn btn--primary" type="submit" [disabled]="serviceSaving()">
+                  {{ serviceSaving() ? 'Guardando…' : 'Guardar servicio' }}
+                </button>
+              </div>
+            </form>
+          }
+
+          @if (servicesLoading()) {
+            <p class="services-panel__empty">Cargando servicios...</p>
+          } @else if (!categoryServices().length) {
+            <p class="services-panel__empty">
+              Esta categoria todavía no tiene servicios registrados.
+            </p>
+          } @else {
+            <div class="services-list">
+              @for (service of categoryServices(); track service.idDoc) {
+                <article class="services-card">
+                  <div class="services-card__top">
+                    <div>
+                      <h4 class="services-card__title">{{ service.name }}</h4>
+                      <p class="services-card__subtitle">{{ service.prefix }} · {{ service.codeCustomer }} · {{ service.year }}</p>
+                    </div>
+                    <span class="badge" [class.badge--active]="service.active" [class.badge--inactive]="!service.active">
+                      {{ service.active ? 'Activo' : 'Inactivo' }}
+                    </span>
+                  </div>
+
+                  <div class="services-card__meta">
+                    <div class="info-item">
+                      <span class="info-item__label">Código servicio</span>
+                      <span class="info-item__value">{{ service.codeService | number: '2.0-0' }}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-item__label">Creado</span>
+                      <span class="info-item__value">{{ service.createdAt | date: 'dd/MM/yyyy' }}</span>
+                    </div>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (showAddForm()) {
+    <div class="add-panel">
+      <div class="add-panel__header">
+        <div>
+          <p class="add-panel__eyebrow">{{ editingCategoryId() ? 'Edición' : 'Nuevo registro' }}</p>
+          <h3 class="add-panel__title">{{ editingCategoryId() ? 'Editar categoria' : 'Agregar categoria' }}</h3>
+        </div>
+        <button class="add-panel__close" type="button" (click)="cancelAdd()">&#x2715;</button>
+      </div>
+
+      <form class="add-panel__body" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="add-form-row">
+          <div class="add-field">
+            <label class="add-field__label">Nombre <span class="add-field__req">*</span></label>
+            <input class="add-field__input" type="text" formControlName="name" autocomplete="off" />
+            @if (isFieldInvalid('name')) {
+              <p class="add-field__error">Obligatorio (mín. 2 caracteres).</p>
+            }
+          </div>
+
+          <div class="add-field">
+            <label class="add-field__label">Prefix <span class="add-field__req">*</span></label>
+            <input class="add-field__input" type="text" formControlName="prefix" autocomplete="off" />
+            @if (isFieldInvalid('prefix')) {
+              <p class="add-field__error">Obligatorio.</p>
+            }
+          </div>
+
+          <div class="add-field add-field--inline">
+            <span class="add-field__label">Activo</span>
+            <label class="toggle">
+              <input type="checkbox" formControlName="active" />
+              <span class="toggle__track"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="add-panel__footer">
+          <button class="btn btn--ghost" type="button" (click)="cancelAdd()">Cancelar</button>
+          <button class="btn btn--primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Guardando…' : (editingCategoryId() ? 'Guardar cambios' : 'Guardar') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+</section>

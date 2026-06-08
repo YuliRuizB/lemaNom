@@ -17,13 +17,13 @@
     <table class="clients-table">
       <thead>
         <tr>
-          <th>Avatar</th>
+          <th></th>
           <th>No. Cliente</th>
           <th>Nombre comercial</th>
-          <th>Razón social</th>
           <th>RFC</th>
           <th>Correo</th>
           <th>Plantas</th>
+          <th>Testigos</th>
           <th>Activo</th>
         </tr>
       </thead>
@@ -53,10 +53,10 @@
               </td>
               <td class="clients-table__secondary">{{ client.clientNumber || '—' }}</td>
               <td class="clients-table__name">{{ client.name }}</td>
-              <td class="clients-table__secondary">{{ client.legalName }}</td>
               <td>{{ client.rfc || '—' }}</td>
               <td class="clients-table__secondary">{{ client.email || '—' }}</td>
               <td class="clients-table__center">{{ client.plants?.length ?? 0 }}</td>
+              <td class="clients-table__center">{{ client.witnesses?.length ?? 0 }}</td>
               <td>
                 <span class="badge" [class.badge--active]="client.active" [class.badge--inactive]="!client.active">
                   {{ client.active ? 'Activo' : 'Inactivo' }}
@@ -370,7 +370,12 @@
           @if (client.witnesses?.length) {
             <div class="witness-list">
               @for (witness of client.witnesses; track witness.idDoc) {
-                <div class="witness-card">
+                <button
+                  type="button"
+                  class="witness-card"
+                  [class.witness-card--selected]="selectedWitnessId() === witness.idDoc"
+                  (click)="selectWitness(witness.idDoc)"
+                >
                   <div>
                     <p class="witness-card__name">{{ witness.name }} {{ witness.lastName }}</p>
                     <p class="witness-card__meta">{{ witness.email }}</p>
@@ -384,12 +389,45 @@
                       type="button"
                       class="mini-delete"
                       [disabled]="deleting()"
-                      (click)="removeWitness(client, witness)"
+                      (click)="$event.stopPropagation(); removeWitness(client, witness)"
                     >
                       {{ deleting() ? '...' : 'Eliminar' }}
                     </button>
                   </div>
-                </div>
+                </button>
+
+                @if (selectedWitnessId() === witness.idDoc) {
+                  <div class="witness-detail">
+                    <div class="witness-detail__grid">
+                      <div class="info-item">
+                        <span class="info-item__label">Nombre</span>
+                        <span class="info-item__value">{{ witness.name }}</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-item__label">Apellidos</span>
+                        <span class="info-item__value">{{ witness.lastName }}</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-item__label">Correo</span>
+                        <span class="info-item__value">{{ witness.email }}</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-item__label">Teléfono</span>
+                        <span class="info-item__value">{{ witness.phone || 'Sin teléfono' }}</span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-item__label">Activo</span>
+                        <span class="badge" [class.badge--active]="witness.active" [class.badge--inactive]="!witness.active">
+                          {{ witness.active ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </div>
+                      <div class="info-item">
+                        <span class="info-item__label">Creado</span>
+                        <span class="info-item__value">{{ witness.createdAt | date: 'dd/MM/yyyy' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
               }
             </div>
           } @else {

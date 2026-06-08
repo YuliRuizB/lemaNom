@@ -12,7 +12,7 @@ import { ToastService } from '../../services/toast.service';
 import { UserService } from '../../services/user.service';
 
 type DetailTab = 'info' | 'plants' | 'witnesses';
-type ClientView = Client & { plants?: ClientPlant[] };
+type ClientView = Client & { plants?: ClientPlant[]; witnesses?: Witness[] };
 
 @Component({
   selector: 'app-clients',
@@ -41,6 +41,7 @@ export class ClientsComponent {
   editingClientId = signal<string | null>(null);
   activeTab = signal<DetailTab>('info');
   expandedPlantId = signal<string | null>(null);
+  selectedWitnessId = signal<string | null>(null);
   selectedImageFile = signal<File | null>(null);
   selectedImageName = signal('');
   previewImageUrl = signal('');
@@ -269,11 +270,13 @@ export class ClientsComponent {
     this.showAddForm.set(false);
     this.activeTab.set('info');
     this.expandedPlantId.set(null);
+    this.selectedWitnessId.set(null);
   }
 
   setTab(tab: DetailTab): void {
     this.activeTab.set(tab);
     this.expandedPlantId.set(null);
+    this.selectedWitnessId.set(null);
   }
 
   openPlantModal(): void { this.showPlantModal.set(true); }
@@ -285,6 +288,10 @@ export class ClientsComponent {
 
   cancelWitnessForm(): void {
     this.showWitnessForm.set(false);
+  }
+
+  selectWitness(witnessId: string): void {
+    this.selectedWitnessId.set(this.selectedWitnessId() === witnessId ? null : witnessId);
   }
 
   onPlantModalClosed(saved: boolean): void {
@@ -408,9 +415,7 @@ export class ClientsComponent {
     this.deleting.set(true);
 
     this.clientService
-      .updateClient(client.idDoc, {
-        witnesses: (client.witnesses ?? []).filter((item) => item.idDoc !== witness.idDoc),
-      })
+      .deleteWitness(client.idDoc, witness.idDoc)
       .pipe(finalize(() => this.deleting.set(false)))
       .subscribe({
         next: () => {

@@ -3,14 +3,15 @@ import {
   Firestore,
   Timestamp,
   addDoc,
-  arrayUnion,
   collection,
+  deleteField,
   deleteDoc,
   doc,
   getDocs,
   limit,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
 } from '@angular/fire/firestore';
 import { Storage, getDownloadURL, ref, uploadBytes } from '@angular/fire/storage';
@@ -53,22 +54,21 @@ export class ClientService {
     clientId: string,
     witness: Omit<Witness, 'idDoc' | 'createdAt' | 'updatedAt'>
   ): Observable<void> {
-    const clientRef = doc(this.firestore, 'client', clientId);
+    const witnessesRef = collection(this.firestore, 'client', clientId, 'witnesses');
     const newWitness: Record<string, any> = {
-      idDoc: crypto.randomUUID(),
       name: witness.name,
       lastName: witness.lastName,
       email: witness.email,
       active: witness.active,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
 
     if (witness.phone) {
       newWitness['phone'] = witness.phone;
     }
 
-    return from(updateDoc(clientRef, { witnesses: arrayUnion(newWitness) }));
+    return from(addDoc(witnessesRef, newWitness)).pipe(map(() => void 0));
   }
 
   getClientPlants(clientId: string): Observable<ClientPlant[]> {
@@ -89,6 +89,24 @@ export class ClientService {
     return from(deleteDoc(plantRef));
   }
 
+  getClientWitnesses(clientId: string): Observable<Witness[]> {
+    const witnessesRef = collection(this.firestore, 'client', clientId, 'witnesses');
+    const witnessesQuery = query(witnessesRef, limit(500));
+
+    return from(getDocs(witnessesQuery)).pipe(
+      map((snapshot) =>
+        snapshot.docs
+          .map((witnessDoc) => this.toWitness(witnessDoc.id, witnessDoc.data()))
+          .sort((a, b) => `${a.name} ${a.lastName}`.localeCompare(`${b.name} ${b.lastName}`))
+      )
+    );
+  }
+
+  deleteWitness(clientId: string, witnessId: string): Observable<void> {
+    const witnessRef = doc(this.firestore, 'client', clientId, 'witnesses', witnessId);
+    return from(deleteDoc(witnessRef));
+  }
+
   createClient(
     data: Pick<
       Client,
@@ -103,7 +121,6 @@ export class ClientService {
       name: data.name,
       legalName: data.legalName,
       active: data.active,
-      plants: [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -149,8 +166,21 @@ export class ClientService {
 
     return from(getDocs(q)).pipe(
       switchMap((snapshot) => {
-        const baseClients = snapshot.docs
-          .map((d) => this.toClient(d.id, d.data()))
+        if (!snapshot.docs.length) {
+          return of(snapshot.docs);
+        }
+
+        return forkJoin(
+          snapshot.docs.map((docSnapshot) =>
+            this.migrateLegacySubcollections(docSnapshot.id, docSnapshot.data()).pipe(
+              map(() => docSnapshot)
+            )
+          )
+        );
+      }),
+      switchMap((docSnapshots) => {
+        const baseClients = docSnapshots
+          .map((docSnapshot) => this.toClient(docSnapshot.id, docSnapshot.data()))
           .sort((a, b) => (a.clientNumber || '').localeCompare(b.clientNumber || ''));
 
         if (!baseClients.length) {
@@ -159,8 +189,11 @@ export class ClientService {
 
         return forkJoin(
           baseClients.map((client) =>
-            this.getClientPlants(client.idDoc).pipe(
-              map((plants) => ({ ...client, plants }))
+            forkJoin({
+              plants: this.getClientPlants(client.idDoc),
+              witnesses: this.getClientWitnesses(client.idDoc),
+            }).pipe(
+              map(({ plants, witnesses }) => ({ ...client, plants, witnesses }))
             )
           )
         );
@@ -168,7 +201,59 @@ export class ClientService {
     );
   }
 
-  private toClient(id: string, data: Record<string, any>): Client & { plants?: ClientPlant[] } {
+  private migrateLegacySubcollections(clientId: string, data: Record<string, any>): Observable<void> {
+    const legacyPlants = Array.isArray(data['plants']) ? data['plants'] : [];
+    const legacyWitnesses = Array.isArray(data['witnesses']) ? data['witnesses'] : [];
+
+    const operations: Observable<unknown>[] = [];
+
+    for (const plant of legacyPlants) {
+      const plantId = plant['idDoc'] || crypto.randomUUID();
+      const plantRef = doc(this.firestore, 'client', clientId, 'plants', plantId);
+      const payload = {
+        ...plant,
+        createdAt: plant['createdAt'] ?? serverTimestamp(),
+        updatedAt: plant['updatedAt'] ?? serverTimestamp(),
+      };
+      delete payload['idDoc'];
+      operations.push(from(setDoc(plantRef, payload, { merge: true })));
+    }
+
+    for (const witness of legacyWitnesses) {
+      const witnessId = witness['idDoc'] || crypto.randomUUID();
+      const witnessRef = doc(this.firestore, 'client', clientId, 'witnesses', witnessId);
+      const payload = {
+        ...witness,
+        createdAt: witness['createdAt'] ?? serverTimestamp(),
+        updatedAt: witness['updatedAt'] ?? serverTimestamp(),
+      };
+      delete payload['idDoc'];
+      operations.push(from(setDoc(witnessRef, payload, { merge: true })));
+    }
+
+    if (legacyPlants.length || legacyWitnesses.length) {
+      const clientRef = doc(this.firestore, 'client', clientId);
+      const cleanup: Record<string, unknown> = {};
+
+      if (legacyPlants.length) {
+        cleanup['plants'] = deleteField();
+      }
+
+      if (legacyWitnesses.length) {
+        cleanup['witnesses'] = deleteField();
+      }
+
+      operations.push(from(updateDoc(clientRef, cleanup)));
+    }
+
+    if (!operations.length) {
+      return of(void 0);
+    }
+
+    return forkJoin(operations).pipe(map(() => void 0));
+  }
+
+  private toClient(id: string, data: Record<string, any>): Client {
     return {
       idDoc: id,
       clientNumber: data['clientNumber'],
@@ -182,7 +267,6 @@ export class ClientService {
       customerId: data['customerId'],
       customerName: data['customerName'],
       active: data['active'],
-      witnesses: (data['witnesses'] ?? []).map((w: any) => this.toWitness(w)),
       createdAt: data['createdAt'] instanceof Timestamp ? data['createdAt'].toDate() : data['createdAt'],
       updatedAt: data['updatedAt'] instanceof Timestamp ? data['updatedAt'].toDate() : data['updatedAt'],
     };
@@ -225,9 +309,9 @@ export class ClientService {
     };
   }
 
-  private toWitness(w: Record<string, any>): Witness {
+  private toWitness(id: string, w: Record<string, any>): Witness {
     return {
-      idDoc: w['idDoc'],
+      idDoc: id,
       name: w['name'],
       lastName: w['lastName'],
       email: w['email'],

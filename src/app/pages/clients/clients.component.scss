@@ -90,6 +90,15 @@
   &__name { font-weight: 600; }
   &__avatar-cell { width: 3.4rem; }
 
+  th:nth-child(2),
+  td:nth-child(2) {
+    width: 7.4rem;
+    max-width: 7.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   &__avatar {
     display: inline-grid;
     place-items: center;
@@ -319,10 +328,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  width: 100%;
   padding: 0.95rem 1rem;
   border: 1px solid #e7eaf0;
   border-radius: 0.75rem;
   background: #ffffff;
+  text-align: left;
+  cursor: pointer;
 
   &__name {
     margin: 0 0 0.18rem;
@@ -341,6 +353,26 @@
     display: grid;
     gap: 0.55rem;
     justify-items: end;
+  }
+
+  &--selected {
+    border-color: rgba(25, 48, 80, 0.22);
+    background: #f9fbff;
+  }
+}
+
+.witness-detail {
+  margin-top: -0.25rem;
+  padding: 0.95rem 1rem 1rem;
+  border: 1px solid #e7eaf0;
+  border-top: 0;
+  border-radius: 0 0 0.75rem 0.75rem;
+  background: #fcfdff;
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.85rem 1rem;
   }
 }
 

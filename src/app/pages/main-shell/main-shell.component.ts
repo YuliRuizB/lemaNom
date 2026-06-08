@@ -154,6 +154,18 @@ export class MainShellComponent {
       return;
     }
 
+    if (url.includes('/app/workflows')) {
+      this.headerTitle = 'WorkFlows';
+      this.headerDescription = 'Administración de flujos de trabajo del sistema.';
+      return;
+    }
+
+    if (url.includes('/app/categorias')) {
+      this.headerTitle = 'Categorias';
+      this.headerDescription = 'Catálogo base para la administración de categorías.';
+      return;
+    }
+
     if (url.includes('/app/catalogos')) {
       this.headerTitle = 'Catalogos';
       this.headerDescription = 'Base preparada para organizar modulos maestros del sistema.';

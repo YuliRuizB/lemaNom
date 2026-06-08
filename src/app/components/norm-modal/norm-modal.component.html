@@ -1,0 +1,72 @@
+<div class="modal-backdrop" (click)="cancel()"></div>
+
+<div class="modal">
+  <header class="modal__header">
+    <div>
+      <p class="modal__eyebrow">Normas</p>
+      <h2 class="modal__title">{{ isEdit ? 'Editar norma' : 'Agregar norma' }}</h2>
+    </div>
+    <button class="modal__close" type="button" (click)="cancel()">&#x2715;</button>
+  </header>
+
+  <form class="modal__body" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="form-row form-row--main">
+      <div class="field">
+        <label class="field__label">Nombre <span class="field__req">*</span></label>
+        <input class="field__input" type="text" formControlName="name" autocomplete="off" />
+        @if (isFieldInvalid('name')) {
+          <p class="field__error">Obligatorio (mín. 2 caracteres).</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label">Código <span class="field__req">*</span></label>
+        <input class="field__input" type="text" formControlName="code" autocomplete="off" />
+        @if (isFieldInvalid('code')) {
+          <p class="field__error">Obligatorio.</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label">Prefijo <span class="field__req">*</span></label>
+        <input class="field__input" type="text" formControlName="prefix" autocomplete="off" />
+        @if (isFieldInvalid('prefix')) {
+          <p class="field__error">Obligatorio.</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label">Categoría <span class="field__req">*</span></label>
+        @if (loadingCategories()) {
+          <p class="field__loading">Cargando…</p>
+        } @else {
+          <select class="field__select" formControlName="nomCategoryId">
+            <option value="" disabled>Selecciona</option>
+            @for (cat of categories(); track cat.idDoc) {
+              <option [value]="cat.idDoc">{{ cat.name }}</option>
+            }
+          </select>
+        }
+        @if (isFieldInvalid('nomCategoryId')) {
+          <p class="field__error">Requerido.</p>
+        }
+      </div>
+      <div class="field field--inline">
+        <span class="field__label">Activo</span>
+        <label class="toggle">
+          <input type="checkbox" formControlName="active" />
+          <span class="toggle__track"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field__label">Descripción</label>
+      <textarea class="field__input field__input--textarea" formControlName="description" rows="2"></textarea>
+    </div>
+
+    <footer class="modal__footer">
+      <button class="btn btn--ghost" type="button" (click)="cancel()">Cancelar</button>
+      <button class="btn btn--primary" type="submit" [disabled]="saving() || loadingCategories()">
+        {{ saving() ? 'Guardando…' : 'Guardar' }}
+      </button>
+    </footer>
+  </form>
+</div>
