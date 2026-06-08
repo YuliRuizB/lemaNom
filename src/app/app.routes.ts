@@ -53,6 +53,11 @@ export const routes: Routes = [
           import('./pages/users/users.component').then((m) => m.UsersComponent),
       },
       {
+        path: 'normas',
+        loadComponent: () =>
+          import('./pages/normas/normas.component').then((m) => m.NormasComponent),
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./pages/profile/profile.component').then((m) => m.ProfileComponent),

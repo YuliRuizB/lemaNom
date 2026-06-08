@@ -1,9 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { of, switchMap, take } from 'rxjs';
 
+import { User } from '../../interfaces/user.interface';
+import { AuthService } from '../../services/auth.service';
 import { ClientService } from '../../services/client.service';
 import { ToastService } from '../../services/toast.service';
+import { UserService } from '../../services/user.service';
 
 @Component({
   selector: 'app-client-modal',
@@ -16,12 +20,16 @@ export class ClientModalComponent {
   @Output() closed = new EventEmitter<boolean>();
 
   private fb = inject(FormBuilder);
+  private authService = inject(AuthService);
   private clientService = inject(ClientService);
   private toastService = inject(ToastService);
+  private userService = inject(UserService);
 
   saving = signal(false);
+  currentAppUser = signal<User | null>(null);
 
   form = this.fb.group({
+    clientNumber: ['', [Validators.required, Validators.minLength(1)]],
     name:      ['', [Validators.required, Validators.minLength(2)]],
     legalName: ['', [Validators.required, Validators.minLength(2)]],
     rfc:       [''],
@@ -29,6 +37,10 @@ export class ClientModalComponent {
     phone:     [''],
     active:    [true],
   });
+
+  constructor() {
+    this.loadCurrentUser();
+  }
 
   isFieldInvalid(field: string): boolean {
     const c = this.form.get(field);
@@ -42,6 +54,9 @@ export class ClientModalComponent {
     const v = this.form.getRawValue();
 
     this.clientService.createClient({
+      customerId: this.currentAppUser()?.customerId,
+      customerName: this.currentAppUser()?.customerName,
+      clientNumber: v.clientNumber!.trim(),
       name:      v.name!.trim(),
       legalName: v.legalName!.trim(),
       rfc:       v.rfc?.trim()   || undefined,
@@ -61,4 +76,21 @@ export class ClientModalComponent {
   }
 
   cancel(): void { this.closed.emit(false); }
+
+  private loadCurrentUser(): void {
+    this.authService.currentUser$
+      .pipe(
+        take(1),
+        switchMap((firebaseUser) => {
+          if (!firebaseUser) {
+            return of(null);
+          }
+
+          return this.userService.getUserById(firebaseUser.uid);
+        })
+      )
+      .subscribe((user) => {
+        this.currentAppUser.set(user);
+      });
+  }
 }

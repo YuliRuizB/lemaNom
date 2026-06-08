@@ -12,12 +12,22 @@
   <form class="modal__body" [formGroup]="form" (ngSubmit)="submit()">
     <div class="form-row">
       <div class="field">
+        <label class="field__label" for="c-number">No. Cliente <span class="field__req">*</span></label>
+        <input id="c-number" class="field__input" type="text" formControlName="clientNumber" autocomplete="off" />
+        @if (isFieldInvalid('clientNumber')) {
+          <p class="field__error">Obligatorio.</p>
+        }
+      </div>
+      <div class="field">
         <label class="field__label" for="c-name">Nombre comercial <span class="field__req">*</span></label>
         <input id="c-name" class="field__input" type="text" formControlName="name" autocomplete="off" />
         @if (isFieldInvalid('name')) {
           <p class="field__error">Obligatorio (mín. 2 caracteres).</p>
         }
       </div>
+    </div>
+
+    <div class="form-row">
       <div class="field">
         <label class="field__label" for="c-legal">Razón social <span class="field__req">*</span></label>
         <input id="c-legal" class="field__input" type="text" formControlName="legalName" autocomplete="off" />

@@ -17,6 +17,8 @@
     <table class="clients-table">
       <thead>
         <tr>
+          <th>Avatar</th>
+          <th>No. Cliente</th>
           <th>Nombre comercial</th>
           <th>Razón social</th>
           <th>RFC</th>
@@ -27,7 +29,7 @@
       </thead>
       <tbody>
         @if (loading()) {
-          <tr><td colspan="6" class="clients-table__state">Cargando…</td></tr>
+          <tr><td colspan="8" class="clients-table__state">Cargando…</td></tr>
         } @else {
           @for (client of pagedClients(); track client.idDoc) {
             <tr
@@ -35,6 +37,21 @@
               [class.clients-table__row--selected]="selectedClient()?.idDoc === client.idDoc"
               (click)="selectClient(client)"
             >
+              <td class="clients-table__avatar-cell">
+                <button
+                  type="button"
+                  class="clients-table__avatar"
+                  [class.clients-table__avatar--interactive]="client.imageurl"
+                  (click)="$event.stopPropagation(); openImagePreview(client)"
+                >
+                  @if (client.imageurl) {
+                    <img [src]="client.imageurl" [alt]="client.name" />
+                  } @else {
+                    <span>{{ client.name.charAt(0) }}</span>
+                  }
+                </button>
+              </td>
+              <td class="clients-table__secondary">{{ client.clientNumber || '—' }}</td>
               <td class="clients-table__name">{{ client.name }}</td>
               <td class="clients-table__secondary">{{ client.legalName }}</td>
               <td>{{ client.rfc || '—' }}</td>
@@ -47,7 +64,7 @@
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="clients-table__state">Sin clientes registrados.</td></tr>
+            <tr><td colspan="8" class="clients-table__state">Sin clientes registrados.</td></tr>
           }
         }
       </tbody>
@@ -71,10 +88,37 @@
     <div class="client-detail">
 
       <div class="client-detail__header">
-        <div>
+        <div class="client-detail__identity">
+          <button
+            type="button"
+            class="client-detail__image client-detail__image--button"
+            [class.client-detail__image--interactive]="client.imageurl"
+            (click)="openImagePreview(client)"
+          >
+            @if (client.imageurl) {
+              <img [src]="client.imageurl" [alt]="client.name" />
+            } @else {
+              <span>{{ client.name.charAt(0) }}</span>
+            }
+          </button>
           <p class="client-detail__eyebrow">Cliente</p>
-          <h3 class="client-detail__title">{{ client.name }}</h3>
-          <p class="client-detail__subtitle">{{ client.legalName }}</p>
+          <div>
+            <h3 class="client-detail__title">{{ client.name }}</h3>
+            <p class="client-detail__subtitle">{{ client.legalName }}</p>
+          </div>
+        </div>
+        <div class="client-detail__actions">
+          <button class="detail-action detail-action--edit" type="button" (click)="openEditForm(client)">
+            Editar
+          </button>
+          <button
+            class="detail-action detail-action--delete"
+            type="button"
+            [disabled]="deleting()"
+            (click)="deleteClient(client)"
+          >
+            {{ deleting() ? 'Eliminando...' : 'Eliminar' }}
+          </button>
         </div>
         <button class="client-detail__close" type="button" (click)="selectClient(client)">&#x2715;</button>
       </div>
@@ -87,11 +131,18 @@
         <button class="tab" [class.tab--active]="activeTab() === 'plants'" type="button" (click)="setTab('plants')">
           Plantas <span class="tab__badge">{{ client.plants?.length ?? 0 }}</span>
         </button>
+        <button class="tab" [class.tab--active]="activeTab() === 'witnesses'" type="button" (click)="setTab('witnesses')">
+          Testigos <span class="tab__badge">{{ client.witnesses?.length ?? 0 }}</span>
+        </button>
       </div>
 
       <!-- Tab: Info general -->
       @if (activeTab() === 'info') {
         <div class="info-grid">
+          <div class="info-item">
+            <span class="info-item__label">No. Cliente</span>
+            <span class="info-item__value">{{ client.clientNumber || '—' }}</span>
+          </div>
           <div class="info-item">
             <span class="info-item__label">RFC</span>
             <span class="info-item__value">{{ client.rfc || '—' }}</span>
@@ -107,6 +158,21 @@
           <div class="info-item">
             <span class="info-item__label">Empresa</span>
             <span class="info-item__value">{{ client.customerName || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-item__label">Imagen</span>
+            <button
+              type="button"
+              class="info-item__avatar"
+              [class.info-item__avatar--interactive]="client.imageurl"
+              (click)="openImagePreview(client)"
+            >
+              @if (client.imageurl) {
+                <img [src]="client.imageurl" [alt]="client.name" />
+              } @else {
+                <span>{{ client.name.charAt(0) }}</span>
+              }
+            </button>
           </div>
           <div class="info-item">
             <span class="info-item__label">Activo</span>
@@ -148,6 +214,14 @@
                   <span class="badge" [class.badge--active]="plant.active" [class.badge--inactive]="!plant.active">
                     {{ plant.active ? 'Activa' : 'Inactiva' }}
                   </span>
+                  <button
+                    type="button"
+                    class="mini-delete"
+                    [disabled]="deleting()"
+                    (click)="$event.stopPropagation(); removePlant(client, plant)"
+                  >
+                    {{ deleting() ? '...' : 'Eliminar' }}
+                  </button>
                   <span class="plant-card__chevron" [class.plant-card__chevron--open]="expandedPlantId() === plant.idDoc"></span>
                 </div>
               </button>
@@ -240,6 +314,92 @@
         </div>
       }
 
+      @if (activeTab() === 'witnesses') {
+        <div class="witnesses-panel">
+          <div class="witnesses-panel__toolbar">
+            <button class="btn-add-plant" type="button" (click)="openWitnessForm()">
+              + Agregar testigo
+            </button>
+          </div>
+
+          @if (showWitnessForm()) {
+            <form class="witness-form" [formGroup]="witnessForm" (ngSubmit)="submitWitness(client)">
+              <div class="witness-form__grid">
+                <div class="add-field">
+                  <label class="add-field__label">Nombre <span class="add-field__req">*</span></label>
+                  <input class="add-field__input" type="text" formControlName="name" autocomplete="off" />
+                  @if (isWitnessFieldInvalid('name')) {
+                    <p class="add-field__error">Obligatorio.</p>
+                  }
+                </div>
+                <div class="add-field">
+                  <label class="add-field__label">Apellidos <span class="add-field__req">*</span></label>
+                  <input class="add-field__input" type="text" formControlName="lastName" autocomplete="off" />
+                  @if (isWitnessFieldInvalid('lastName')) {
+                    <p class="add-field__error">Obligatorio.</p>
+                  }
+                </div>
+                <div class="add-field">
+                  <label class="add-field__label">Correo <span class="add-field__req">*</span></label>
+                  <input class="add-field__input" type="email" formControlName="email" autocomplete="off" />
+                  @if (isWitnessFieldInvalid('email')) {
+                    <p class="add-field__error">Correo no válido.</p>
+                  }
+                </div>
+                <div class="add-field">
+                  <label class="add-field__label">Teléfono</label>
+                  <input class="add-field__input" type="text" formControlName="phone" autocomplete="off" />
+                </div>
+                <div class="add-field add-field--inline">
+                  <span class="add-field__label">Activo</span>
+                  <label class="toggle">
+                    <input type="checkbox" formControlName="active" />
+                    <span class="toggle__track"></span>
+                  </label>
+                </div>
+              </div>
+              <div class="witness-form__actions">
+                <button class="btn btn--ghost" type="button" (click)="cancelWitnessForm()">Cancelar</button>
+                <button class="btn btn--primary" type="submit" [disabled]="saving()">
+                  {{ saving() ? 'Guardando…' : 'Guardar testigo' }}
+                </button>
+              </div>
+            </form>
+          }
+
+          @if (client.witnesses?.length) {
+            <div class="witness-list">
+              @for (witness of client.witnesses; track witness.idDoc) {
+                <div class="witness-card">
+                  <div>
+                    <p class="witness-card__name">{{ witness.name }} {{ witness.lastName }}</p>
+                    <p class="witness-card__meta">{{ witness.email }}</p>
+                    <p class="witness-card__meta">{{ witness.phone || 'Sin teléfono' }}</p>
+                  </div>
+                  <div class="witness-card__actions">
+                    <span class="badge" [class.badge--active]="witness.active" [class.badge--inactive]="!witness.active">
+                      {{ witness.active ? 'Activo' : 'Inactivo' }}
+                    </span>
+                    <button
+                      type="button"
+                      class="mini-delete"
+                      [disabled]="deleting()"
+                      (click)="removeWitness(client, witness)"
+                    >
+                      {{ deleting() ? '...' : 'Eliminar' }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="witnesses-panel__empty">
+              Este cliente todavía no tiene testigos registrados.
+            </p>
+          }
+        </div>
+      }
+
     </div>
   }
 
@@ -249,13 +409,22 @@
       <div class="add-panel__header">
         <div>
           <p class="add-panel__eyebrow">Nuevo registro</p>
-          <h3 class="add-panel__title">Agregar cliente</h3>
+          <h3 class="add-panel__title">
+            {{ editingClientId() ? 'Editar cliente' : 'Agregar cliente' }}
+          </h3>
         </div>
         <button class="add-panel__close" type="button" (click)="cancelAdd()">&#x2715;</button>
       </div>
 
       <form class="add-panel__body" [formGroup]="addForm" (ngSubmit)="submitAdd()">
         <div class="add-form-row">
+          <div class="add-field">
+            <label class="add-field__label">No. Cliente <span class="add-field__req">*</span></label>
+            <input class="add-field__input" type="text" formControlName="clientNumber" autocomplete="off" />
+            @if (isFieldInvalid('clientNumber')) {
+              <p class="add-field__error">Obligatorio.</p>
+            }
+          </div>
           <div class="add-field">
             <label class="add-field__label">Nombre comercial <span class="add-field__req">*</span></label>
             <input class="add-field__input" type="text" formControlName="name" autocomplete="off" />
@@ -285,6 +454,13 @@
             <label class="add-field__label">Teléfono</label>
             <input class="add-field__input" type="text" formControlName="phone" autocomplete="off" />
           </div>
+          <div class="add-field">
+            <label class="add-field__label">Imagen</label>
+            <label class="upload-field">
+              <input type="file" accept="image/*" (change)="onImageSelected($event)" />
+              <span>{{ selectedImageName() || 'Seleccionar imagen' }}</span>
+            </label>
+          </div>
           <div class="add-field add-field--inline">
             <span class="add-field__label">Activo</span>
             <label class="toggle">
@@ -297,7 +473,7 @@
         <div class="add-panel__footer">
           <button class="btn btn--ghost" type="button" (click)="cancelAdd()">Cancelar</button>
           <button class="btn btn--primary" type="submit" [disabled]="saving()">
-            {{ saving() ? 'Guardando…' : 'Guardar' }}
+            {{ saving() ? 'Guardando…' : (editingClientId() ? 'Guardar cambios' : 'Guardar') }}
           </button>
         </div>
       </form>
@@ -311,4 +487,20 @@
     [clientId]="selectedClient()!.idDoc"
     (closed)="onPlantModalClosed($event)"
   />
+}
+
+@if (previewImageUrl()) {
+  <div class="image-preview" (click)="closeImagePreview()">
+    <div class="image-preview__dialog" (click)="$event.stopPropagation()">
+      <div class="image-preview__header">
+        <h3>{{ previewImageTitle() }}</h3>
+        <button type="button" class="image-preview__close" (click)="closeImagePreview()">
+          &#x2715;
+        </button>
+      </div>
+      <div class="image-preview__body">
+        <img [src]="previewImageUrl()" [alt]="previewImageTitle()" />
+      </div>
+    </div>
+  </div>
 }

@@ -148,6 +148,12 @@ export class MainShellComponent {
       return;
     }
 
+    if (url.includes('/app/normas')) {
+      this.headerTitle = 'Normas';
+      this.headerDescription = 'Catálogo base de normas del sistema.';
+      return;
+    }
+
     if (url.includes('/app/catalogos')) {
       this.headerTitle = 'Catalogos';
       this.headerDescription = 'Base preparada para organizar modulos maestros del sistema.';

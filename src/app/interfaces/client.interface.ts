@@ -1,26 +1,26 @@
 export interface Client {
   idDoc: string;
+  clientNumber?: string; // Código único para cada cliente, puede ser alfanumérico
   // Datos generales del cliente
-  name: string;              // Nombre comercial
-  legalName: string;         // Razón social
+  name: string; // Nombre comercial
+  legalName: string; // Razón social
   rfc?: string;
   email?: string;
   phone?: string;
   brandUrl?: string;
   // Si tu sistema maneja customer padre
   customerId?: string;
-  customerName?: string;  
-  // Relación: 1 cliente puede tener N plantas
-  plants?: ClientPlant[];
+  customerName?: string;
+  witnesses?: Witness[];
   active: boolean;
+  imageurl?: string;
   createdAt: Date;
   updatedAt?: Date;
 }
 
-
 export interface ClientPlant {
   idDoc: string;
-  name: string;              // Planta Norte, Planta Monterrey, Planta 1
+  name: string; // Planta Norte, Planta Monterrey, Planta 1
   description?: string;
   // Contacto principal de la planta
   contactName?: string;
@@ -56,6 +56,15 @@ export interface ClientShift {
   active: boolean;
 }
 
-export type ShiftType =
-  | 'diurnal'
-  | 'nocturnal';
+export type ShiftType = "diurnal" | "nocturnal";
+
+export interface Witness {
+  idDoc: string;
+  name: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
+}
