@@ -4,6 +4,7 @@ import {
   Timestamp,
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   limit,
@@ -32,7 +33,16 @@ export class WorkOrderService {
       map((snapshot) =>
         snapshot.docs
           .map((docSnapshot) => this.toWorkOrder(docSnapshot.id, docSnapshot.data()))
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .sort((a, b) => {
+            const aOrder = Number.parseInt(a.workOrderNumber || '0', 10);
+            const bOrder = Number.parseInt(b.workOrderNumber || '0', 10);
+
+            if (!Number.isNaN(aOrder) && !Number.isNaN(bOrder) && aOrder !== bOrder) {
+              return bOrder - aOrder;
+            }
+
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          })
       )
     );
   }
@@ -107,9 +117,26 @@ export class WorkOrderService {
     workOrderId: string,
     equipments: equipment[]
   ): Observable<void> {
+    console.log('WorkOrderService createEquipments payload', {
+      workOrderId,
+      equipments: equipments.map((equipmentItem) => ({
+        idDoc: equipmentItem.idDoc,
+        name: equipmentItem.name,
+        identifier: equipmentItem.identifier,
+        ns: equipmentItem.ns,
+      })),
+    });
+
     const batch = writeBatch(this.firestore);
 
     equipments.forEach((equipmentItem) => {
+      console.log('WorkOrderService createEquipments doc path', {
+        collection: 'workOrder',
+        workOrderId,
+        subcollection: 'equipments',
+        equipmentDocId: equipmentItem.idDoc,
+      });
+
       const equipmentRef = doc(
         this.firestore,
         'workOrder',
@@ -123,6 +150,9 @@ export class WorkOrderService {
         equipmentId: equipmentItem.idDoc,
         equipmentName: equipmentItem.name || undefined,
         equipmentType: equipmentItem.identifier || undefined,
+        equipmentBrand: equipmentItem.brand || undefined,
+        equipmentModel: equipmentItem.model || undefined,
+        equipmentNs: equipmentItem.ns || undefined,
         equipmentSerialNumber: equipmentItem.ns || undefined,
         active: true,
         createdAt: new Date(),
@@ -155,6 +185,62 @@ export class WorkOrderService {
         snapshot.docs.map((docSnapshot) => this.toWorkOrderEquipment(docSnapshot.id, docSnapshot.data()))
       )
     );
+  }
+
+  finalizeWorkflowStep(
+    workOrderId: string,
+    currentStepId: string,
+    nextStep?: Pick<workOrderStep, 'idDoc'> | null,
+    assignedUser?: { id?: string; name?: string },
+    completeWorkOrder?: boolean
+  ): Observable<void> {
+    const batch = writeBatch(this.firestore);
+    const currentStepRef = doc(this.firestore, 'workOrder', workOrderId, 'workflowSteps', currentStepId);
+
+    batch.set(
+      currentStepRef,
+      {
+        status: 'completed',
+        completedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    if (nextStep?.idDoc) {
+      const nextStepRef = doc(this.firestore, 'workOrder', workOrderId, 'workflowSteps', nextStep.idDoc);
+      const nextStepPayload: Record<string, unknown> = {
+        status: 'in-progress',
+        startedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      if (assignedUser?.id) {
+        nextStepPayload['assignedUserId'] = assignedUser.id;
+      }
+
+      if (assignedUser?.name) {
+        nextStepPayload['assignedUserName'] = assignedUser.name;
+      }
+
+      batch.set(nextStepRef, nextStepPayload, { merge: true });
+    }
+
+    const workOrderRef = doc(this.firestore, 'workOrder', workOrderId);
+    batch.set(
+      workOrderRef,
+      {
+        status: completeWorkOrder ? 'completed' : 'in-progress',
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return from(batch.commit()).pipe(map(() => void 0));
+  }
+
+  deleteWorkOrder(workOrderId: string): Observable<void> {
+    return from(this.deleteWorkOrderInternal(workOrderId));
   }
 
   private toWorkOrder(id: string, data: Record<string, unknown>): workOrder {
@@ -194,6 +280,28 @@ export class WorkOrderService {
     };
   }
 
+  private async deleteWorkOrderInternal(workOrderId: string): Promise<void> {
+    await this.deleteSubcollectionDocs(workOrderId, 'workflowSteps');
+    await this.deleteSubcollectionDocs(workOrderId, 'equipments');
+    await deleteDoc(doc(this.firestore, 'workOrder', workOrderId));
+  }
+
+  private async deleteSubcollectionDocs(
+    workOrderId: string,
+    subcollectionName: 'workflowSteps' | 'equipments'
+  ): Promise<void> {
+    const subcollectionRef = collection(this.firestore, 'workOrder', workOrderId, subcollectionName);
+    const snapshot = await getDocs(subcollectionRef);
+
+    if (snapshot.empty) {
+      return;
+    }
+
+    const batch = writeBatch(this.firestore);
+    snapshot.docs.forEach((docSnapshot) => batch.delete(docSnapshot.ref));
+    await batch.commit();
+  }
+
   private toDate(value: unknown): Date | undefined {
     if (value instanceof Timestamp) {
       return value.toDate();
@@ -231,6 +339,9 @@ export class WorkOrderService {
       equipmentId: String(data['equipmentId'] ?? ''),
       equipmentName: data['equipmentName'] ? String(data['equipmentName']) : undefined,
       equipmentType: data['equipmentType'] ? String(data['equipmentType']) : undefined,
+      equipmentBrand: data['equipmentBrand'] ? String(data['equipmentBrand']) : undefined,
+      equipmentModel: data['equipmentModel'] ? String(data['equipmentModel']) : undefined,
+      equipmentNs: data['equipmentNs'] ? String(data['equipmentNs']) : undefined,
       equipmentSerialNumber: data['equipmentSerialNumber']
         ? String(data['equipmentSerialNumber'])
         : undefined,

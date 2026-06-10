@@ -162,6 +162,30 @@ export class MainShellComponent {
       return;
     }
 
+    if (url.includes('/app/evaluation')) {
+      this.headerTitle = 'Laboratorio';
+      this.headerDescription = 'Espacio base para la gestión de evaluaciones.';
+      return;
+    }
+
+    if (url.includes('/app/measurements')) {
+      this.headerTitle = 'Laboratorio';
+      this.headerDescription = 'Espacio base para la gestión de mediciones.';
+      return;
+    }
+
+    if (url.includes('/app/revision')) {
+      this.headerTitle = 'Laboratorio';
+      this.headerDescription = 'Espacio base para la gestión de revisiones.';
+      return;
+    }
+
+    if (url.includes('/app/inform')) {
+      this.headerTitle = 'Laboratorio';
+      this.headerDescription = 'Espacio base para la gestión de informes.';
+      return;
+    }
+
     if (url.includes('/app/categorias')) {
       this.headerTitle = 'Categorias';
       this.headerDescription = 'Catálogo base para la administración de categorías.';

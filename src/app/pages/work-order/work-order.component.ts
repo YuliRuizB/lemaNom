@@ -25,6 +25,9 @@ import { NomsService } from '../../services/noms.service';
 import { ToastService } from '../../services/toast.service';
 import { UserService } from '../../services/user.service';
 import { WorkOrderService } from '../../services/work-order.service';
+import { EvaluationComponent } from '../evaluation/evaluation.component';
+import { InformComponent } from '../inform/inform.component';
+import { MeasurementsComponent } from '../measurements/measurements.component';
 
 type WorkOrderView = workOrder & {
   serviceName: string;
@@ -32,10 +35,26 @@ type WorkOrderView = workOrder & {
   flowStatusLabel: string;
 };
 
+type WorkflowNavigationItem = {
+  id: string;
+  tabId: string;
+  label: string;
+  order: number;
+  status: workOrderStep['status'] | workOrder['status'];
+  statusLabel: string;
+};
+
 @Component({
   selector: 'app-work-order',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [
+    CommonModule,
+    FormsModule,
+    DatePipe,
+    EvaluationComponent,
+    MeasurementsComponent,
+    InformComponent,
+  ],
   templateUrl: './work-order.component.html',
   styleUrl: './work-order.component.scss',
 })
@@ -74,15 +93,16 @@ export class WorkOrderComponent {
   selectedOrder = signal<WorkOrderView | null>(null);
   selectedOrderWorkflowSteps = signal<workOrderStep[]>([]);
   selectedOrderEquipments = signal<workOrderEquipment[]>([]);
-  selectedOrderTab = signal<'information' | 'flow' | 'equipment'>('information');
+  selectedOrderTab = signal('work-order');
+  selectedDetailEquipmentId = signal('');
+  isAddingSelectedOrderEquipment = signal(false);
+  isFinalizingStepId = signal<string | null>(null);
+  isDeletingSelectedOrder = signal(false);
+  isSavingImpartiality = signal(false);
+  createWorkflowPreview = signal<NormWorkflowStep[]>([]);
+  isLoadingCreateWorkflowPreview = signal(false);
   createImpartiality: WorkOrderImpartiality = this.buildEmptyImpartiality();
   readonly pageSize = 8;
-  readonly previewFlowPhases = [
-    'Orden de trabajo',
-    'Evaluación',
-    'Medición',
-    'Informe',
-  ];
   readonly impartialityQuestions: Array<{
     key: keyof Pick<
       WorkOrderImpartiality,
@@ -166,6 +186,81 @@ export class WorkOrderComponent {
       .filter((service) => service.active)
       .map((service) => service.name)
       .sort((a, b) => a.localeCompare(b))
+  );
+
+  readonly availableEquipmentsForSelectedOrder = computed(() => {
+    const selectedIds = new Set(this.selectedOrderEquipments().map((item) => item.equipmentId));
+    return this.activeEquipments().filter((item) => !selectedIds.has(item.idDoc));
+  });
+
+  readonly detailWorkflowTabs = computed(() =>
+    [...this.selectedOrderWorkflowSteps()]
+      .sort((a, b) => a.order - b.order)
+      .filter((step) => !this.isWorkOrderStep(step))
+  );
+
+  readonly workflowNavigationItems = computed<WorkflowNavigationItem[]>(() => {
+    const items: WorkflowNavigationItem[] = [];
+    const workOrderStep = this.workOrderTabStep();
+
+    items.push({
+      id: 'work-order',
+      tabId: 'work-order',
+      label: 'Orden de trabajo',
+      order: workOrderStep?.order ?? 1,
+      status: workOrderStep?.status ?? this.selectedOrder()?.status ?? 'pending',
+      statusLabel: this.getStatusLabel(workOrderStep?.status ?? this.selectedOrder()?.status ?? 'pending'),
+    });
+
+    this.detailWorkflowTabs().forEach((step) => {
+      items.push({
+        id: step.idDoc,
+        tabId: `step:${step.idDoc}`,
+        label: step.stepName,
+        order: step.order,
+        status: step.status,
+        statusLabel: this.getStatusLabel(step.status),
+      });
+    });
+
+    return items.sort((a, b) => a.order - b.order);
+  });
+
+  readonly selectedWorkflowTabStep = computed(() => {
+    const selectedTab = this.selectedOrderTab();
+    if (!selectedTab.startsWith('step:')) {
+      return null;
+    }
+
+    const stepId = selectedTab.slice(5);
+    return this.detailWorkflowTabs().find((step) => step.idDoc === stepId) || null;
+  });
+
+  readonly workOrderTabStep = computed(() => {
+    const sortedSteps = [...this.selectedOrderWorkflowSteps()].sort((a, b) => a.order - b.order);
+    return sortedSteps.find((step) => this.isWorkOrderStep(step)) || null;
+  });
+
+  readonly selectedWorkflowNavIndex = computed(() =>
+    this.workflowNavigationItems().findIndex((item) => item.tabId === this.selectedOrderTab())
+  );
+
+  readonly completedWorkflowStepsCount = computed(
+    () => this.workflowNavigationItems().filter((item) => item.status === 'completed').length
+  );
+
+  readonly workflowStepCount = computed(() => this.workflowNavigationItems().length);
+
+  readonly shouldRenderEvaluationStep = computed(
+    () => this.selectedWorkflowTabStep()?.workflowId === 'nCAIWDf7VFdbVppNMdCt'
+  );
+
+  readonly shouldRenderMeasurementsStep = computed(
+    () => this.selectedWorkflowTabStep()?.workflowId === 'ZHvnk9BPyKO6c4mJot5A'
+  );
+
+  readonly shouldRenderInformStep = computed(
+    () => this.selectedWorkflowTabStep()?.workflowId === 'lB6BmPJ0QUeHdh6VAt1v'
   );
 
   readonly filteredWorkOrders = computed(() => {
@@ -281,6 +376,8 @@ export class WorkOrderComponent {
     this.createCategoryServices.set([]);
     this.selectedWorkOrderEquipments.set([]);
     this.selectedEquipmentId.set('');
+    this.createWorkflowPreview.set([]);
+    this.isLoadingCreateWorkflowPreview.set(false);
     this.createImpartiality = this.buildEmptyImpartiality();
     this.showCreateModal.set(true);
   }
@@ -345,6 +442,7 @@ export class WorkOrderComponent {
     }
 
     this.selectedWorkOrderEquipments.update((items) => [...items, equipmentItem]);
+    console.log('WorkOrder selected equipments', this.selectedWorkOrderEquipments());
     this.selectedEquipmentId.set('');
   }
 
@@ -355,22 +453,57 @@ export class WorkOrderComponent {
   }
 
   selectWorkOrder(order: WorkOrderView): void {
-    this.selectedOrder.set(order);
-    this.selectedOrderTab.set('information');
+    this.selectedOrder.set({
+      ...order,
+      impartiality: {
+        ...this.buildEmptyImpartiality(),
+        ...(order.impartiality ?? {}),
+      },
+    });
+    this.selectedOrderTab.set('work-order');
+    this.selectedDetailEquipmentId.set('');
+    this.loadSelectedOrderDetail(order);
+  }
 
-    forkJoin({
-      workflowSteps: this.workOrderService.getWorkflowSteps(order.idDoc).pipe(take(1)),
-      equipments: this.workOrderService.getEquipments(order.idDoc).pipe(take(1)),
-    }).subscribe({
-      next: ({ workflowSteps, equipments }) => {
-        this.selectedOrderWorkflowSteps.set(workflowSteps);
-        this.selectedOrderEquipments.set(equipments);
+  addEquipmentToSelectedOrder(equipmentId: string): void {
+    const order = this.selectedOrder();
+    if (!order || !equipmentId || this.isAddingSelectedOrderEquipment()) {
+      return;
+    }
+
+    if (this.selectedOrderEquipments().length >= 3) {
+      this.toastService.warning('Solo se permiten hasta 3 equipos por orden.');
+      return;
+    }
+
+    const equipmentItem = this.activeEquipments().find((item) => item.idDoc === equipmentId);
+    if (!equipmentItem) {
+      this.toastService.warning('Selecciona un equipo válido.');
+      return;
+    }
+
+    const alreadyExists = this.selectedOrderEquipments().some(
+      (item) => item.equipmentId === equipmentId
+    );
+    if (alreadyExists) {
+      this.selectedDetailEquipmentId.set('');
+      this.toastService.warning('Ese equipo ya está asociado a la orden.');
+      return;
+    }
+
+    this.isAddingSelectedOrderEquipment.set(true);
+    this.workOrderService.createEquipments(order.idDoc, [equipmentItem]).subscribe({
+      next: () => {
+        this.selectedDetailEquipmentId.set('');
+        this.loadSelectedOrderDetail(order, () => {
+          this.isAddingSelectedOrderEquipment.set(false);
+          this.toastService.success('El equipo se agregó a la orden de trabajo.');
+        });
       },
       error: (error) => {
-        console.error('Error loading work order detail', error);
-        this.selectedOrderWorkflowSteps.set([]);
-        this.selectedOrderEquipments.set([]);
-        this.toastService.error('No fue posible cargar el detalle de la orden de trabajo.');
+        console.error('Error adding equipment to work order', error);
+        this.isAddingSelectedOrderEquipment.set(false);
+        this.toastService.error('No fue posible agregar el equipo a la orden de trabajo.');
       },
     });
   }
@@ -379,7 +512,213 @@ export class WorkOrderComponent {
     this.selectedOrder.set(null);
     this.selectedOrderWorkflowSteps.set([]);
     this.selectedOrderEquipments.set([]);
-    this.selectedOrderTab.set('information');
+    this.selectedOrderTab.set('work-order');
+    this.selectedDetailEquipmentId.set('');
+    this.isAddingSelectedOrderEquipment.set(false);
+    this.isFinalizingStepId.set(null);
+    this.isDeletingSelectedOrder.set(false);
+  }
+
+  selectWorkflowTab(tabId: string): void {
+    this.selectedOrderTab.set(tabId);
+  }
+
+  goToPreviousWorkflowTab(): void {
+    const currentIndex = this.selectedWorkflowNavIndex();
+    if (currentIndex <= 0) {
+      return;
+    }
+
+    this.selectedOrderTab.set(this.workflowNavigationItems()[currentIndex - 1].tabId);
+  }
+
+  goToNextWorkflowTab(): void {
+    const currentIndex = this.selectedWorkflowNavIndex();
+    const items = this.workflowNavigationItems();
+    if (currentIndex < 0 || currentIndex >= items.length - 1) {
+      return;
+    }
+
+    this.selectedOrderTab.set(items[currentIndex + 1].tabId);
+  }
+
+  getImpartialityAnswerLabel(value: boolean | null | undefined): string {
+    if (value === true) {
+      return 'Si';
+    }
+
+    if (value === false) {
+      return 'No';
+    }
+
+    return 'Pendiente';
+  }
+
+  updateSelectedOrderImpartialityAnswer(
+    key: keyof Pick<
+      WorkOrderImpartiality,
+      | 'familiarAffinity'
+      | 'bloodRelationship'
+      | 'friendshipRelationship'
+      | 'commercialInterest'
+      | 'economicInterest'
+      | 'intimidation'
+      | 'serviceImpartialityRisk'
+    >,
+    value: boolean | null
+  ): void {
+    const order = this.selectedOrder();
+    if (!order) {
+      return;
+    }
+
+    const impartiality: WorkOrderImpartiality = {
+      ...this.buildEmptyImpartiality(),
+      ...(order.impartiality ?? {}),
+      [key]: value,
+      observations: order.impartiality?.observations ?? '',
+    };
+
+    this.selectedOrder.set({
+      ...order,
+      impartiality,
+    });
+  }
+
+  updateSelectedOrderImpartialityObservations(value: string): void {
+    const order = this.selectedOrder();
+    if (!order) {
+      return;
+    }
+
+    const impartiality: WorkOrderImpartiality = {
+      ...this.buildEmptyImpartiality(),
+      ...(order.impartiality ?? {}),
+      observations: value,
+    };
+
+    this.selectedOrder.set({
+      ...order,
+      impartiality,
+    });
+  }
+
+  saveSelectedOrderImpartiality(): void {
+    const order = this.selectedOrder();
+    if (!order || this.isSavingImpartiality()) {
+      return;
+    }
+
+    const impartiality: WorkOrderImpartiality = {
+      ...this.buildEmptyImpartiality(),
+      ...(order.impartiality ?? {}),
+      observations: order.impartiality?.observations?.trim() || '',
+    };
+
+    this.isSavingImpartiality.set(true);
+    this.workOrderService.updateWorkOrder(order.idDoc, { impartiality }).subscribe({
+      next: () => {
+        this.selectedOrder.set({ ...order, impartiality });
+        this.workOrders.update((items) =>
+          items.map((item) => (item.idDoc === order.idDoc ? { ...item, impartiality } : item))
+        );
+        this.isSavingImpartiality.set(false);
+        this.toastService.success('La gestión de imparcialidad se actualizó correctamente.');
+      },
+      error: (error) => {
+        console.error('Error updating work order impartiality', error);
+        this.isSavingImpartiality.set(false);
+        this.toastService.error('No fue posible actualizar la gestión de imparcialidad.');
+      },
+    });
+  }
+
+  finalizeSelectedOrderStep(step: workOrderStep): void {
+    const order = this.selectedOrder();
+    if (!order || step.status !== 'in-progress' || this.isFinalizingStepId()) {
+      return;
+    }
+
+    const sortedSteps = [...this.selectedOrderWorkflowSteps()].sort((a, b) => a.order - b.order);
+    const currentIndex = sortedSteps.findIndex((item) => item.idDoc === step.idDoc);
+    const nextStep = currentIndex >= 0 ? sortedSteps[currentIndex + 1] : null;
+
+    this.isFinalizingStepId.set(step.idDoc);
+    this.workOrderService
+      .finalizeWorkflowStep(
+        order.idDoc,
+        step.idDoc,
+        nextStep || undefined,
+        {
+          id: order.userAssignedId,
+          name: order.userAssignedName,
+        },
+        !nextStep
+      )
+      .subscribe({
+        next: () => {
+          this.workOrderService
+            .getWorkOrders()
+            .pipe(take(1))
+            .subscribe({
+              next: (workOrders) => {
+                this.enrichAndSetWorkOrders(workOrders, () => {
+                  const refreshedOrder = this.selectedOrder();
+                  if (refreshedOrder) {
+                    this.loadSelectedOrderDetail(refreshedOrder, () => {
+                      this.isFinalizingStepId.set(null);
+                      this.toastService.success('El paso del flujo se actualizó correctamente.');
+                    });
+                    return;
+                  }
+
+                  this.isFinalizingStepId.set(null);
+                  this.toastService.success('El paso del flujo se actualizó correctamente.');
+                });
+              },
+              error: (error) => {
+                console.error('Error refreshing work orders after finalizing step', error);
+                this.isFinalizingStepId.set(null);
+                this.toastService.error('Se actualizó el paso, pero no fue posible refrescar la vista.');
+              },
+            });
+        },
+        error: (error) => {
+          console.error('Error finalizing workflow step', error);
+          this.isFinalizingStepId.set(null);
+          this.toastService.error('No fue posible finalizar el paso actual.');
+        },
+      });
+  }
+
+  deleteSelectedOrder(): void {
+    const order = this.selectedOrder();
+    if (!order || this.isDeletingSelectedOrder()) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Deseas eliminar la orden de trabajo ${order.workOrderNumber}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.isDeletingSelectedOrder.set(true);
+
+    this.workOrderService.deleteWorkOrder(order.idDoc).subscribe({
+      next: () => {
+        this.workOrders.update((items) => items.filter((item) => item.idDoc !== order.idDoc));
+        this.closeSelectedOrder();
+        this.toastService.success('La orden de trabajo se eliminó correctamente.');
+      },
+      error: (error) => {
+        console.error('Error deleting work order', error);
+        this.isDeletingSelectedOrder.set(false);
+        this.toastService.error('No fue posible eliminar la orden de trabajo.');
+      },
+    });
   }
 
   onCreateSignatoryChange(userId: string): void {
@@ -403,9 +742,13 @@ export class WorkOrderComponent {
       nomCategoryName: selectedCategory?.name || '',
       nomCategoryServiceId: '',
       nomCategoryServiceName: '',
+      nomId: '',
+      nomName: '',
       workOrderNumber: '',
       informNumber: '',
     };
+    this.createWorkflowPreview.set([]);
+    this.isLoadingCreateWorkflowPreview.set(false);
 
     if (!selectedCategory) {
       this.createCategoryServices.set([]);
@@ -439,6 +782,8 @@ export class WorkOrderComponent {
       nomId: '',
       nomName: '',
     };
+    this.createWorkflowPreview.set([]);
+    this.isLoadingCreateWorkflowPreview.set(false);
 
     if (!serviceId) return;
 
@@ -448,11 +793,18 @@ export class WorkOrderComponent {
           this.toastService.warning('Este servicio no tiene una norma asociada. Revisa el catálogo de normas.');
           return;
         }
+        console.log('WorkOrder norm resolved from service', {
+          serviceId,
+          nomId: norm.idDoc,
+          nomName: norm.name,
+          nomCode: norm.code,
+        });
         this.createForm = {
           ...this.createForm,
           nomId:   norm.idDoc,
           nomName: norm.name,
         };
+        this.loadCreateWorkflowPreview(norm.idDoc);
       },
       error: () => {
         this.toastService.error('No fue posible buscar la norma asociada al servicio.');
@@ -710,6 +1062,12 @@ export class WorkOrderComponent {
 
   private createEquipmentsIfPossible(workOrderId: string, workOrderItem: workOrder): void {
     const equipments = this.selectedWorkOrderEquipments();
+    console.log('WorkOrder createEquipmentsIfPossible', {
+      workOrderId,
+      equipmentsCount: equipments.length,
+      equipments,
+    });
+
     if (!equipments.length) {
       this.updateConsecutivesIfPossible(workOrderItem);
       return;
@@ -717,6 +1075,10 @@ export class WorkOrderComponent {
 
     this.workOrderService.createEquipments(workOrderId, equipments).subscribe({
       next: () => {
+        console.log('WorkOrder equipments subcollection created', {
+          workOrderId,
+          equipmentIds: equipments.map((item) => item.idDoc),
+        });
         this.updateConsecutivesIfPossible(workOrderItem);
       },
       error: (error) => {
@@ -1013,6 +1375,79 @@ export class WorkOrderComponent {
     };
   }
 
+  private mergeWorkOrderEquipmentWithMaster(
+    workOrderEquipmentItem: workOrderEquipment,
+    masterEquipment: equipment | null
+  ): workOrderEquipment {
+    if (!masterEquipment) {
+      return workOrderEquipmentItem;
+    }
+
+    return {
+      ...workOrderEquipmentItem,
+      equipmentName: workOrderEquipmentItem.equipmentName || masterEquipment.name,
+      equipmentType: workOrderEquipmentItem.equipmentType || masterEquipment.identifier,
+      equipmentBrand: workOrderEquipmentItem.equipmentBrand || masterEquipment.brand,
+      equipmentModel: workOrderEquipmentItem.equipmentModel || masterEquipment.model,
+      equipmentNs: workOrderEquipmentItem.equipmentNs || masterEquipment.ns,
+      equipmentSerialNumber:
+        workOrderEquipmentItem.equipmentSerialNumber || masterEquipment.ns,
+    };
+  }
+
+  private isWorkOrderStep(step: workOrderStep): boolean {
+    const code = (step.stepCode || '').trim().toUpperCase();
+    const name = step.stepName.trim().toLowerCase();
+    return code === 'OT' || name === 'orden de trabajo';
+  }
+
+  private getStatusLabel(status: workOrderStep['status'] | workOrder['status']): string {
+    return status === 'in-progress'
+      ? 'En progreso'
+      : status === 'completed'
+        ? 'Concluido'
+        : status === 'cancelled'
+          ? 'Cancelado'
+          : 'Por iniciar';
+  }
+
+  private loadSelectedOrderDetail(order: WorkOrderView, onComplete?: () => void): void {
+    forkJoin({
+      workflowSteps: this.workOrderService.getWorkflowSteps(order.idDoc).pipe(take(1)),
+      equipments: this.workOrderService.getEquipments(order.idDoc).pipe(take(1)),
+    }).subscribe({
+      next: ({ workflowSteps, equipments }) => {
+        this.selectedOrderWorkflowSteps.set(workflowSteps);
+        if (!equipments.length) {
+          this.selectedOrderEquipments.set([]);
+          onComplete?.();
+          return;
+        }
+
+        forkJoin(
+          equipments.map((equipmentItem) =>
+            this.equipmentService.getEquipmentById(equipmentItem.equipmentId).pipe(
+              take(1),
+              map((masterEquipment) =>
+                this.mergeWorkOrderEquipmentWithMaster(equipmentItem, masterEquipment)
+              ),
+              catchError(() => of(equipmentItem))
+            )
+          )
+        ).subscribe((resolvedEquipments) => {
+          this.selectedOrderEquipments.set(resolvedEquipments);
+          onComplete?.();
+        });
+      },
+      error: (error) => {
+        console.error('Error loading work order detail', error);
+        this.selectedOrderWorkflowSteps.set([]);
+        this.selectedOrderEquipments.set([]);
+        this.toastService.error('No fue posible cargar el detalle de la orden de trabajo.');
+      },
+    });
+  }
+
   private buildEmptyImpartiality(): WorkOrderImpartiality {
     return {
       familiarAffinity: null,
@@ -1024,5 +1459,32 @@ export class WorkOrderComponent {
       serviceImpartialityRisk: null,
       observations: '',
     };
+  }
+
+  private loadCreateWorkflowPreview(nomId: string): void {
+    if (!nomId) {
+      this.createWorkflowPreview.set([]);
+      this.isLoadingCreateWorkflowPreview.set(false);
+      return;
+    }
+
+    this.isLoadingCreateWorkflowPreview.set(true);
+    this.normWorkflowService
+      .getSteps(nomId)
+      .pipe(take(1))
+      .subscribe({
+        next: (steps) => {
+          this.createWorkflowPreview.set(
+            [...steps].sort((a, b) => (a.order || 0) - (b.order || 0))
+          );
+          this.isLoadingCreateWorkflowPreview.set(false);
+        },
+        error: (error) => {
+          console.error('Error loading workflow preview for work order', error);
+          this.createWorkflowPreview.set([]);
+          this.isLoadingCreateWorkflowPreview.set(false);
+          this.toastService.error('No fue posible cargar el flujo de la norma seleccionada.');
+        },
+      });
   }
 }

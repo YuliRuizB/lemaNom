@@ -5,6 +5,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -31,6 +32,20 @@ export class EquipmentService {
           .map((d) => this.toEquipment(d.id, d.data()))
           .sort((a, b) => a.name.localeCompare(b.name))
       )
+    );
+  }
+
+  getEquipmentById(idDoc: string): Observable<equipment | null> {
+    const docRef = doc(this.firestore, 'equipment', idDoc);
+
+    return from(getDoc(docRef)).pipe(
+      map((snapshot) => {
+        if (!snapshot.exists()) {
+          return null;
+        }
+
+        return this.toEquipment(snapshot.id, snapshot.data());
+      })
     );
   }
 

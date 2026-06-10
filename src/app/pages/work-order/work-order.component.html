@@ -1,142 +1,160 @@
 <section class="wo-page">
-  <div class="wo-page__toolbar">
-    <div class="filters-grid">
-      <div class="filter-field filter-field--search">
-        <label class="filter-field__label">Buscar</label>
-        <input
-          class="filter-field__input"
-          type="search"
-          placeholder="OT, informe, OC, cotización, clave…"
-          [ngModel]="search()"
-          (ngModelChange)="onSearch($event)"
-        />
-      </div>
+  @if (!selectedOrder()) {
+    <div class="wo-page__toolbar">
+      <div class="filters-grid">
+        <div class="filter-field filter-field--search">
+          <label class="filter-field__label">Buscar</label>
+          <input
+            class="filter-field__input"
+            type="search"
+            placeholder="OT, informe, OC, cotización, clave…"
+            [ngModel]="search()"
+            (ngModelChange)="onSearch($event)"
+          />
+        </div>
 
-      <div class="filter-field">
-        <label class="filter-field__label">Fecha</label>
-        <input
-          class="filter-field__input"
-          type="date"
-          [ngModel]="dateFilter()"
-          (ngModelChange)="onDateFilterChange($event)"
-        />
-      </div>
+        <div class="filter-field">
+          <label class="filter-field__label">Fecha</label>
+          <input
+            class="filter-field__input"
+            type="date"
+            [ngModel]="dateFilter()"
+            (ngModelChange)="onDateFilterChange($event)"
+          />
+        </div>
 
-      <div class="filter-field">
-        <label class="filter-field__label">Categoría</label>
-        <select
-          class="filter-field__input"
-          [ngModel]="normFilter()"
-          (ngModelChange)="onNormFilterChange($event)"
-        >
-          <option value="">Todas</option>
-          @for (category of activeCategories(); track category.idDoc) {
-            <option [value]="category.idDoc">{{ category.name }}</option>
-          }
-        </select>
-      </div>
-
-      <div class="filter-field">
-        <label class="filter-field__label">Servicio</label>
-        <select
-          class="filter-field__input"
-          [ngModel]="serviceFilter()"
-          [disabled]="!normFilter()"
-          (ngModelChange)="onServiceFilterChange($event)"
-        >
-          <option value="">Todos</option>
-          @for (service of availableServices(); track service) {
-            <option [value]="service">{{ service }}</option>
-          }
-        </select>
-      </div>
-
-      <div class="filter-field filter-field--action">
-        <label class="filter-field__label filter-field__label--hidden">Acción</label>
-        <button class="btn-add" type="button" (click)="openCreateModal()">+ Agregar Orden de Trabajo</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="wo-table-wrapper">
-    <table class="wo-table">
-      <thead>
-        <tr>
-          <th>No. de OT</th>
-          <th>Informe</th>
-          <th>Fecha emisión</th>
-          <th>Asignado a</th>
-          <th>Categorías</th>
-          <th>Clave</th>
-          <th>Orden de compra</th>
-          <th>Flujo</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (order of pagedWorkOrders(); track order.idDoc) {
-          <tr
-            class="wo-table__row"
-            [class.wo-table__row--selected]="selectedOrder()?.idDoc === order.idDoc"
-            (click)="selectWorkOrder(order)"
+        <div class="filter-field">
+          <label class="filter-field__label">Categoría</label>
+          <select
+            class="filter-field__input"
+            [ngModel]="normFilter()"
+            (ngModelChange)="onNormFilterChange($event)"
           >
-            <td class="wo-table__primary-cell">
-              <span class="wo-table__primary">{{ order.workOrderNumber }}</span>
-              <span
-                class="badge"
-                [class.badge--pending]="order.status === 'pending'"
-                [class.badge--progress]="order.status === 'in-progress'"
-                [class.badge--completed]="order.status === 'completed'"
-                [class.badge--cancelled]="order.status === 'cancelled'"
-              >
-                {{
-                  order.status === 'pending'
-                    ? 'Pendiente'
-                    : order.status === 'in-progress'
-                      ? 'En proceso'
-                      : order.status === 'completed'
-                        ? 'Completada'
-                        : 'Cancelada'
-                }}
-              </span>
-            </td>
-            <td>{{ order.informNumber }}</td>
-            <td>{{ order.createdAt | date: 'dd/MM/yyyy' }}</td>
-            <td>{{ order.userAssignedName || '—' }}</td>
-            <td class="wo-table__secondary">{{ order.nomCategoryName || '—' }}</td>
-            <td class="wo-table__code">{{ order.code }}</td>
-            <td>{{ order.purchaseOrderNumber }}</td>
-            <td class="wo-table__flow-cell">
-              <span
-                class="flow-tag"
-                [class.flow-tag--pending]="order.flowStatusLabel === 'Por iniciar'"
-                [class.flow-tag--progress]="order.flowStatusLabel === 'En progreso'"
-                [class.flow-tag--completed]="order.flowStatusLabel === 'Concluido'"
-                [class.flow-tag--cancelled]="order.flowStatusLabel === 'Cancelado'"
-              >
-                {{ order.flowStepName }}
-              </span>
-              <span class="wo-table__flow-status">{{ order.flowStatusLabel }}</span>
-            </td>
-          </tr>
-        } @empty {
-          <tr>
-            <td colspan="8" class="wo-table__state">Sin órdenes de trabajo registradas.</td>
-          </tr>
-        }
-      </tbody>
-    </table>
+            <option value="">Todas</option>
+            @for (category of activeCategories(); track category.idDoc) {
+              <option [value]="category.idDoc">{{ category.name }}</option>
+            }
+          </select>
+        </div>
 
-    <div class="pagination">
-      <span class="pagination__info">
-        Página {{ currentPage() }} de {{ totalPages() }}
-        &nbsp;·&nbsp; {{ filteredWorkOrders().length }} órdenes
-      </span>
-      <div class="pagination__controls">
-        <button class="pagination__btn" type="button" (click)="prevPage()" [disabled]="currentPage() === 1">&#8592;</button>
-        <button class="pagination__btn" type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()">&#8594;</button>
+        <div class="filter-field">
+          <label class="filter-field__label">Servicio</label>
+          <select
+            class="filter-field__input"
+            [ngModel]="serviceFilter()"
+            [disabled]="!normFilter()"
+            (ngModelChange)="onServiceFilterChange($event)"
+          >
+            <option value="">Todos</option>
+            @for (service of availableServices(); track service) {
+              <option [value]="service">{{ service }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-field filter-field--action">
+          <label class="filter-field__label filter-field__label--hidden">Acción</label>
+          <button class="btn-add" type="button" (click)="openCreateModal()">
+            + Agregar Orden de Trabajo
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+
+    <div class="wo-table-wrapper">
+      <table class="wo-table">
+        <thead>
+          <tr>
+            <th>No. de OT</th>
+            <th>Informe</th>
+            <th>Fecha emisión</th>
+            <th>Asignado a</th>
+            <th>Categorías</th>
+            <th>Clave</th>
+            <th>Orden de compra</th>
+            <th>Flujo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of pagedWorkOrders(); track order.idDoc) {
+            <tr
+              class="wo-table__row"
+              [class.wo-table__row--selected]="selectedOrder()?.idDoc === order.idDoc"
+              (click)="selectWorkOrder(order)"
+            >
+              <td class="wo-table__primary-cell">
+                <span class="wo-table__primary">{{ order.workOrderNumber }}</span>
+                <span
+                  class="badge"
+                  [class.badge--pending]="order.status === 'pending'"
+                  [class.badge--progress]="order.status === 'in-progress'"
+                  [class.badge--completed]="order.status === 'completed'"
+                  [class.badge--cancelled]="order.status === 'cancelled'"
+                >
+                  {{
+                    order.status === 'pending'
+                      ? 'Pendiente'
+                      : order.status === 'in-progress'
+                        ? 'En proceso'
+                        : order.status === 'completed'
+                          ? 'Completada'
+                          : 'Cancelada'
+                  }}
+                </span>
+              </td>
+              <td>{{ order.informNumber }}</td>
+              <td>{{ order.createdAt | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ order.userAssignedName || '—' }}</td>
+              <td class="wo-table__secondary">{{ order.nomCategoryName || '—' }}</td>
+              <td class="wo-table__code">{{ order.code }}</td>
+              <td>{{ order.purchaseOrderNumber }}</td>
+              <td class="wo-table__flow-cell">
+                <span
+                  class="flow-tag"
+                  [class.flow-tag--pending]="order.flowStatusLabel === 'Por iniciar'"
+                  [class.flow-tag--progress]="order.flowStatusLabel === 'En progreso'"
+                  [class.flow-tag--completed]="order.flowStatusLabel === 'Concluido'"
+                  [class.flow-tag--cancelled]="order.flowStatusLabel === 'Cancelado'"
+                >
+                  {{ order.flowStepName }}
+                </span>
+                <span class="wo-table__flow-status">{{ order.flowStatusLabel }}</span>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" class="wo-table__state">Sin órdenes de trabajo registradas.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <span class="pagination__info">
+          Página {{ currentPage() }} de {{ totalPages() }}
+          &nbsp;·&nbsp; {{ filteredWorkOrders().length }} órdenes
+        </span>
+        <div class="pagination__controls">
+          <button
+            class="pagination__btn"
+            type="button"
+            (click)="prevPage()"
+            [disabled]="currentPage() === 1"
+          >
+            &#8592;
+          </button>
+          <button
+            class="pagination__btn"
+            type="button"
+            (click)="nextPage()"
+            [disabled]="currentPage() === totalPages()"
+          >
+            &#8594;
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 
   @if (selectedOrder(); as order) {
     <section class="wo-detail">
@@ -145,43 +163,117 @@
           <h3 class="wo-detail__title">Orden de Trabajo {{ order.workOrderNumber }}</h3>
           <p class="wo-detail__subtitle">{{ order.clientName || 'Empresa no definida' }} · {{ order.plantName || 'Planta no definida' }}</p>
         </div>
-        <button class="wo-detail__close" type="button" (click)="closeSelectedOrder()">&#x2715;</button>
+        <div class="wo-detail__actions">
+          <button
+            class="wo-detail__delete"
+            type="button"
+            [disabled]="isDeletingSelectedOrder()"
+            (click)="deleteSelectedOrder()"
+          >
+            {{ isDeletingSelectedOrder() ? 'Eliminando...' : 'Eliminar' }}
+          </button>
+          <button class="wo-detail__close" type="button" (click)="closeSelectedOrder()">&#x2715;</button>
+        </div>
       </header>
 
-      <div class="wo-detail__tabs">
-        <button
-          class="wo-detail__tab"
-          type="button"
-          [class.wo-detail__tab--active]="selectedOrderTab() === 'information'"
-          (click)="selectedOrderTab.set('information')"
-        >
-          Información
-        </button>
-        <button
-          class="wo-detail__tab"
-          type="button"
-          [class.wo-detail__tab--active]="selectedOrderTab() === 'flow'"
-          (click)="selectedOrderTab.set('flow')"
-        >
-          Flujo
-          @if (selectedOrderWorkflowSteps().length) {
-            <span class="wo-detail__tab-badge">{{ selectedOrderWorkflowSteps().length }}</span>
-          }
-        </button>
-        <button
-          class="wo-detail__tab"
-          type="button"
-          [class.wo-detail__tab--active]="selectedOrderTab() === 'equipment'"
-          (click)="selectedOrderTab.set('equipment')"
-        >
-          Equipos
-          @if (selectedOrderEquipments().length) {
-            <span class="wo-detail__tab-badge">{{ selectedOrderEquipments().length }}</span>
-          }
-        </button>
-      </div>
+      <section class="wo-flow">
+        <div class="wo-flow__summary">
+          <article class="wo-flow__summary-card">
+            <span class="wo-flow__summary-label">Paso actual</span>
+            <strong class="wo-flow__summary-value">{{ order.flowStepName }}</strong>
+            <span class="wo-flow__summary-meta">{{ order.flowStatusLabel }}</span>
+          </article>
+          <article class="wo-flow__summary-card">
+            <span class="wo-flow__summary-label">Progreso del flujo</span>
+            <strong class="wo-flow__summary-value">
+              {{ completedWorkflowStepsCount() }}/{{ workflowStepCount() }} pasos concluidos
+            </strong>
+            <span class="wo-flow__summary-meta">
+              {{ workflowStepCount() - completedWorkflowStepsCount() }} pendientes por revisar
+            </span>
+          </article>
+        </div>
 
-      @if (selectedOrderTab() === 'information') {
+        <div class="wo-flow__steps">
+          @for (stepTab of workflowNavigationItems(); track stepTab.id) {
+            <button
+              class="wo-flow__step"
+              type="button"
+              [class.wo-flow__step--active]="selectedOrderTab() === stepTab.tabId"
+              [class.wo-flow__step--pending]="stepTab.status === 'pending'"
+              [class.wo-flow__step--progress]="stepTab.status === 'in-progress'"
+              [class.wo-flow__step--completed]="stepTab.status === 'completed'"
+              [class.wo-flow__step--cancelled]="stepTab.status === 'cancelled'"
+              (click)="selectWorkflowTab(stepTab.tabId)"
+            >
+              <span class="wo-flow__step-order">Paso {{ stepTab.order }}</span>
+              <span class="wo-flow__step-name">{{ stepTab.label }}</span>
+              <span class="wo-flow__step-status">{{ stepTab.statusLabel }}</span>
+            </button>
+          }
+        </div>
+
+        <div class="wo-flow__pager">
+          <button
+            class="wo-flow__pager-btn"
+            type="button"
+            [disabled]="selectedWorkflowNavIndex() <= 0"
+            (click)="goToPreviousWorkflowTab()"
+          >
+            Anterior
+          </button>
+          <button
+            class="wo-flow__pager-btn"
+            type="button"
+            [disabled]="selectedWorkflowNavIndex() >= workflowStepCount() - 1"
+            (click)="goToNextWorkflowTab()"
+          >
+            Siguiente
+          </button>
+        </div>
+      </section>
+
+      @if (selectedOrderTab() === 'work-order') {
+        @if (workOrderTabStep(); as step) {
+          <div class="wo-step-card wo-step-card--summary">
+            <div class="wo-step-card__top">
+              <div>
+                <h4 class="wo-step-card__title">{{ step.stepName }}</h4>
+                <p class="wo-step-card__meta">Paso {{ step.order }}</p>
+              </div>
+              <div class="wo-step-card__actions">
+                <span
+                  class="badge"
+                  [class.badge--pending]="step.status === 'pending'"
+                  [class.badge--progress]="step.status === 'in-progress'"
+                  [class.badge--completed]="step.status === 'completed'"
+                  [class.badge--cancelled]="step.status === 'cancelled'"
+                >
+                  {{
+                    step.status === 'pending'
+                      ? 'Por iniciar'
+                      : step.status === 'in-progress'
+                        ? 'En progreso'
+                        : step.status === 'completed'
+                          ? 'Concluido'
+                          : 'Cancelado'
+                  }}
+                </span>
+                @if (step.status === 'in-progress') {
+                  <button
+                    class="wo-step-card__finish"
+                    type="button"
+                    [disabled]="isFinalizingStepId() === step.idDoc"
+                    (click)="finalizeSelectedOrderStep(step)"
+                  >
+                    {{ isFinalizingStepId() === step.idDoc ? 'Finalizando...' : 'Finalizar paso' }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
         <div class="wo-detail__grid">
           <div class="wo-detail__item">
             <span class="wo-detail__label">No. de informe</span>
@@ -200,14 +292,6 @@
             <span class="wo-detail__value">{{ order.nomCategoryServiceName || '—' }}</span>
           </div>
           <div class="wo-detail__item">
-            <span class="wo-detail__label">Asignado a</span>
-            <span class="wo-detail__value">{{ order.userAssignedName || '—' }}</span>
-          </div>
-          <div class="wo-detail__item">
-            <span class="wo-detail__label">Signatario</span>
-            <span class="wo-detail__value">{{ order.signatoryName || '—' }}</span>
-          </div>
-          <div class="wo-detail__item">
             <span class="wo-detail__label">Orden de compra</span>
             <span class="wo-detail__value">{{ order.purchaseOrderNumber || '—' }}</span>
           </div>
@@ -216,63 +300,38 @@
             <span class="wo-detail__value">{{ order.quotationNumber || '—' }}</span>
           </div>
         </div>
-      }
-
-      @if (selectedOrderTab() === 'flow') {
-        @if (!selectedOrderWorkflowSteps().length) {
-          <p class="wo-detail__empty">Esta orden aún no tiene fases cargadas.</p>
-        } @else {
-          <div class="wo-step-list">
-            @for (step of selectedOrderWorkflowSteps(); track step.idDoc) {
-              <article class="wo-step-card">
-                <div class="wo-step-card__top">
-                  <div>
-                    <h4 class="wo-step-card__title">{{ step.stepName }}</h4>
-                    <p class="wo-step-card__meta">Paso {{ step.order }}</p>
-                  </div>
-                  <span
-                    class="badge"
-                    [class.badge--pending]="step.status === 'pending'"
-                    [class.badge--progress]="step.status === 'in-progress'"
-                    [class.badge--completed]="step.status === 'completed'"
-                    [class.badge--cancelled]="step.status === 'cancelled'"
-                  >
-                    {{
-                      step.status === 'pending'
-                        ? 'Por iniciar'
-                        : step.status === 'in-progress'
-                          ? 'En progreso'
-                          : step.status === 'completed'
-                            ? 'Concluido'
-                            : 'Cancelado'
-                    }}
-                  </span>
-                </div>
-                <div class="wo-step-card__grid">
-                  <div class="wo-detail__item">
-                    <span class="wo-detail__label">Código</span>
-                    <span class="wo-detail__value">{{ step.stepCode || '—' }}</span>
-                  </div>
-                  <div class="wo-detail__item">
-                    <span class="wo-detail__label">Asignado a</span>
-                    <span class="wo-detail__value">{{ step.assignedUserName || '—' }}</span>
-                  </div>
-                  <div class="wo-detail__item">
-                    <span class="wo-detail__label">Inicio</span>
-                    <span class="wo-detail__value">{{ step.startedAt ? (step.startedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
-                  </div>
-                  <div class="wo-detail__item">
-                    <span class="wo-detail__label">Finalización</span>
-                    <span class="wo-detail__value">{{ step.completedAt ? (step.completedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
-                  </div>
-                </div>
-              </article>
-            }
+        <br>
+        <div class="wo-detail__equipment-toolbar">
+          <div class="form-field">
+            <label class="form-field__label">Agregar equipo</label>
+            <select
+              class="form-field__input"
+              [ngModel]="selectedDetailEquipmentId()"
+              [disabled]="selectedOrderEquipments().length >= 3 || !availableEquipmentsForSelectedOrder().length || isAddingSelectedOrderEquipment()"
+              (ngModelChange)="selectedDetailEquipmentId.set($event)"
+            >
+              <option value="">Selecciona un equipo</option>
+              @for (equipmentItem of availableEquipmentsForSelectedOrder(); track equipmentItem.idDoc) {
+                <option [value]="equipmentItem.idDoc">
+                  {{ equipmentItem.name }}{{ equipmentItem.identifier ? ' · ' + equipmentItem.identifier : '' }}
+                </option>
+              }
+            </select>
           </div>
-        }
-      }
+          <button
+            class="btn-add btn-add--secondary"
+            type="button"
+            [disabled]="!selectedDetailEquipmentId() || selectedOrderEquipments().length >= 3 || isAddingSelectedOrderEquipment()"
+            (click)="addEquipmentToSelectedOrder(selectedDetailEquipmentId())"
+          >
+            {{ isAddingSelectedOrderEquipment() ? 'Agregando...' : '+ Agregar equipo' }}
+          </button>
+        </div>
 
-      @if (selectedOrderTab() === 'equipment') {
+        <p class="wo-detail__hint">
+          Puedes asociar hasta 3 equipos por orden.
+        </p>
+
         @if (!selectedOrderEquipments().length) {
           <p class="wo-detail__empty">Esta orden aún no tiene equipos asociados.</p>
         } @else {
@@ -280,19 +339,170 @@
             @for (equipmentItem of selectedOrderEquipments(); track equipmentItem.idDoc) {
               <article class="wo-equipment-card">
                 <h4 class="wo-equipment-card__title">{{ equipmentItem.equipmentName || 'Equipo' }}</h4>
-                <div class="wo-detail__grid wo-detail__grid--compact">
-                  <div class="wo-detail__item">
-                    <span class="wo-detail__label">Tipo</span>
-                    <span class="wo-detail__value">{{ equipmentItem.equipmentType || '—' }}</span>
-                  </div>
-                  <div class="wo-detail__item">
-                    <span class="wo-detail__label">No. de serie</span>
-                    <span class="wo-detail__value">{{ equipmentItem.equipmentSerialNumber || '—' }}</span>
-                  </div>
+                <div class="wo-equipment-card__inline">
+                  <span><strong>Marca:</strong> {{ equipmentItem.equipmentBrand || '—' }}</span>
+                  <span><strong>Modelo:</strong> {{ equipmentItem.equipmentModel || '—' }}</span>
+                  <span><strong>NS:</strong> {{ equipmentItem.equipmentNs || '—' }}</span>
+                  <span><strong>Tipo:</strong> {{ equipmentItem.equipmentType || '—' }}</span>
+                  <span><strong>Serie:</strong> {{ equipmentItem.equipmentSerialNumber || '—' }}</span>
                 </div>
               </article>
             }
           </div>
+        }
+
+        <div class="impartiality-section">
+          <div class="impartiality-section__header">
+            <h3 class="impartiality-section__title">Gestión de riesgos a la imparcialidad</h3>
+            <span class="impartiality-section__hint">Puedes actualizar estas respuestas desde aquí</span>
+          </div>
+
+          <div class="impartiality-list">
+            @for (question of impartialityQuestions; track question.key) {
+              <div class="impartiality-row">
+                <p class="impartiality-row__question">{{ question.label }}</p>
+                <div class="impartiality-row__choices">
+                  <label class="impartiality-choice">
+                    <input
+                      type="radio"
+                      [name]="'detail-' + question.key + '-answer'"
+                      [checked]="order.impartiality?.[question.key] === true"
+                      (change)="updateSelectedOrderImpartialityAnswer(question.key, true)"
+                    />
+                    <span>Sí</span>
+                  </label>
+
+                  <label class="impartiality-choice">
+                    <input
+                      type="radio"
+                      [name]="'detail-' + question.key + '-answer'"
+                      [checked]="order.impartiality?.[question.key] === false"
+                      (change)="updateSelectedOrderImpartialityAnswer(question.key, false)"
+                    />
+                    <span>No</span>
+                  </label>
+
+                  <button
+                    class="impartiality-clear"
+                    type="button"
+                    (click)="updateSelectedOrderImpartialityAnswer(question.key, null)"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="form-field impartiality-section__observations">
+            <label class="form-field__label">Observaciones</label>
+            <textarea
+              class="form-field__input form-field__input--textarea"
+              rows="3"
+              [ngModel]="order.impartiality?.observations || ''"
+              (ngModelChange)="updateSelectedOrderImpartialityObservations($event)"
+            ></textarea>
+          </div>
+
+          <div class="wo-detail__grid wo-detail__grid--compact impartiality-section__meta">
+            <div class="wo-detail__item">
+              <span class="wo-detail__label">Asignado a</span>
+              <span class="wo-detail__value">{{ order.userAssignedName || '—' }}</span>
+            </div>
+            <div class="wo-detail__item">
+              <span class="wo-detail__label">Signatario</span>
+              <span class="wo-detail__value">{{ order.signatoryName || '—' }}</span>
+            </div>
+          </div>
+
+          <div class="impartiality-section__actions">
+            <button
+              class="btn btn--primary"
+              type="button"
+              [disabled]="isSavingImpartiality()"
+              (click)="saveSelectedOrderImpartiality()"
+            >
+              {{ isSavingImpartiality() ? 'Guardando...' : 'Guardar gestión de imparcialidad' }}
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (selectedWorkflowTabStep(); as step) {
+        <div class="wo-step-list">
+          <article class="wo-step-card">
+            <div class="wo-step-card__top">
+              <div>
+                <h4 class="wo-step-card__title">{{ step.stepName }}</h4>
+                <p class="wo-step-card__meta">Paso {{ step.order }}</p>
+              </div>
+              <div class="wo-step-card__actions">
+                <span
+                  class="badge"
+                  [class.badge--pending]="step.status === 'pending'"
+                  [class.badge--progress]="step.status === 'in-progress'"
+                  [class.badge--completed]="step.status === 'completed'"
+                  [class.badge--cancelled]="step.status === 'cancelled'"
+                >
+                  {{
+                    step.status === 'pending'
+                      ? 'Por iniciar'
+                      : step.status === 'in-progress'
+                        ? 'En progreso'
+                        : step.status === 'completed'
+                          ? 'Concluido'
+                          : 'Cancelado'
+                  }}
+                </span>
+                @if (step.status === 'in-progress') {
+                  <button
+                    class="wo-step-card__finish"
+                    type="button"
+                    [disabled]="isFinalizingStepId() === step.idDoc"
+                    (click)="finalizeSelectedOrderStep(step)"
+                  >
+                    {{ isFinalizingStepId() === step.idDoc ? 'Finalizando...' : 'Finalizar paso' }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="wo-step-card__grid">
+              <div class="wo-detail__item">
+                <span class="wo-detail__label">Código</span>
+                <span class="wo-detail__value">{{ step.stepCode || '—' }}</span>
+              </div>
+              <div class="wo-detail__item">
+                <span class="wo-detail__label">Asignado a</span>
+                <span class="wo-detail__value">{{ step.assignedUserName || '—' }}</span>
+              </div>
+              <div class="wo-detail__item">
+                <span class="wo-detail__label">Inicio</span>
+                <span class="wo-detail__value">{{ step.startedAt ? (step.startedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
+              </div>
+              <div class="wo-detail__item">
+                <span class="wo-detail__label">Finalización</span>
+                <span class="wo-detail__value">{{ step.completedAt ? (step.completedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        @if (shouldRenderEvaluationStep()) {
+          <section class="wo-step-page">
+            <app-evaluation />
+          </section>
+        }
+
+        @if (shouldRenderMeasurementsStep()) {
+          <section class="wo-step-page">
+            <app-measurements />
+          </section>
+        }
+
+        @if (shouldRenderInformStep()) {
+          <section class="wo-step-page">
+            <app-inform />
+          </section>
         }
       }
     </section>
@@ -617,16 +827,29 @@
 
       <div class="flow-preview">
         <h3 class="flow-preview__title">Fases del flujo</h3>
-        <div class="flow-preview__track">
-          @for (phase of previewFlowPhases; track phase; let isLast = $last) {
-            <div class="flow-preview__item">
-              <span class="flow-preview__tag">{{ phase }}</span>
-              @if (!isLast) {
-                <span class="flow-preview__arrow">&#8594;</span>
-              }
-            </div>
-          }
-        </div>
+        @if (!createForm.nomId) {
+          <p class="wo-detail__empty">Selecciona un servicio para identificar la norma y mostrar su flujo.</p>
+        } @else if (isLoadingCreateWorkflowPreview()) {
+          <p class="wo-detail__empty">Cargando fases del flujo...</p>
+        } @else if (!createWorkflowPreview().length) {
+          <p class="wo-detail__empty">La norma seleccionada aún no tiene fases configuradas.</p>
+        } @else {
+          <div class="flow-preview__track">
+            @for (step of createWorkflowPreview(); track step.stepUid; let isLast = $last; let isFirst = $first) {
+              <div class="flow-preview__item">
+                <span
+                  class="flow-preview__tag"
+                  [class.flow-preview__tag--current]="isFirst"
+                >
+                  {{ step.name }}
+                </span>
+                @if (!isLast) {
+                  <span class="flow-preview__arrow">&#8594;</span>
+                }
+              </div>
+            }
+          </div>
+        }
       </div>
 
       <p class="wo-modal__note">Al guardarse la Orden de Trabajo inicia la primera fase del flujo.</p>

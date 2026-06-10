@@ -73,6 +73,28 @@ export const routes: Routes = [
           import('./pages/work-order/work-order.component').then((m) => m.WorkOrderComponent),
       },
       {
+        path: 'evaluation',
+        loadComponent: () =>
+          import('./pages/evaluation/evaluation.component').then((m) => m.EvaluationComponent),
+      },
+      {
+        path: 'measurements',
+        loadComponent: () =>
+          import('./pages/measurements/measurements.component').then(
+            (m) => m.MeasurementsComponent
+          ),
+      },
+      {
+        path: 'revision',
+        loadComponent: () =>
+          import('./pages/revision/revision.component').then((m) => m.RevisionComponent),
+      },
+      {
+        path: 'inform',
+        loadComponent: () =>
+          import('./pages/inform/inform.component').then((m) => m.InformComponent),
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./pages/profile/profile.component').then((m) => m.ProfileComponent),

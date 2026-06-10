@@ -86,6 +86,9 @@ export interface workOrderEquipment {
   equipmentId: string; // referencia al equipo maestro
   equipmentName?: string;
   equipmentType?: string;
+  equipmentBrand?: string;
+  equipmentModel?: string;
+  equipmentNs?: string;
   equipmentSerialNumber?: string;
   active: boolean;
   createdAt: Date;

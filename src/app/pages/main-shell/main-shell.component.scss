@@ -322,16 +322,16 @@
 
 .shell-content {
   flex: 1;
-  padding: 1.5rem;
+  padding: 0.5rem;
   background-color: #fbfbfc;
 }
 
 .shell-content__canvas {
   flex: 1;
   min-height: 24rem;
-  padding: 1.5rem;
+  padding: 0.5rem;
   border: 1px dashed rgba(25, 48, 80, 0.16);
-  border-radius: 1.6rem;
+  border-radius: 1rem;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(247, 248, 250, 0.95) 100%);
 }
@@ -394,12 +394,12 @@
   .shell-sidebar,
   .shell-header,
   .shell-content {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
 
   .shell-content__canvas {
-    padding: 1rem;
+    padding: 0.35rem;
   }
 
   .shell-header {
