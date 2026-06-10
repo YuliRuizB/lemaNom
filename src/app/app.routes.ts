@@ -68,6 +68,11 @@ export const routes: Routes = [
           import('./pages/workflows/workflows.component').then((m) => m.WorkflowsComponent),
       },
       {
+        path: 'work-order',
+        loadComponent: () =>
+          import('./pages/work-order/work-order.component').then((m) => m.WorkOrderComponent),
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./pages/profile/profile.component').then((m) => m.ProfileComponent),

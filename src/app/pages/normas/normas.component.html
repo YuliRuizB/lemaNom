@@ -18,13 +18,14 @@
           <th>Código</th>
           <th>Nombre</th>
           <th>Categoría</th>
+          <th>Servicio</th>
           <th>Activo</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         @if (loading()) {
-          <tr><td colspan="6" class="normas-table__state">Cargando…</td></tr>
+          <tr><td colspan="7" class="normas-table__state">Cargando…</td></tr>
         } @else {
           @for (norm of pagedNorms(); track norm.idDoc) {
             <tr
@@ -36,6 +37,7 @@
               <td class="normas-table__code">{{ norm.code }}</td>
               <td>{{ norm.name }}</td>
               <td class="normas-table__secondary">{{ norm.nomCategoryName || '—' }}</td>
+              <td class="normas-table__secondary">{{ norm.nomCategoryServiceName || '—' }}</td>
               <td>
                 <span class="badge" [class.badge--active]="norm.active" [class.badge--inactive]="!norm.active">
                   {{ norm.active ? 'Activo' : 'Inactivo' }}
@@ -53,7 +55,7 @@
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="normas-table__state">Sin normas registradas.</td></tr>
+            <tr><td colspan="7" class="normas-table__state">Sin normas registradas.</td></tr>
           }
         }
       </tbody>
@@ -118,6 +120,20 @@
                 }
               </select>
               @if (isFieldInvalid('nomCategoryId')) { <p class="edit-field__error">Requerido.</p> }
+            </div>
+            <div class="edit-field">
+              <label class="edit-field__label">Servicio</label>
+              @if (loadingEditServices()) {
+                <p class="edit-field__loading">Cargando…</p>
+              } @else {
+                <select class="edit-field__input" formControlName="nomCategoryServiceId"
+                  [attr.disabled]="!editForm.get('nomCategoryId')?.value ? true : null">
+                  <option value="">— Sin servicio —</option>
+                  @for (svc of editServices(); track svc.idDoc) {
+                    <option [value]="svc.idDoc">{{ svc.name }}</option>
+                  }
+                </select>
+              }
             </div>
             <div class="edit-field edit-field--inline">
               <span class="edit-field__label">Activo</span>

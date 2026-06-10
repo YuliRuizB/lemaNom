@@ -2,6 +2,7 @@ export interface Customer {
   idDoc: string;
   code: string;
   codeCustomer?: string;
+  consecutiveInform?: number;
   businessName: string;        
   commercialName?: string;  
   rfc?: string;

@@ -10,43 +10,23 @@
   </header>
 
   <form class="modal__body" [formGroup]="form" (ngSubmit)="submit()">
+
+    <!-- Fila 1: Nombre · Código · Prefijo · Activo -->
     <div class="form-row form-row--main">
       <div class="field">
         <label class="field__label">Nombre <span class="field__req">*</span></label>
         <input class="field__input" type="text" formControlName="name" autocomplete="off" />
-        @if (isFieldInvalid('name')) {
-          <p class="field__error">Obligatorio (mín. 2 caracteres).</p>
-        }
+        @if (isFieldInvalid('name')) { <p class="field__error">Obligatorio (mín. 2 caracteres).</p> }
       </div>
       <div class="field">
         <label class="field__label">Código <span class="field__req">*</span></label>
         <input class="field__input" type="text" formControlName="code" autocomplete="off" />
-        @if (isFieldInvalid('code')) {
-          <p class="field__error">Obligatorio.</p>
-        }
+        @if (isFieldInvalid('code')) { <p class="field__error">Obligatorio.</p> }
       </div>
       <div class="field">
         <label class="field__label">Prefijo <span class="field__req">*</span></label>
         <input class="field__input" type="text" formControlName="prefix" autocomplete="off" />
-        @if (isFieldInvalid('prefix')) {
-          <p class="field__error">Obligatorio.</p>
-        }
-      </div>
-      <div class="field">
-        <label class="field__label">Categoría <span class="field__req">*</span></label>
-        @if (loadingCategories()) {
-          <p class="field__loading">Cargando…</p>
-        } @else {
-          <select class="field__select" formControlName="nomCategoryId">
-            <option value="" disabled>Selecciona</option>
-            @for (cat of categories(); track cat.idDoc) {
-              <option [value]="cat.idDoc">{{ cat.name }}</option>
-            }
-          </select>
-        }
-        @if (isFieldInvalid('nomCategoryId')) {
-          <p class="field__error">Requerido.</p>
-        }
+        @if (isFieldInvalid('prefix')) { <p class="field__error">Obligatorio.</p> }
       </div>
       <div class="field field--inline">
         <span class="field__label">Activo</span>
@@ -57,6 +37,43 @@
       </div>
     </div>
 
+    <!-- Fila 2: Categoría → Servicio -->
+    <div class="form-row form-row--2">
+      <div class="field">
+        <label class="field__label">Categoría <span class="field__req">*</span></label>
+        @if (loadingCategories()) {
+          <p class="field__loading">Cargando…</p>
+        } @else {
+          <select class="field__select" formControlName="nomCategoryId">
+            <option value="" disabled>Selecciona una categoría</option>
+            @for (cat of categories(); track cat.idDoc) {
+              <option [value]="cat.idDoc">{{ cat.name }}</option>
+            }
+          </select>
+        }
+        @if (isFieldInvalid('nomCategoryId')) { <p class="field__error">Requerido.</p> }
+      </div>
+
+      <div class="field">
+        <label class="field__label">Servicio <span class="field__req">*</span></label>
+        @if (loadingServices()) {
+          <p class="field__loading">Cargando servicios…</p>
+        } @else {
+          <select class="field__select" formControlName="nomCategoryServiceId"
+            [attr.disabled]="!form.get('nomCategoryId')?.value ? true : null">
+            <option value="" disabled>
+              {{ form.get('nomCategoryId')?.value ? 'Selecciona un servicio' : 'Primero selecciona categoría' }}
+            </option>
+            @for (svc of services(); track svc.idDoc) {
+              <option [value]="svc.idDoc">{{ svc.name }}</option>
+            }
+          </select>
+        }
+        @if (isFieldInvalid('nomCategoryServiceId')) { <p class="field__error">Requerido.</p> }
+      </div>
+    </div>
+
+    <!-- Descripción -->
     <div class="field">
       <label class="field__label">Descripción</label>
       <textarea class="field__input field__input--textarea" formControlName="description" rows="2"></textarea>

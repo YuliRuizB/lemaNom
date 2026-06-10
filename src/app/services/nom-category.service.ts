@@ -97,6 +97,7 @@ export class NomCategoryService {
         name: data.name,
         prefix: data.prefix,
         codeService: data.codeService,
+        consecutiveWorkOrder: 0,
         codeCustomer: data.codeCustomer,
         year: data.year,
         active: data.active,
@@ -104,6 +105,21 @@ export class NomCategoryService {
         updatedAt: serverTimestamp(),
       })
     ).pipe(map((docRef) => docRef.id));
+  }
+
+  updateCategoryService(
+    categoryId: string,
+    serviceId: string,
+    data: Partial<nomCategoryServices>
+  ): Observable<void> {
+    const serviceRef = doc(this.firestore, 'nomCategory', categoryId, 'nomCategoryServices', serviceId);
+
+    return from(
+      updateDoc(serviceRef, {
+        ...this.removeUndefinedFields(data),
+        updatedAt: serverTimestamp(),
+      })
+    );
   }
 
   private toCategory(id: string, data: Record<string, unknown>): nomCategory {
@@ -127,6 +143,10 @@ export class NomCategoryService {
       name: String(data['name'] ?? ''),
       prefix: String(data['prefix'] ?? ''),
       codeService: Number(data['codeService'] ?? 0),
+      consecutiveWorkOrder:
+        data['consecutiveWorkOrder'] !== undefined
+          ? Number(data['consecutiveWorkOrder'] ?? 0)
+          : undefined,
       codeCustomer: String(data['codeCustomer'] ?? ''),
       year: Number(data['year'] ?? 0),
       active: Boolean(data['active']),

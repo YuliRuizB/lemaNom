@@ -29,7 +29,13 @@
           <span class="shell-nav__chevron" [class.shell-nav__chevron--open]="isLogisticaOpen"></span>
         </button>
         <div class="shell-nav__children" *ngIf="isLogisticaOpen">
-          <span class="shell-nav__child shell-nav__child--placeholder">Sin módulos activos</span>
+          <a
+            class="shell-nav__child"
+            routerLink="/app/work-order"
+            routerLinkActive="shell-nav__child--active"
+          >
+            Orden de Trabajo
+          </a>
         </div>
       </section>
 

@@ -5,8 +5,11 @@ export interface Noms {
   prefix: string;
   description?: string;
   nomCategoryId: string;
-  nomCategoryName?: string;  
+  nomCategoryName?: string;
+  nomCategoryServiceId?: string;
+  nomCategoryServiceName?: string;
   active: boolean;
   createdAt: Date;
   updatedAt?: Date;
 }
+

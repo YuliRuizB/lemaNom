@@ -430,7 +430,8 @@
     &:focus { border-color: var(--lema-accent); }
   }
 
-  &__error { margin: 0; font-size: 0.72rem; color: #de350b; }
+  &__error   { margin: 0; font-size: 0.72rem; color: #de350b; }
+  &__loading { margin: 0; font-size: 0.8rem; color: var(--lema-gray); }
 }
 
 .toggle {

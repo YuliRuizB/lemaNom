@@ -156,6 +156,12 @@ export class MainShellComponent {
       return;
     }
 
+    if (url.includes('/app/work-order')) {
+      this.headerTitle = 'Orden de Trabajo';
+      this.headerDescription = 'Espacio base para la gestión de órdenes de trabajo.';
+      return;
+    }
+
     if (url.includes('/app/categorias')) {
       this.headerTitle = 'Categorias';
       this.headerDescription = 'Catálogo base para la administración de categorías.';

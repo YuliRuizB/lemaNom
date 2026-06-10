@@ -11,6 +11,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  where,
 } from '@angular/fire/firestore';
 import { Observable, from, map } from 'rxjs';
 
@@ -31,8 +32,10 @@ export class NomsService {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-    if (data.description)     payload['description']     = data.description;
-    if (data.nomCategoryName) payload['nomCategoryName'] = data.nomCategoryName;
+    if (data.description)             payload['description']             = data.description;
+    if (data.nomCategoryName)         payload['nomCategoryName']         = data.nomCategoryName;
+    if (data.nomCategoryServiceId)    payload['nomCategoryServiceId']    = data.nomCategoryServiceId;
+    if (data.nomCategoryServiceName)  payload['nomCategoryServiceName']  = data.nomCategoryServiceName;
 
     return from(addDoc(ref, payload)).pipe(map(() => void 0));
   }
@@ -47,14 +50,29 @@ export class NomsService {
       active: data.active,
       updatedAt: serverTimestamp(),
     };
-    if (data.description)     payload['description']     = data.description;
-    if (data.nomCategoryName) payload['nomCategoryName'] = data.nomCategoryName;
+    if (data.description)             payload['description']             = data.description;
+    if (data.nomCategoryName)         payload['nomCategoryName']         = data.nomCategoryName;
+    if (data.nomCategoryServiceId)    payload['nomCategoryServiceId']    = data.nomCategoryServiceId;
+    if (data.nomCategoryServiceName)  payload['nomCategoryServiceName']  = data.nomCategoryServiceName;
     return from(setDoc(normRef, payload, { merge: true }));
   }
 
   deleteNorm(idDoc: string): Observable<void> {
     const normRef = doc(this.firestore, 'norms', idDoc);
     return from(deleteDoc(normRef));
+  }
+
+  getNormByServiceId(serviceId: string): Observable<Noms | null> {
+    const ref = collection(this.firestore, 'norms');
+    const q = query(ref, where('nomCategoryServiceId', '==', serviceId), limit(1));
+
+    return from(getDocs(q)).pipe(
+      map((snapshot) => {
+        if (snapshot.empty) return null;
+        const d = snapshot.docs[0];
+        return this.toNorm(d.id, d.data());
+      })
+    );
   }
 
   getNorms(): Observable<Noms[]> {
@@ -79,6 +97,8 @@ export class NomsService {
       description: data['description'],
       nomCategoryId: data['nomCategoryId'],
       nomCategoryName: data['nomCategoryName'],
+      nomCategoryServiceId:   data['nomCategoryServiceId'],
+      nomCategoryServiceName: data['nomCategoryServiceName'],
       active: data['active'],
       createdAt: data['createdAt'] instanceof Timestamp ? data['createdAt'].toDate() : data['createdAt'],
       updatedAt: data['updatedAt'] instanceof Timestamp ? data['updatedAt'].toDate() : data['updatedAt'],

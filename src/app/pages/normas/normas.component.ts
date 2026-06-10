@@ -3,7 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { NormModalComponent } from '../../components/norm-modal/norm-modal.component';
-import { nomCategory } from '../../interfaces/nomCategory.interface';
+import { nomCategory, nomCategoryServices } from '../../interfaces/nomCategory.interface';
 import { NormWorkflowStep } from '../../interfaces/norm-workflow-step.interface';
 import { Noms } from '../../interfaces/noms.interface';
 import { WorkflowStepCatalog } from '../../interfaces/workflow.interface';
@@ -37,6 +37,8 @@ export class NormasComponent implements OnInit {
   editTab = signal<'general' | 'flujo'>('general');
   saving = signal(false);
   categories = signal<nomCategory[]>([]);
+  editServices = signal<nomCategoryServices[]>([]);
+  loadingEditServices = signal(false);
 
   // Flujo
   workflowSteps = signal<NormWorkflowStep[]>([]);
@@ -48,12 +50,13 @@ export class NormasComponent implements OnInit {
   currentPage = signal(1);
 
   editForm = this.fb.group({
-    name:          ['', [Validators.required, Validators.minLength(2)]],
-    code:          ['', [Validators.required]],
-    prefix:        ['', [Validators.required]],
-    description:   [''],
-    nomCategoryId: ['', [Validators.required]],
-    active:        [true],
+    name:                   ['', [Validators.required, Validators.minLength(2)]],
+    code:                   ['', [Validators.required]],
+    prefix:                 ['', [Validators.required]],
+    description:            [''],
+    nomCategoryId:          ['', [Validators.required]],
+    nomCategoryServiceId:   [''],
+    active:                 [true],
   });
 
   filteredNorms = computed(() => {
@@ -87,6 +90,12 @@ export class NormasComponent implements OnInit {
     this.workflowService.getWorkflows().subscribe({
       next: (wf) => this.workflowCatalog.set(wf),
     });
+
+    this.editForm.get('nomCategoryId')?.valueChanges.subscribe((catId) => {
+      this.editServices.set([]);
+      this.editForm.get('nomCategoryServiceId')?.setValue('');
+      if (catId) this.loadEditServices(catId);
+    });
   }
 
   onSearch(value: string): void {
@@ -111,13 +120,29 @@ export class NormasComponent implements OnInit {
     this.editTab.set('general');
     this.workflowSteps.set([]);
     this.selectedStepUid.set('');
+    this.editServices.set([]);
+
     this.editForm.patchValue({
-      name:          norm.name,
-      code:          norm.code,
-      prefix:        norm.prefix,
-      description:   norm.description ?? '',
-      nomCategoryId: norm.nomCategoryId,
-      active:        norm.active,
+      name:                 norm.name,
+      code:                 norm.code,
+      prefix:               norm.prefix,
+      description:          norm.description ?? '',
+      nomCategoryId:        norm.nomCategoryId,
+      nomCategoryServiceId: norm.nomCategoryServiceId ?? '',
+      active:               norm.active,
+    }, { emitEvent: false });
+
+    if (norm.nomCategoryId) this.loadEditServices(norm.nomCategoryId);
+  }
+
+  private loadEditServices(categoryId: string): void {
+    this.loadingEditServices.set(true);
+    this.nomCategoryService.getCategoryServices(categoryId).subscribe({
+      next: (svcs) => {
+        this.editServices.set(svcs.filter((s) => s.active));
+        this.loadingEditServices.set(false);
+      },
+      error: () => this.loadingEditServices.set(false),
     });
   }
 
@@ -139,15 +164,18 @@ export class NormasComponent implements OnInit {
     this.saving.set(true);
     const v = this.editForm.getRawValue();
     const category = this.categories().find((c) => c.idDoc === v.nomCategoryId);
+    const service  = this.editServices().find((s) => s.idDoc === v.nomCategoryServiceId);
 
     this.nomsService.updateNorm(norm.idDoc, {
-      name:            v.name!.trim(),
-      code:            v.code!.trim(),
-      prefix:          v.prefix!.trim(),
-      description:     v.description?.trim() || undefined,
-      nomCategoryId:   v.nomCategoryId!,
-      nomCategoryName: category?.name,
-      active:          v.active!,
+      name:                   v.name!.trim(),
+      code:                   v.code!.trim(),
+      prefix:                 v.prefix!.trim(),
+      description:            v.description?.trim() || undefined,
+      nomCategoryId:          v.nomCategoryId!,
+      nomCategoryName:        category?.name,
+      nomCategoryServiceId:   v.nomCategoryServiceId || undefined,
+      nomCategoryServiceName: service?.name,
+      active:                 v.active!,
     }).subscribe({
       next: () => {
         this.toastService.success('Norma actualizada.');

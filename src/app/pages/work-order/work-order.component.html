@@ -1,0 +1,642 @@
+<section class="wo-page">
+  <div class="wo-page__toolbar">
+    <div class="filters-grid">
+      <div class="filter-field filter-field--search">
+        <label class="filter-field__label">Buscar</label>
+        <input
+          class="filter-field__input"
+          type="search"
+          placeholder="OT, informe, OC, cotización, clave…"
+          [ngModel]="search()"
+          (ngModelChange)="onSearch($event)"
+        />
+      </div>
+
+      <div class="filter-field">
+        <label class="filter-field__label">Fecha</label>
+        <input
+          class="filter-field__input"
+          type="date"
+          [ngModel]="dateFilter()"
+          (ngModelChange)="onDateFilterChange($event)"
+        />
+      </div>
+
+      <div class="filter-field">
+        <label class="filter-field__label">Categoría</label>
+        <select
+          class="filter-field__input"
+          [ngModel]="normFilter()"
+          (ngModelChange)="onNormFilterChange($event)"
+        >
+          <option value="">Todas</option>
+          @for (category of activeCategories(); track category.idDoc) {
+            <option [value]="category.idDoc">{{ category.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label class="filter-field__label">Servicio</label>
+        <select
+          class="filter-field__input"
+          [ngModel]="serviceFilter()"
+          [disabled]="!normFilter()"
+          (ngModelChange)="onServiceFilterChange($event)"
+        >
+          <option value="">Todos</option>
+          @for (service of availableServices(); track service) {
+            <option [value]="service">{{ service }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field filter-field--action">
+        <label class="filter-field__label filter-field__label--hidden">Acción</label>
+        <button class="btn-add" type="button" (click)="openCreateModal()">+ Agregar Orden de Trabajo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wo-table-wrapper">
+    <table class="wo-table">
+      <thead>
+        <tr>
+          <th>No. de OT</th>
+          <th>Informe</th>
+          <th>Fecha emisión</th>
+          <th>Asignado a</th>
+          <th>Categorías</th>
+          <th>Clave</th>
+          <th>Orden de compra</th>
+          <th>Flujo</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (order of pagedWorkOrders(); track order.idDoc) {
+          <tr
+            class="wo-table__row"
+            [class.wo-table__row--selected]="selectedOrder()?.idDoc === order.idDoc"
+            (click)="selectWorkOrder(order)"
+          >
+            <td class="wo-table__primary-cell">
+              <span class="wo-table__primary">{{ order.workOrderNumber }}</span>
+              <span
+                class="badge"
+                [class.badge--pending]="order.status === 'pending'"
+                [class.badge--progress]="order.status === 'in-progress'"
+                [class.badge--completed]="order.status === 'completed'"
+                [class.badge--cancelled]="order.status === 'cancelled'"
+              >
+                {{
+                  order.status === 'pending'
+                    ? 'Pendiente'
+                    : order.status === 'in-progress'
+                      ? 'En proceso'
+                      : order.status === 'completed'
+                        ? 'Completada'
+                        : 'Cancelada'
+                }}
+              </span>
+            </td>
+            <td>{{ order.informNumber }}</td>
+            <td>{{ order.createdAt | date: 'dd/MM/yyyy' }}</td>
+            <td>{{ order.userAssignedName || '—' }}</td>
+            <td class="wo-table__secondary">{{ order.nomCategoryName || '—' }}</td>
+            <td class="wo-table__code">{{ order.code }}</td>
+            <td>{{ order.purchaseOrderNumber }}</td>
+            <td class="wo-table__flow-cell">
+              <span
+                class="flow-tag"
+                [class.flow-tag--pending]="order.flowStatusLabel === 'Por iniciar'"
+                [class.flow-tag--progress]="order.flowStatusLabel === 'En progreso'"
+                [class.flow-tag--completed]="order.flowStatusLabel === 'Concluido'"
+                [class.flow-tag--cancelled]="order.flowStatusLabel === 'Cancelado'"
+              >
+                {{ order.flowStepName }}
+              </span>
+              <span class="wo-table__flow-status">{{ order.flowStatusLabel }}</span>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="8" class="wo-table__state">Sin órdenes de trabajo registradas.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <span class="pagination__info">
+        Página {{ currentPage() }} de {{ totalPages() }}
+        &nbsp;·&nbsp; {{ filteredWorkOrders().length }} órdenes
+      </span>
+      <div class="pagination__controls">
+        <button class="pagination__btn" type="button" (click)="prevPage()" [disabled]="currentPage() === 1">&#8592;</button>
+        <button class="pagination__btn" type="button" (click)="nextPage()" [disabled]="currentPage() === totalPages()">&#8594;</button>
+      </div>
+    </div>
+  </div>
+
+  @if (selectedOrder(); as order) {
+    <section class="wo-detail">
+      <header class="wo-detail__header">
+        <div>
+          <h3 class="wo-detail__title">Orden de Trabajo {{ order.workOrderNumber }}</h3>
+          <p class="wo-detail__subtitle">{{ order.clientName || 'Empresa no definida' }} · {{ order.plantName || 'Planta no definida' }}</p>
+        </div>
+        <button class="wo-detail__close" type="button" (click)="closeSelectedOrder()">&#x2715;</button>
+      </header>
+
+      <div class="wo-detail__tabs">
+        <button
+          class="wo-detail__tab"
+          type="button"
+          [class.wo-detail__tab--active]="selectedOrderTab() === 'information'"
+          (click)="selectedOrderTab.set('information')"
+        >
+          Información
+        </button>
+        <button
+          class="wo-detail__tab"
+          type="button"
+          [class.wo-detail__tab--active]="selectedOrderTab() === 'flow'"
+          (click)="selectedOrderTab.set('flow')"
+        >
+          Flujo
+          @if (selectedOrderWorkflowSteps().length) {
+            <span class="wo-detail__tab-badge">{{ selectedOrderWorkflowSteps().length }}</span>
+          }
+        </button>
+        <button
+          class="wo-detail__tab"
+          type="button"
+          [class.wo-detail__tab--active]="selectedOrderTab() === 'equipment'"
+          (click)="selectedOrderTab.set('equipment')"
+        >
+          Equipos
+          @if (selectedOrderEquipments().length) {
+            <span class="wo-detail__tab-badge">{{ selectedOrderEquipments().length }}</span>
+          }
+        </button>
+      </div>
+
+      @if (selectedOrderTab() === 'information') {
+        <div class="wo-detail__grid">
+          <div class="wo-detail__item">
+            <span class="wo-detail__label">No. de informe</span>
+            <span class="wo-detail__value">{{ order.informNumber }}</span>
+          </div>
+          <div class="wo-detail__item">
+            <span class="wo-detail__label">Fecha de emisión</span>
+            <span class="wo-detail__value">{{ order.createdAt | date: 'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="wo-detail__item">
+            <span class="wo-detail__label">Categoría</span>
+            <span class="wo-detail__value">{{ order.nomCategoryName || '—' }}</span>
+          </div>
+          <div class="wo-detail__item">
+            <span class="wo-detail__label">Servicio</span>
+            <span class="wo-detail__value">{{ order.nomCategoryServiceName || '—' }}</span>
+          </div>
+          <div class="wo-detail__item">
+            <span class="wo-detail__label">Asignado a</span>
+            <span class="wo-detail__value">{{ order.userAssignedName || '—' }}</span>
+          </div>
+          <div class="wo-detail__item">
+            <span class="wo-detail__label">Signatario</span>
+            <span class="wo-detail__value">{{ order.signatoryName || '—' }}</span>
+          </div>
+          <div class="wo-detail__item">
+            <span class="wo-detail__label">Orden de compra</span>
+            <span class="wo-detail__value">{{ order.purchaseOrderNumber || '—' }}</span>
+          </div>
+          <div class="wo-detail__item">
+            <span class="wo-detail__label">Cotización</span>
+            <span class="wo-detail__value">{{ order.quotationNumber || '—' }}</span>
+          </div>
+        </div>
+      }
+
+      @if (selectedOrderTab() === 'flow') {
+        @if (!selectedOrderWorkflowSteps().length) {
+          <p class="wo-detail__empty">Esta orden aún no tiene fases cargadas.</p>
+        } @else {
+          <div class="wo-step-list">
+            @for (step of selectedOrderWorkflowSteps(); track step.idDoc) {
+              <article class="wo-step-card">
+                <div class="wo-step-card__top">
+                  <div>
+                    <h4 class="wo-step-card__title">{{ step.stepName }}</h4>
+                    <p class="wo-step-card__meta">Paso {{ step.order }}</p>
+                  </div>
+                  <span
+                    class="badge"
+                    [class.badge--pending]="step.status === 'pending'"
+                    [class.badge--progress]="step.status === 'in-progress'"
+                    [class.badge--completed]="step.status === 'completed'"
+                    [class.badge--cancelled]="step.status === 'cancelled'"
+                  >
+                    {{
+                      step.status === 'pending'
+                        ? 'Por iniciar'
+                        : step.status === 'in-progress'
+                          ? 'En progreso'
+                          : step.status === 'completed'
+                            ? 'Concluido'
+                            : 'Cancelado'
+                    }}
+                  </span>
+                </div>
+                <div class="wo-step-card__grid">
+                  <div class="wo-detail__item">
+                    <span class="wo-detail__label">Código</span>
+                    <span class="wo-detail__value">{{ step.stepCode || '—' }}</span>
+                  </div>
+                  <div class="wo-detail__item">
+                    <span class="wo-detail__label">Asignado a</span>
+                    <span class="wo-detail__value">{{ step.assignedUserName || '—' }}</span>
+                  </div>
+                  <div class="wo-detail__item">
+                    <span class="wo-detail__label">Inicio</span>
+                    <span class="wo-detail__value">{{ step.startedAt ? (step.startedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
+                  </div>
+                  <div class="wo-detail__item">
+                    <span class="wo-detail__label">Finalización</span>
+                    <span class="wo-detail__value">{{ step.completedAt ? (step.completedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      }
+
+      @if (selectedOrderTab() === 'equipment') {
+        @if (!selectedOrderEquipments().length) {
+          <p class="wo-detail__empty">Esta orden aún no tiene equipos asociados.</p>
+        } @else {
+          <div class="wo-equipment-list">
+            @for (equipmentItem of selectedOrderEquipments(); track equipmentItem.idDoc) {
+              <article class="wo-equipment-card">
+                <h4 class="wo-equipment-card__title">{{ equipmentItem.equipmentName || 'Equipo' }}</h4>
+                <div class="wo-detail__grid wo-detail__grid--compact">
+                  <div class="wo-detail__item">
+                    <span class="wo-detail__label">Tipo</span>
+                    <span class="wo-detail__value">{{ equipmentItem.equipmentType || '—' }}</span>
+                  </div>
+                  <div class="wo-detail__item">
+                    <span class="wo-detail__label">No. de serie</span>
+                    <span class="wo-detail__value">{{ equipmentItem.equipmentSerialNumber || '—' }}</span>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      }
+    </section>
+  }
+</section>
+
+@if (showCreateModal()) {
+  <div class="modal-backdrop" (click)="closeCreateModal()"></div>
+  <div class="wo-modal">
+    <header class="wo-modal__header">
+      <div class="wo-modal__header-main">
+        <h2 class="wo-modal__title">Orden de Trabajo</h2>
+        <p class="wo-modal__customer">{{ currentCustomerName() }}</p>
+      </div>
+      <button class="wo-modal__close" type="button" (click)="closeCreateModal()">&#x2715;</button>
+    </header>
+
+    <div class="wo-modal__body">
+      <div class="wo-modal__grid">
+        <div class="form-field">
+          <label class="form-field__label">Clave</label>
+          <input class="form-field__input" type="text" [ngModel]="createForm.code" readonly />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label">Fecha de emisión</label>
+          <input class="form-field__input" type="date" [(ngModel)]="createForm.createdAt" />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label">No. de revisión</label>
+          <input class="form-field__input" type="text" [ngModel]="createForm.evaluationNumber" readonly />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label">No. de OT</label>
+          <input class="form-field__input" type="text" [ngModel]="createForm.workOrderNumber" readonly />
+        </div>
+
+        <div class="company-section">
+          <div class="company-section__header">
+            <h3 class="company-section__title">Datos de la empresa</h3>
+          </div>
+
+          <div class="company-section__grid">
+            <div class="form-field">
+              <label class="form-field__label">Razón social</label>
+              <select
+                class="form-field__input"
+                [ngModel]="createForm.clientId"
+                (ngModelChange)="onCreateClientChange($event)"
+              >
+                <option value="">Selecciona una empresa</option>
+                @for (client of activeClients(); track client.idDoc) {
+                  <option [value]="client.idDoc">{{ client.legalName }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Planta</label>
+              <select
+                class="form-field__input"
+                [ngModel]="createForm.plantId"
+                [disabled]="!createForm.clientId"
+                (ngModelChange)="onCreatePlantChange($event)"
+              >
+                <option value="">Selecciona una planta</option>
+                @for (plant of availablePlants(); track plant.idDoc) {
+                  <option [value]="plant.idDoc">{{ plant.name }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Turnos</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.shiftsLabel" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Calle</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.street" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Número exterior</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.exteriorNumber" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Colonia</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.colony" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Municipio</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.municipality" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Estado</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.state" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">País</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.country" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Código postal</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.postalCode" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Contacto</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.contactName" readonly />
+            </div>
+
+            <div class="form-field">
+              <label class="form-field__label">Teléfono</label>
+              <input class="form-field__input" type="text" [ngModel]="createForm.contactPhone" readonly />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label">Categoría</label>
+          <select
+            class="form-field__input"
+            [ngModel]="createForm.nomCategoryId"
+            (ngModelChange)="onCreateCategoryChange($event)"
+          >
+            <option value="">Selecciona una categoría</option>
+            @for (category of activeCategories(); track category.idDoc) {
+              <option [value]="category.idDoc">{{ category.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label">Servicio</label>
+          <select
+            class="form-field__input"
+            [ngModel]="createForm.nomCategoryServiceId"
+            [disabled]="!createForm.nomCategoryId"
+            (ngModelChange)="onCreateCategoryServiceChange($event)"
+          >
+            <option value="">Selecciona un servicio</option>
+            @for (service of createCategoryServices(); track service.idDoc) {
+              <option [value]="service.idDoc">{{ service.name }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label">No. de informe</label>
+          <input class="form-field__input" type="text" [ngModel]="createForm.informNumber" readonly />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label">Orden de compra</label>
+          <input class="form-field__input" type="text" [(ngModel)]="createForm.purchaseOrderNumber" />
+        </div>
+
+        <div class="form-field">
+          <label class="form-field__label">Cotización</label>
+          <input class="form-field__input" type="text" [(ngModel)]="createForm.quotationNumber" />
+        </div>
+      </div>
+
+      <div class="equipment-section">
+        <div class="equipment-section__header">
+          <h3 class="equipment-section__title">Equipo de medición asociado</h3>
+          <span class="equipment-section__hint">Máximo 3 equipos por orden</span>
+        </div>
+
+        <div class="equipment-section__toolbar">
+          <div class="form-field equipment-section__selector">
+            <label class="form-field__label">Equipo</label>
+            <select
+              class="form-field__input"
+              [ngModel]="selectedEquipmentId()"
+              [disabled]="selectedWorkOrderEquipments().length >= 3"
+              (ngModelChange)="selectedEquipmentId.set($event)"
+            >
+              <option value="">Selecciona un equipo</option>
+              @for (equipmentItem of activeEquipments(); track equipmentItem.idDoc) {
+                <option [value]="equipmentItem.idDoc">{{ equipmentItem.name }} · {{ equipmentItem.identifier }}</option>
+              }
+            </select>
+          </div>
+
+          <button
+            class="btn-add btn-add--secondary"
+            type="button"
+            [disabled]="!selectedEquipmentId() || selectedWorkOrderEquipments().length >= 3"
+            (click)="addEquipmentToWorkOrder(selectedEquipmentId())"
+          >
+            + Agregar equipo
+          </button>
+        </div>
+
+        @if (!selectedWorkOrderEquipments().length) {
+          <p class="equipment-section__empty">Aún no hay equipos asociados a esta orden.</p>
+        } @else {
+          <div class="equipment-list">
+            @for (equipmentItem of selectedWorkOrderEquipments(); track equipmentItem.idDoc) {
+              <article class="equipment-card">
+                <div class="equipment-card__top">
+                  <div>
+                    <h4 class="equipment-card__title">{{ equipmentItem.name }}</h4>
+                    <p class="equipment-card__subtitle">{{ equipmentItem.identifier }}</p>
+                  </div>
+                  <button
+                    class="equipment-card__remove"
+                    type="button"
+                    (click)="removeEquipmentFromWorkOrder(equipmentItem.idDoc)"
+                  >
+                    Quitar
+                  </button>
+                </div>
+
+                <div class="equipment-card__grid">
+                  <div class="form-field">
+                    <label class="form-field__label">Marca</label>
+                    <input class="form-field__input" type="text" [ngModel]="equipmentItem.brand || ''" readonly />
+                  </div>
+
+                  <div class="form-field">
+                    <label class="form-field__label">Modelo</label>
+                    <input class="form-field__input" type="text" [ngModel]="equipmentItem.model || ''" readonly />
+                  </div>
+
+                  <div class="form-field">
+                    <label class="form-field__label">Número de serie</label>
+                    <input class="form-field__input" type="text" [ngModel]="equipmentItem.ns" readonly />
+                  </div>
+
+                  <div class="form-field">
+                    <label class="form-field__label">Rango</label>
+                    <input class="form-field__input" type="text" [ngModel]="equipmentItem.range || ''" readonly />
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="impartiality-section">
+        <div class="impartiality-section__header">
+          <h3 class="impartiality-section__title">Gestión de riesgos a la imparcialidad</h3>
+          <span class="impartiality-section__hint">Contesta cada pregunta antes de continuar</span>
+        </div>
+
+        <div class="impartiality-list">
+          @for (question of impartialityQuestions; track question.key) {
+            <div class="impartiality-row">
+              <p class="impartiality-row__question">{{ question.label }}</p>
+              <div class="impartiality-row__choices">
+                <label class="impartiality-choice">
+                  <input
+                    type="radio"
+                    [name]="question.key + '-answer'"
+                    [checked]="createImpartiality[question.key] === true"
+                    (change)="createImpartiality[question.key] = true"
+                  />
+                  <span>Sí</span>
+                </label>
+
+                <label class="impartiality-choice">
+                  <input
+                    type="radio"
+                    [name]="question.key + '-answer'"
+                    [checked]="createImpartiality[question.key] === false"
+                    (change)="createImpartiality[question.key] = false"
+                  />
+                  <span>No</span>
+                </label>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="form-field impartiality-section__observations">
+          <label class="form-field__label">Observaciones</label>
+          <textarea
+            class="form-field__input form-field__input--textarea"
+            rows="3"
+            [(ngModel)]="createImpartiality.observations"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="signatory-section">
+        <div class="signatory-section__header">
+          <h3 class="signatory-section__title">Signatario</h3>       
+        </div>
+
+        <div class="signatory-section__grid">
+          <div class="form-field">
+            <label class="form-field__label">Usuario asignado</label>
+            <select
+              class="form-field__input"
+              [ngModel]="createForm.signatoryId"
+              (ngModelChange)="onCreateSignatoryChange($event)"
+            >
+              <option value="">Selecciona un signatario</option>
+              @for (user of availableSignatories(); track user.idDoc) {
+                <option [value]="user.idDoc">{{ user.displayName }} · {{ user.roleName || 'Rol sin definir' }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label">Nombre seleccionado</label>
+            <input class="form-field__input" type="text" [ngModel]="createForm.signatoryName" readonly />
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-preview">
+        <h3 class="flow-preview__title">Fases del flujo</h3>
+        <div class="flow-preview__track">
+          @for (phase of previewFlowPhases; track phase; let isLast = $last) {
+            <div class="flow-preview__item">
+              <span class="flow-preview__tag">{{ phase }}</span>
+              @if (!isLast) {
+                <span class="flow-preview__arrow">&#8594;</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <p class="wo-modal__note">Al guardarse la Orden de Trabajo inicia la primera fase del flujo.</p>
+    </div>
+
+    <footer class="wo-modal__footer">
+      <button class="btn btn--ghost" type="button" (click)="closeCreateModal()">Cerrar</button>
+      <button class="btn btn--primary" type="button" [disabled]="isSaving()" (click)="saveWorkOrder()">
+        {{ isSaving() ? 'Guardando...' : 'Guardar' }}
+      </button>
+    </footer>
+  </div>
+}
