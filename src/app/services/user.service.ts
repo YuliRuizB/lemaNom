@@ -10,6 +10,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  where,
 } from '@angular/fire/firestore';
 import { Storage, getDownloadURL, ref, uploadBytes } from '@angular/fire/storage';
 import { Observable, from, map, switchMap } from 'rxjs';
@@ -52,6 +53,18 @@ export class UserService {
     const usersQuery = query(usersRef, limit(200));
 
     return from(getDocs(usersQuery)).pipe(
+      map((snapshot) =>
+        snapshot.docs
+          .map((d) => this.toUser(d.id, d.data()))
+          .sort((a, b) => a.firstName.localeCompare(b.firstName))
+      )
+    );
+  }
+
+  getUsersByRole(roleId: string): Observable<User[]> {
+    const usersRef = collection(this.firestore, 'user');
+    const q = query(usersRef, where('roleId', '==', roleId), limit(200));
+    return from(getDocs(q)).pipe(
       map((snapshot) =>
         snapshot.docs
           .map((d) => this.toUser(d.id, d.data()))

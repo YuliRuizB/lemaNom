@@ -81,7 +81,7 @@ export class CustomerService {
 
   uploadCustomerLogo(customerId: string, file: File): Observable<string> {
     const extension = file.name.split('.').pop() || 'png';
-    const storageRef = ref(this.storage, `customer-logos/${customerId}/logo.${extension}`);
+    const storageRef = ref(this.storage, `customer/${customerId}/logo.${extension}`);
 
     return from(uploadBytes(storageRef, file)).pipe(
       map((result) => result.ref),

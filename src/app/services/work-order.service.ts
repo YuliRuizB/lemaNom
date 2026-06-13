@@ -17,6 +17,7 @@ import {
 import { Observable, from, map } from 'rxjs';
 
 import { NormWorkflowStep } from '../interfaces/norm-workflow-step.interface';
+import { Point, PointConnectedEquipment, PointMeasurementData } from '../interfaces/measurements.interface';
 import { equipment } from '../interfaces/meditionType.interface';
 import { workOrder, workOrderEquipment, workOrderStep } from '../interfaces/workOrder.interface';
 import { User } from '../interfaces/user.interface';
@@ -154,6 +155,7 @@ export class WorkOrderService {
         equipmentModel: equipmentItem.model || undefined,
         equipmentNs: equipmentItem.ns || undefined,
         equipmentSerialNumber: equipmentItem.ns || undefined,
+        equipmentFrecuency: equipmentItem.frecuency || undefined,
         active: true,
         createdAt: new Date(),
       };
@@ -187,11 +189,174 @@ export class WorkOrderService {
     );
   }
 
+  getWorkflowStepEquipments(
+    workOrderId: string,
+    workflowStepId: string
+  ): Observable<workOrderEquipment[]> {
+    const equipmentsRef = collection(
+      this.firestore,
+      'workOrder',
+      workOrderId,
+      'workflowSteps',
+      workflowStepId,
+      'equipments'
+    );
+
+    return from(getDocs(equipmentsRef)).pipe(
+      map((snapshot) =>
+        snapshot.docs.map((docSnapshot) => this.toWorkOrderEquipment(docSnapshot.id, docSnapshot.data()))
+      )
+    );
+  }
+
+  updateWorkflowStepEquipmentVoltage(
+    workOrderId: string,
+    workflowStepId: string,
+    equipment: workOrderEquipment,
+    voltage: string,
+    promedioFC?: number | null
+  ): Observable<void> {
+    const equipmentRef = doc(
+      this.firestore,
+      'workOrder',
+      workOrderId,
+      'workflowSteps',
+      workflowStepId,
+      'equipments',
+      equipment.idDoc
+    );
+
+    return from(
+      setDoc(
+        equipmentRef,
+        {
+          workOrderId,
+          equipmentId: equipment.equipmentId,
+          equipmentName: equipment.equipmentName || null,
+          equipmentType: equipment.equipmentType || null,
+          equipmentBrand: equipment.equipmentBrand || null,
+          equipmentModel: equipment.equipmentModel || null,
+          equipmentNs: equipment.equipmentNs || null,
+          equipmentSerialNumber: equipment.equipmentSerialNumber || null,
+          equipmentFrecuency: equipment.equipmentFrecuency || null,
+          equipmentVoltage: voltage || null,
+          promedioFC: promedioFC ?? null,
+          active: equipment.active,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      )
+    );
+  }
+
+  getMeasurementPoints(workOrderId: string, workflowStepId: string): Observable<Point[]> {
+    const pointsRef = collection(
+      this.firestore,
+      'workOrder',
+      workOrderId,
+      'workflowSteps',
+      workflowStepId,
+      'points'
+    );
+    const pointsQuery = query(pointsRef, orderBy('pointNumber'));
+
+    return from(getDocs(pointsQuery)).pipe(
+      map((snapshot) => snapshot.docs.map((docSnapshot) => this.toPoint(docSnapshot.id, docSnapshot.data())))
+    );
+  }
+
+  createMeasurementPoint(workOrderId: string, workflowStepId: string, point: Point): Observable<void> {
+    const pointRef = doc(
+      this.firestore,
+      'workOrder',
+      workOrderId,
+      'workflowSteps',
+      workflowStepId,
+      'points',
+      point.idDoc
+    );
+
+    return from(
+      setDoc(pointRef, {
+        ...this.removeUndefinedFields({
+          pointNumber: point.pointNumber,
+          location: point.location,
+          electrodeType: point.electrodeType,
+          hasLightningRod: point.hasLightningRod,
+          lightningRodHeight: point.lightningRodHeight,
+          protectionRadius: point.protectionRadius,
+          systemType: point.systemType,
+          temperature: point.temperature,
+          humidity: point.humidity,
+          measurementCondition: point.measurementCondition,
+          soilType: point.soilType,
+          startTime: point.startTime,
+          endTime: point.endTime,
+          measurementData: point.measurementData,
+          voltageStatus: point.voltageStatus,
+          hasContinuity: point.hasContinuity,
+          generatorSources: point.generatorSources,
+          connectedEquipment: point.connectedEquipment,
+          observations: point.observations,
+          createdBy: point.createdBy,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }),
+      })
+    ).pipe(map(() => void 0));
+  }
+
+  updateMeasurementPoint(
+    workOrderId: string,
+    workflowStepId: string,
+    pointId: string,
+    data: Partial<Point>
+  ): Observable<void> {
+    const pointRef = doc(
+      this.firestore,
+      'workOrder',
+      workOrderId,
+      'workflowSteps',
+      workflowStepId,
+      'points',
+      pointId
+    );
+
+    return from(
+      setDoc(
+        pointRef,
+        {
+          ...this.removeUndefinedFields(data),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      )
+    );
+  }
+
+  deleteMeasurementPoint(
+    workOrderId: string,
+    workflowStepId: string,
+    pointId: string
+  ): Observable<void> {
+    const pointRef = doc(
+      this.firestore,
+      'workOrder',
+      workOrderId,
+      'workflowSteps',
+      workflowStepId,
+      'points',
+      pointId
+    );
+    return from(deleteDoc(pointRef));
+  }
+
   finalizeWorkflowStep(
     workOrderId: string,
     currentStepId: string,
     nextStep?: Pick<workOrderStep, 'idDoc'> | null,
     assignedUser?: { id?: string; name?: string },
+    completedByUser?: { id?: string; name?: string },
     completeWorkOrder?: boolean
   ): Observable<void> {
     const batch = writeBatch(this.firestore);
@@ -202,6 +367,8 @@ export class WorkOrderService {
       {
         status: 'completed',
         completedAt: serverTimestamp(),
+        completedByUserId: completedByUser?.id || null,
+        completedByUserName: completedByUser?.name || null,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
@@ -271,6 +438,9 @@ export class WorkOrderService {
       assingDate: this.toDate(data['assingDate']) ?? new Date(),
       signatoryId: String(data['signatoryId'] ?? ''),
       signatoryName: data['signatoryName'] ? String(data['signatoryName']) : undefined,
+      observerName: data['observerName'] ? String(data['observerName']) : undefined,
+      observationDate: this.toDate(data['observationDate']),
+      cableResistance: data['cableResistance'] != null ? Number(data['cableResistance']) : undefined,
       impartiality: (data['impartiality'] as workOrder['impartiality']) ?? undefined,
       createdUser: String(data['createdUser'] ?? ''),
       createdUserName: data['createdUserName'] ? String(data['createdUserName']) : undefined,
@@ -323,6 +493,12 @@ export class WorkOrderService {
       status: (data['status'] as workOrderStep['status']) ?? 'pending',
       assignedUserId: data['assignedUserId'] ? String(data['assignedUserId']) : undefined,
       assignedUserName: data['assignedUserName'] ? String(data['assignedUserName']) : undefined,
+      completedByUserId: data['completedByUserId']
+        ? String(data['completedByUserId'])
+        : undefined,
+      completedByUserName: data['completedByUserName']
+        ? String(data['completedByUserName'])
+        : undefined,
       observations: data['observations'] ? String(data['observations']) : undefined,
       startedAt: this.toDate(data['startedAt']),
       completedAt: this.toDate(data['completedAt']),
@@ -330,6 +506,13 @@ export class WorkOrderService {
       createdAt: this.toDate(data['createdAt']) ?? new Date(),
       updatedAt: this.toDate(data['updatedAt']),
     };
+  }
+
+  updateEquipmentVoltage(workOrderId: string, equipmentId: string, voltage: string): Observable<void> {
+    const equipmentRef = doc(this.firestore, 'workOrder', workOrderId, 'equipments', equipmentId);
+    return from(
+      setDoc(equipmentRef, { equipmentVoltage: voltage, updatedAt: serverTimestamp() }, { merge: true })
+    );
   }
 
   private toWorkOrderEquipment(id: string, data: Record<string, unknown>): workOrderEquipment {
@@ -345,7 +528,45 @@ export class WorkOrderService {
       equipmentSerialNumber: data['equipmentSerialNumber']
         ? String(data['equipmentSerialNumber'])
         : undefined,
+      equipmentFrecuency: data['equipmentFrecuency'] ? String(data['equipmentFrecuency']) : undefined,
+      equipmentVoltage: data['equipmentVoltage'] ? String(data['equipmentVoltage']) : undefined,
+      promedioFC: data['promedioFC'] != null ? Number(data['promedioFC']) : undefined,
       active: Boolean(data['active']),
+      createdAt: this.toDate(data['createdAt']) ?? new Date(),
+      updatedAt: this.toDate(data['updatedAt']),
+    };
+  }
+
+  private toPoint(id: string, data: Record<string, unknown>): Point {
+    return {
+      idDoc: id,
+      pointNumber: Number(data['pointNumber'] ?? 0),
+      location: String(data['location'] ?? ''),
+      electrodeType: (data['electrodeType'] as Point['electrodeType']) ?? 'unique',
+      hasLightningRod: Boolean(data['hasLightningRod']),
+      lightningRodHeight:
+        typeof data['lightningRodHeight'] === 'number' ? data['lightningRodHeight'] : undefined,
+      protectionRadius:
+        typeof data['protectionRadius'] === 'number' ? data['protectionRadius'] : undefined,
+      systemType: data['systemType'] ? String(data['systemType']) : undefined,
+      temperature: typeof data['temperature'] === 'number' ? data['temperature'] : undefined,
+      humidity: typeof data['humidity'] === 'number' ? data['humidity'] : undefined,
+      measurementCondition:
+        (data['measurementCondition'] as Point['measurementCondition']) ?? 'dry',
+      soilType: (data['soilType'] as Point['soilType']) ?? 'soil',
+      startTime: data['startTime'] ? String(data['startTime']) : undefined,
+      endTime: data['endTime'] ? String(data['endTime']) : undefined,
+      measurementData: (data['measurementData'] as PointMeasurementData) ?? {},
+      voltageStatus: data['voltageStatus']
+        ? (data['voltageStatus'] as Point['voltageStatus'])
+        : undefined,
+      hasContinuity:
+        typeof data['hasContinuity'] === 'boolean' ? data['hasContinuity'] : undefined,
+      generatorSources: (data['generatorSources'] as Point['generatorSources']) ?? undefined,
+      connectedEquipment:
+        (data['connectedEquipment'] as PointConnectedEquipment[]) ?? [],
+      observations: data['observations'] ? String(data['observations']) : undefined,
+      createdBy: String(data['createdBy'] ?? ''),
       createdAt: this.toDate(data['createdAt']) ?? new Date(),
       updatedAt: this.toDate(data['updatedAt']),
     };

@@ -5,6 +5,7 @@ import { filter, finalize, take } from 'rxjs';
 
 import { User } from '../../interfaces/user.interface';
 import { AuthService } from '../../services/auth.service';
+import { CustomerService } from '../../services/customer.service';
 import { ToastService } from '../../services/toast.service';
 import { UserService } from '../../services/user.service';
 
@@ -22,8 +23,11 @@ export class MainShellComponent {
   customerName = '';
   currentAppUser: User | null = null;
 
+  customerLogoUrl = '';
+
   constructor(
     private authService: AuthService,
+    private customerService: CustomerService,
     private toastService: ToastService,
     private userService: UserService,
     private router: Router,
@@ -64,7 +68,15 @@ export class MainShellComponent {
         this.displayName =
           appUser?.displayName || firebaseUser.displayName || firebaseUser.email || 'Usuario';
         this.customerName = appUser?.customerName || '';
-        this.cdr.markForCheck();
+
+        if (appUser?.customerId) {
+          this.customerService.getCustomerById(appUser.customerId).pipe(take(1)).subscribe((customer) => {
+            this.customerLogoUrl = customer?.urlLogo || '';
+            this.cdr.markForCheck();
+          });
+        } else {
+          this.cdr.markForCheck();
+        }
       });
     });
   }

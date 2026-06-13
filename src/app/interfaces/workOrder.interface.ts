@@ -34,6 +34,11 @@ export interface workOrder{
   signatoryId: string; // datos del signatario pero este es un usuario... con perfil signatario
   signatoryName?: string;
 
+  // observador y fecha de observación
+  observerName?: string;
+  observationDate?: Date;
+  cableResistance?: number;
+
   // llenado de Gestion de la imparcialidad
   impartiality?: WorkOrderImpartiality;
 
@@ -72,6 +77,8 @@ export interface workOrderStep {
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
   assignedUserId?: string;
   assignedUserName?: string;
+  completedByUserId?: string;
+  completedByUserName?: string;
   observations?: string;
   startedAt?: Date;
   completedAt?: Date;
@@ -90,6 +97,9 @@ export interface workOrderEquipment {
   equipmentModel?: string;
   equipmentNs?: string;
   equipmentSerialNumber?: string;
+  equipmentFrecuency?: string;
+  equipmentVoltage?: string;
+  promedioFC?: number;
   active: boolean;
   createdAt: Date;
   updatedAt?: Date;

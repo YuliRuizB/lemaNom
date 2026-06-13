@@ -41,11 +41,11 @@
                 <button
                   type="button"
                   class="clients-table__avatar"
-                  [class.clients-table__avatar--interactive]="client.imageurl"
+                  [class.clients-table__avatar--interactive]="client.urlLogo"
                   (click)="$event.stopPropagation(); openImagePreview(client)"
                 >
-                  @if (client.imageurl) {
-                    <img [src]="client.imageurl" [alt]="client.name" />
+                  @if (client.urlLogo) {
+                    <img [src]="client.urlLogo" [alt]="client.name" />
                   } @else {
                     <span>{{ client.name.charAt(0) }}</span>
                   }
@@ -92,11 +92,11 @@
           <button
             type="button"
             class="client-detail__image client-detail__image--button"
-            [class.client-detail__image--interactive]="client.imageurl"
+            [class.client-detail__image--interactive]="client.urlLogo"
             (click)="openImagePreview(client)"
           >
-            @if (client.imageurl) {
-              <img [src]="client.imageurl" [alt]="client.name" />
+            @if (client.urlLogo) {
+              <img [src]="client.urlLogo" [alt]="client.name" />
             } @else {
               <span>{{ client.name.charAt(0) }}</span>
             }
@@ -164,11 +164,11 @@
             <button
               type="button"
               class="info-item__avatar"
-              [class.info-item__avatar--interactive]="client.imageurl"
+              [class.info-item__avatar--interactive]="client.urlLogo"
               (click)="openImagePreview(client)"
             >
-              @if (client.imageurl) {
-                <img [src]="client.imageurl" [alt]="client.name" />
+              @if (client.urlLogo) {
+                <img [src]="client.urlLogo" [alt]="client.name" />
               } @else {
                 <span>{{ client.name.charAt(0) }}</span>
               }

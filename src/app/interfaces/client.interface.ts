@@ -12,7 +12,7 @@ export interface Client {
   customerId?: string;
   customerName?: string;
   active: boolean;
-  imageurl?: string;
+  urlLogo?: string;
   createdAt: Date;
   updatedAt?: Date;
 }

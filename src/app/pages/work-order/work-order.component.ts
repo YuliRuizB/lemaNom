@@ -94,11 +94,24 @@ export class WorkOrderComponent {
   selectedOrderWorkflowSteps = signal<workOrderStep[]>([]);
   selectedOrderEquipments = signal<workOrderEquipment[]>([]);
   selectedOrderTab = signal('work-order');
+  measurementsTab = signal<'points' | 'correction'>('points');
   selectedDetailEquipmentId = signal('');
+  selectedNextAssignedUserId = signal('');
   isAddingSelectedOrderEquipment = signal(false);
   isFinalizingStepId = signal<string | null>(null);
   isDeletingSelectedOrder = signal(false);
   isSavingImpartiality = signal(false);
+  selectedOrderPlant = signal<ClientPlant | null>(null);
+  selectedOrderObserver = signal('');
+  selectedOrderObservationDate = signal('');
+  isSavingObserver = signal(false);
+  selectedOrderCableResistance = signal<number | null>(null);
+
+  readonly observerOptions = [
+    'Ing. Humberto Pichardo Mena',
+    'Lic. Fabiola Monserrat Gutiérrez Tavizon',
+    'Ing. Baldomero Gutiérrez González',
+  ];
   createWorkflowPreview = signal<NormWorkflowStep[]>([]);
   isLoadingCreateWorkflowPreview = signal(false);
   createImpartiality: WorkOrderImpartiality = this.buildEmptyImpartiality();
@@ -250,6 +263,15 @@ export class WorkOrderComponent {
   );
 
   readonly workflowStepCount = computed(() => this.workflowNavigationItems().length);
+  readonly assignableWorkflowUsers = computed(() => {
+    const users = [...this.availableSignatories()];
+    const currentUser = this.currentAppUser();
+    if (currentUser && !users.some((user) => user.idDoc === currentUser.idDoc)) {
+      users.unshift(currentUser);
+    }
+
+    return users.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+  });
 
   readonly shouldRenderEvaluationStep = computed(
     () => this.selectedWorkflowTabStep()?.workflowId === 'nCAIWDf7VFdbVppNMdCt'
@@ -460,9 +482,20 @@ export class WorkOrderComponent {
         ...(order.impartiality ?? {}),
       },
     });
-    this.selectedOrderTab.set('work-order');
+    this.selectedOrderTab.set(this.getDetailDefaultTab(order));
     this.selectedDetailEquipmentId.set('');
+    this.selectedNextAssignedUserId.set(this.currentAppUser()?.idDoc || order.userAssignedId || '');
+    this.selectedOrderPlant.set(null);
+    this.selectedOrderObserver.set(order.observerName || '');
+    this.selectedOrderObservationDate.set(order.observationDate ? this.toDateInputValue(order.observationDate) : '');
+    this.selectedOrderCableResistance.set(order.cableResistance ?? null);
     this.loadSelectedOrderDetail(order);
+    if (order.clientId && order.plantId) {
+      this.clientService.getClientPlantById(order.clientId, order.plantId).pipe(take(1)).subscribe({
+        next: (plant) => this.selectedOrderPlant.set(plant),
+        error: () => {},
+      });
+    }
   }
 
   addEquipmentToSelectedOrder(equipmentId: string): void {
@@ -514,13 +547,42 @@ export class WorkOrderComponent {
     this.selectedOrderEquipments.set([]);
     this.selectedOrderTab.set('work-order');
     this.selectedDetailEquipmentId.set('');
+    this.selectedNextAssignedUserId.set('');
     this.isAddingSelectedOrderEquipment.set(false);
     this.isFinalizingStepId.set(null);
     this.isDeletingSelectedOrder.set(false);
+    this.selectedOrderPlant.set(null);
+    this.selectedOrderObserver.set('');
+    this.selectedOrderObservationDate.set('');
+    this.isSavingObserver.set(false);
   }
 
   selectWorkflowTab(tabId: string): void {
     this.selectedOrderTab.set(tabId);
+    const sortedSteps = [...this.selectedOrderWorkflowSteps()].sort((a, b) => a.order - b.order);
+    const step =
+      tabId === 'work-order'
+        ? sortedSteps.find((item) => this.isWorkOrderStep(item)) || null
+        : sortedSteps.find((item) => `step:${item.idDoc}` === tabId) || null;
+    this.prefillNextAssignedUserId(step);
+  }
+
+  getNextWorkflowStep(step: workOrderStep): workOrderStep | null {
+    const sortedSteps = [...this.selectedOrderWorkflowSteps()].sort((a, b) => a.order - b.order);
+    const currentIndex = sortedSteps.findIndex((item) => item.idDoc === step.idDoc);
+    return currentIndex >= 0 ? sortedSteps[currentIndex + 1] || null : null;
+  }
+
+  prefillNextAssignedUserId(step?: workOrderStep | null): void {
+    const nextStep = step ? this.getNextWorkflowStep(step) : null;
+    const fallbackUserId = this.currentAppUser()?.idDoc || this.selectedOrder()?.userAssignedId || '';
+    this.selectedNextAssignedUserId.set(nextStep?.assignedUserId || fallbackUserId);
+  }
+
+  getSelectedNextAssignedUserName(): string | undefined {
+    const selectedId = this.selectedNextAssignedUserId();
+    const user = this.assignableWorkflowUsers().find((item) => item.idDoc === selectedId);
+    return user ? this.getReadableUserName(user) : undefined;
   }
 
   goToPreviousWorkflowTab(): void {
@@ -639,9 +701,16 @@ export class WorkOrderComponent {
       return;
     }
 
-    const sortedSteps = [...this.selectedOrderWorkflowSteps()].sort((a, b) => a.order - b.order);
-    const currentIndex = sortedSteps.findIndex((item) => item.idDoc === step.idDoc);
-    const nextStep = currentIndex >= 0 ? sortedSteps[currentIndex + 1] : null;
+    const nextStep = this.getNextWorkflowStep(step);
+    const nextAssignedUserId = this.selectedNextAssignedUserId() || this.currentAppUser()?.idDoc || '';
+    const nextAssignedUserName =
+      this.getSelectedNextAssignedUserName() ||
+      (this.currentAppUser() ? this.getReadableUserName(this.currentAppUser()) : '');
+
+    if (nextStep && !nextAssignedUserId) {
+      this.toastService.warning('Selecciona a quién se asignará el siguiente paso.');
+      return;
+    }
 
     this.isFinalizingStepId.set(step.idDoc);
     this.workOrderService
@@ -650,8 +719,12 @@ export class WorkOrderComponent {
         step.idDoc,
         nextStep || undefined,
         {
-          id: order.userAssignedId,
-          name: order.userAssignedName,
+          id: nextAssignedUserId,
+          name: nextAssignedUserName,
+        },
+        {
+          id: this.currentAppUser()?.idDoc,
+          name: this.currentAppUser() ? this.getReadableUserName(this.currentAppUser()) : undefined,
         },
         !nextStep
       )
@@ -666,6 +739,7 @@ export class WorkOrderComponent {
                   const refreshedOrder = this.selectedOrder();
                   if (refreshedOrder) {
                     this.loadSelectedOrderDetail(refreshedOrder, () => {
+                      this.prefillNextAssignedUserId();
                       this.isFinalizingStepId.set(null);
                       this.toastService.success('El paso del flujo se actualizó correctamente.');
                     });
@@ -1390,15 +1464,97 @@ export class WorkOrderComponent {
       equipmentBrand: workOrderEquipmentItem.equipmentBrand || masterEquipment.brand,
       equipmentModel: workOrderEquipmentItem.equipmentModel || masterEquipment.model,
       equipmentNs: workOrderEquipmentItem.equipmentNs || masterEquipment.ns,
-      equipmentSerialNumber:
-        workOrderEquipmentItem.equipmentSerialNumber || masterEquipment.ns,
+      equipmentSerialNumber: workOrderEquipmentItem.equipmentSerialNumber || masterEquipment.ns,
+      equipmentFrecuency: workOrderEquipmentItem.equipmentFrecuency || masterEquipment.frecuency,
     };
+  }
+
+  saveSelectedOrderObserver(): void {
+    const order = this.selectedOrder();
+    if (!order || this.isSavingObserver()) return;
+
+    const observerName = this.selectedOrderObserver().trim() || undefined;
+    const dateValue = this.selectedOrderObservationDate();
+    const observationDate = dateValue ? new Date(dateValue) : undefined;
+    const cableResistanceRaw = this.selectedOrderCableResistance();
+    const cableResistance = cableResistanceRaw != null && !isNaN(Number(cableResistanceRaw)) ? Number(cableResistanceRaw) : undefined;
+
+    this.isSavingObserver.set(true);
+    this.workOrderService.updateWorkOrder(order.idDoc, { observerName, observationDate, cableResistance }).subscribe({
+      next: () => {
+        const updated = { ...order, observerName, observationDate, cableResistance };
+        this.selectedOrder.set(updated);
+        this.workOrders.update((items) =>
+          items.map((item) => (item.idDoc === order.idDoc ? { ...item, observerName, observationDate, cableResistance } : item))
+        );
+        this.isSavingObserver.set(false);
+      },
+      error: () => {
+        this.isSavingObserver.set(false);
+      },
+    });
+  }
+
+  saveOrderChanges(): void {
+    const order = this.selectedOrder();
+    if (!order || this.isSavingImpartiality() || this.isSavingObserver()) return;
+
+    const observerName = this.selectedOrderObserver().trim() || undefined;
+    const dateValue = this.selectedOrderObservationDate();
+    const observationDate = dateValue ? new Date(dateValue) : undefined;
+    const cableResistanceRaw = this.selectedOrderCableResistance();
+    const cableResistance = cableResistanceRaw != null && !isNaN(Number(cableResistanceRaw)) ? Number(cableResistanceRaw) : undefined;
+
+    const impartiality: WorkOrderImpartiality = {
+      ...this.buildEmptyImpartiality(),
+      ...(order.impartiality ?? {}),
+      observations: order.impartiality?.observations?.trim() || '',
+    };
+
+    this.isSavingImpartiality.set(true);
+    this.isSavingObserver.set(true);
+
+    forkJoin([
+      this.workOrderService.updateWorkOrder(order.idDoc, { impartiality }),
+      this.workOrderService.updateWorkOrder(order.idDoc, { observerName, observationDate, cableResistance }),
+    ]).subscribe({
+      next: () => {
+        const updated = { ...order, impartiality, observerName, observationDate, cableResistance };
+        this.selectedOrder.set(updated);
+        this.workOrders.update((items) =>
+          items.map((item) => (item.idDoc === order.idDoc ? { ...item, impartiality, observerName, observationDate, cableResistance } : item))
+        );
+        this.isSavingImpartiality.set(false);
+        this.isSavingObserver.set(false);
+        this.toastService.success('Cambios guardados correctamente.');
+      },
+      error: () => {
+        this.isSavingImpartiality.set(false);
+        this.isSavingObserver.set(false);
+        this.toastService.error('No fue posible guardar los cambios.');
+      },
+    });
+  }
+
+  buildPlantAddress(plant: ClientPlant): string {
+    return [plant.street, plant.exteriorNumber, plant.colony, plant.municipality, plant.state]
+      .filter(Boolean)
+      .join(', ') || '—';
   }
 
   private isWorkOrderStep(step: workOrderStep): boolean {
     const code = (step.stepCode || '').trim().toUpperCase();
     const name = step.stepName.trim().toLowerCase();
     return code === 'OT' || name === 'orden de trabajo';
+  }
+
+  private getReadableUserName(user: User | null): string {
+    if (!user) {
+      return '';
+    }
+
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    return user.displayName || fullName || user.email || 'Usuario';
   }
 
   private getStatusLabel(status: workOrderStep['status'] | workOrder['status']): string {
@@ -1411,6 +1567,41 @@ export class WorkOrderComponent {
           : 'Por iniciar';
   }
 
+  private getDetailDefaultTab(order: WorkOrderView): string {
+    const inProgressStep = [...this.selectedOrderWorkflowSteps()]
+      .sort((a, b) => a.order - b.order)
+      .find((step) => step.status === 'in-progress');
+
+    if (inProgressStep) {
+      return this.isWorkOrderStep(inProgressStep) ? 'work-order' : `step:${inProgressStep.idDoc}`;
+    }
+
+    return order.status === 'in-progress' && order.flowStepName !== 'Orden de trabajo'
+      ? this.findTabIdByStepName(order.flowStepName)
+      : 'work-order';
+  }
+
+  private getDefaultTabFromSteps(workflowSteps: workOrderStep[]): string {
+    const inProgressStep = [...workflowSteps]
+      .sort((a, b) => a.order - b.order)
+      .find((step) => step.status === 'in-progress');
+
+    if (!inProgressStep) {
+      return 'work-order';
+    }
+
+    return this.isWorkOrderStep(inProgressStep) ? 'work-order' : `step:${inProgressStep.idDoc}`;
+  }
+
+  private findTabIdByStepName(stepName: string): string {
+    const step = this.selectedOrderWorkflowSteps().find((item) => item.stepName === stepName);
+    if (!step) {
+      return 'work-order';
+    }
+
+    return this.isWorkOrderStep(step) ? 'work-order' : `step:${step.idDoc}`;
+  }
+
   private loadSelectedOrderDetail(order: WorkOrderView, onComplete?: () => void): void {
     forkJoin({
       workflowSteps: this.workOrderService.getWorkflowSteps(order.idDoc).pipe(take(1)),
@@ -1418,6 +1609,21 @@ export class WorkOrderComponent {
     }).subscribe({
       next: ({ workflowSteps, equipments }) => {
         this.selectedOrderWorkflowSteps.set(workflowSteps);
+        const selectedTab = this.selectedOrderTab();
+        const availableTabs = new Set(['work-order', ...workflowSteps.map((step) => `step:${step.idDoc}`)]);
+        const defaultTab = this.getDefaultTabFromSteps(workflowSteps);
+        const resolvedTab =
+          selectedTab === 'work-order' && defaultTab !== 'work-order'
+            ? defaultTab
+            : availableTabs.has(selectedTab)
+              ? selectedTab
+              : defaultTab;
+        this.selectedOrderTab.set(resolvedTab);
+        const selectedStep =
+          resolvedTab === 'work-order'
+            ? [...workflowSteps].sort((a, b) => a.order - b.order).find((item) => this.isWorkOrderStep(item)) || null
+            : [...workflowSteps].find((item) => `step:${item.idDoc}` === resolvedTab) || null;
+        this.prefillNextAssignedUserId(selectedStep);
         if (!equipments.length) {
           this.selectedOrderEquipments.set([]);
           onComplete?.();

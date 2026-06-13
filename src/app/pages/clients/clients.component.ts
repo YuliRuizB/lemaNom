@@ -184,7 +184,7 @@ export class ClientsComponent {
             return this.clientService.uploadClientImage(editingId, selectedImage).pipe(
               switchMap((downloadUrl) =>
                 this.clientService
-                  .updateClient(editingId, { imageurl: downloadUrl })
+                  .updateClient(editingId, { urlLogo: downloadUrl })
                   .pipe(switchMap(() => of(downloadUrl)))
               )
             );
@@ -203,7 +203,7 @@ export class ClientsComponent {
               this.selectedClient.set({
                 ...current,
                 ...updatePayload,
-                imageurl: downloadUrl || current.imageurl,
+                urlLogo: downloadUrl || current.urlLogo,
               } as Client);
             }
             this.loadClients();
@@ -234,7 +234,7 @@ export class ClientsComponent {
         return this.clientService.uploadClientImage(clientId, selectedImage).pipe(
           switchMap((downloadUrl) =>
             this.clientService
-              .updateClient(clientId, { imageurl: downloadUrl })
+              .updateClient(clientId, { urlLogo: downloadUrl })
               .pipe(switchMap(() => of(clientId)))
           )
         );
@@ -306,11 +306,11 @@ export class ClientsComponent {
   }
 
   openImagePreview(client: Client): void {
-    if (!client.imageurl) {
+    if (!client.urlLogo) {
       return;
     }
 
-    this.previewImageUrl.set(client.imageurl);
+    this.previewImageUrl.set(client.urlLogo);
     this.previewImageTitle.set(client.name);
   }
 

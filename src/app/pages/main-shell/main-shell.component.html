@@ -1,7 +1,11 @@
 <main class="main-shell" [class.main-shell--collapsed]="isSidebarCollapsed">
   <aside class="shell-sidebar">
     <div class="shell-sidebar__brand">
-      <img class="shell-sidebar__logo" src="assets/5.png" alt="LEMA Gestion Normativa" />
+      <img
+        class="shell-sidebar__logo"
+        [src]="customerLogoUrl || 'assets/5.png'"
+        alt="LEMA Gestion Normativa"
+      />
     </div>
 
     <nav class="shell-nav" aria-label="Menu principal">

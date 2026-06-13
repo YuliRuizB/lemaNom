@@ -1,1 +1,695 @@
-<section class="measurements-page">Medicion</section>
+<section class="measurements-page">
+  @if (isLoading()) {
+    <p class="measurements-page__empty">Cargando equipos...</p>
+  } @else if (!equipments().length) {
+    <p class="measurements-page__empty">Esta orden no tiene equipos de medición asociados.</p>
+  } @else {
+    <div class="measurements-equipment">
+      <h4 class="measurements-equipment__title">Equipos de medición</h4>
+      <div class="measurements-equipment__list">
+        @for (item of equipments(); track item.idDoc) {
+          <article class="m-equipment-card">
+            <div class="m-equipment-card__fields">
+              <div class="m-equipment-card__field">
+                <span class="m-equipment-card__label">Equipo</span>
+                <span class="m-equipment-card__value">{{ item.equipmentType || '—' }}</span>
+              </div>
+              <div class="m-equipment-card__field">
+                <span class="m-equipment-card__label">Marca</span>
+                <span class="m-equipment-card__value">{{ item.equipmentBrand || '—' }}</span>
+              </div>
+              <div class="m-equipment-card__field">
+                <span class="m-equipment-card__label">Modelo</span>
+                <span class="m-equipment-card__value">{{ item.equipmentModel || '—' }}</span>
+              </div>
+              <div class="m-equipment-card__field">
+                <span class="m-equipment-card__label">NS</span>
+                <span class="m-equipment-card__value">{{ item.equipmentNs || '—' }}</span>
+              </div>
+              <div class="m-equipment-card__field">
+                <span class="m-equipment-card__label">Frecuencia</span>
+                <span class="m-equipment-card__value">{{ item.equipmentFrecuency || '—' }}</span>
+              </div>
+              <div class="m-equipment-card__field">
+                <span class="m-equipment-card__label">Promedio FC</span>
+                <span class="m-equipment-card__value">
+                  {{ item.promedioFC != null ? (item.promedioFC | number:'1.4-4') : '—' }}
+                </span>
+              </div>
+              <div class="m-equipment-card__field m-equipment-card__field--voltage">
+                <span class="m-equipment-card__label">Voltaje</span>
+                <div class="m-equipment-card__voltage-row">
+                  <select
+                    class="m-equipment-card__voltage-input"
+                    [ngModel]="voltageEdits()[item.idDoc] ?? (item.equipmentVoltage || '')"
+                    (ngModelChange)="setVoltageEdit(item.idDoc, $event)"
+                  >
+                    <option value="">Selecciona</option>
+                    <option value="25 V">25 V</option>
+                    <option value="50 V">50 V</option>
+                  </select>
+                  <button
+                    class="m-equipment-card__save-btn"
+                    type="button"
+                    [disabled]="savingVoltageId() === item.idDoc"
+                    (click)="saveVoltage(item)"
+                  >
+                    {{ savingVoltageId() === item.idDoc ? 'Guardando...' : 'Guardar' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    </div>
+
+    <nav class="measurements-tabs">
+      <button
+        class="measurements-tab"
+        [class.measurements-tab--active]="activeTab() === 'points'"
+        type="button"
+        (click)="activeTab.set('points')"
+      >Puntos</button>
+      <button
+        class="measurements-tab"
+        [class.measurements-tab--active]="activeTab() === 'correction'"
+        type="button"
+        (click)="activeTab.set('correction')"
+      >Corrección de datos</button>
+    </nav>
+
+    @if (activeTab() === 'correction') {
+      <div class="measurements-correction">
+        @if (!points().length) {
+          <p class="measurements-page__empty">Aún no hay puntos capturados.</p>
+        } @else {
+          <div class="measurements-correction__tables">
+
+            <!-- Tabla 1: valores originales -->
+            <div class="measurements-correction__table-wrap">
+              <table class="measurements-correction__table">
+                <thead>
+                  <tr>
+                    <th rowspan="2">Punto No.</th>
+                    <th colspan="7" class="measurements-correction__group">Valores de la medición</th>
+                  </tr>
+                  <tr>
+                    <th>P1 (1m)</th><th>P1 (4m)</th><th>P1 (7m)</th>
+                    <th>P1 (10m)</th><th>P1 (13m)</th><th>P1 (16m)</th><th>P1 (19m)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (point of points(); track point.idDoc) {
+                    <tr>
+                      <td class="measurements-correction__num">{{ point.pointNumber }}</td>
+                      <td>{{ point.measurementData.p1_1m  ?? '—' }}</td>
+                      <td>{{ point.measurementData.p1_4m  ?? '—' }}</td>
+                      <td>{{ point.measurementData.p1_7m  ?? '—' }}</td>
+                      <td>{{ point.measurementData.p1_10m ?? '—' }}</td>
+                      <td>{{ point.measurementData.p1_13m ?? '—' }}</td>
+                      <td>{{ point.measurementData.p1_16m ?? '—' }}</td>
+                      <td>{{ point.measurementData.p1_19m ?? '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Tabla 2: valores corregidos por FC -->
+            <div class="measurements-correction__table-wrap">
+              <table class="measurements-correction__table">
+                <thead>
+                  <tr>
+                    <th rowspan="2">Punto No.</th>
+                    <th colspan="7" class="measurements-correction__group">
+                      Valores corregidos por factor de corrección, certificado de calibración.
+                      @if (factorCorreccion() != null) {
+                        <span class="measurements-correction__factor"> FC = {{ factorCorreccion() | number:'1.4-4' }}</span>
+                      }
+                    </th>
+                  </tr>
+                  <tr>
+                    <th>P1 (1m)</th><th>P1 (4m)</th><th>P1 (7m)</th>
+                    <th>P1 (10m)</th><th>P1 (13m)</th><th>P1 (16m)</th><th>P1 (19m)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (point of points(); track point.idDoc) {
+                    <tr>
+                      <td class="measurements-correction__num">{{ point.pointNumber }}</td>
+                      <td>{{ point.measurementData.p1_1m  != null && factorCorreccion() != null ? (point.measurementData.p1_1m  * factorCorreccion()! | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_4m  != null && factorCorreccion() != null ? (point.measurementData.p1_4m  * factorCorreccion()! | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_7m  != null && factorCorreccion() != null ? (point.measurementData.p1_7m  * factorCorreccion()! | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_10m != null && factorCorreccion() != null ? (point.measurementData.p1_10m * factorCorreccion()! | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_13m != null && factorCorreccion() != null ? (point.measurementData.p1_13m * factorCorreccion()! | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_16m != null && factorCorreccion() != null ? (point.measurementData.p1_16m * factorCorreccion()! | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_19m != null && factorCorreccion() != null ? (point.measurementData.p1_19m * factorCorreccion()! | number:'1.2-2') : '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Tabla 3: valores corregidos por resistencia de cables -->
+            <div class="measurements-correction__table-wrap">
+              <table class="measurements-correction__table">
+                <thead>
+                  <tr>
+                    <th rowspan="2">Punto No.</th>
+                    <th colspan="7" class="measurements-correction__group">
+                      Valores corregidos por la resistencia de los cables del equipo de medición.
+                      @if (cableResistance != null) {
+                        <span class="measurements-correction__factor"> R = {{ cableResistance }}</span>
+                      }
+                    </th>
+                  </tr>
+                  <tr>
+                    <th>P1 (1m)</th><th>P1 (4m)</th><th>P1 (7m)</th>
+                    <th>P1 (10m)</th><th>P1 (13m)</th><th>P1 (16m)</th><th>P1 (19m)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (point of points(); track point.idDoc) {
+                    <tr>
+                      <td class="measurements-correction__num">{{ point.pointNumber }}</td>
+                      <td>{{ point.measurementData.p1_1m  != null && factorCorreccion() != null && cableResistance != null ? ((point.measurementData.p1_1m  * factorCorreccion()!) - cableResistance | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_4m  != null && factorCorreccion() != null && cableResistance != null ? ((point.measurementData.p1_4m  * factorCorreccion()!) - cableResistance | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_7m  != null && factorCorreccion() != null && cableResistance != null ? ((point.measurementData.p1_7m  * factorCorreccion()!) - cableResistance | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_10m != null && factorCorreccion() != null && cableResistance != null ? ((point.measurementData.p1_10m * factorCorreccion()!) - cableResistance | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_13m != null && factorCorreccion() != null && cableResistance != null ? ((point.measurementData.p1_13m * factorCorreccion()!) - cableResistance | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_16m != null && factorCorreccion() != null && cableResistance != null ? ((point.measurementData.p1_16m * factorCorreccion()!) - cableResistance | number:'1.2-2') : '—' }}</td>
+                      <td>{{ point.measurementData.p1_19m != null && factorCorreccion() != null && cableResistance != null ? ((point.measurementData.p1_19m * factorCorreccion()!) - cableResistance | number:'1.2-2') : '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        }
+      </div>
+    }
+
+    @if (activeTab() === 'points') {
+    <section class="measurements-points">
+      <div class="measurements-points__header">
+        <div class="measurements-points__heading">
+          <span class="measurements-points__eyebrow">Captura</span>
+          <h4 class="measurements-points__title">Puntos de medición</h4>
+          <p class="measurements-points__subtitle">
+            Registra cada punto evaluado con sus condiciones y lecturas.
+          </p>
+        </div>
+        <div class="measurements-points__actions">
+        <button class="measurements-points__add-btn" type="button" (click)="addPoint()">
+            + Agregar punto
+          </button>
+          <button
+            class="measurements-points__save-btn"
+            type="button"
+            [disabled]="!points().length || isSavingPoints()"
+            (click)="savePoints()"
+          >
+            {{ isSavingPoints() ? 'Guardando...' : 'Guardar' }}
+          </button>
+       
+        </div>
+      </div>
+
+      @if (!points().length) {
+        <p class="measurements-page__empty">Aún no hay puntos capturados.</p>
+      } @else {
+        <div class="measurements-points-list">
+          <div class="measurements-points-list__title">
+            <span>Puntos guardados</span>
+            <div class="measurements-points-list__title-actions">
+              <span class="measurements-points-list__hint">Selecciona un renglón para editarlo</span>
+              <button
+                class="measurements-points-list__export-btn"
+                type="button"
+                (click)="exportToExcel()"
+              >
+                ↓ Exportar Excel
+              </button>
+            </div>
+          </div>
+          <div class="measurements-points-list__table-wrap">
+            <table class="measurements-points-list__table">
+              <thead>
+                <tr>
+                  <th rowspan="2">Punto No.</th>
+                  <th rowspan="2">Ubicación</th>
+                  <th rowspan="2">Tipo de Electrodo</th>
+                  <th rowspan="2">Pararrayo</th>
+                  <th rowspan="2">Altura del pararrayos (m)</th>
+                  <th rowspan="2">Radio de protección (m)</th>
+                  <th rowspan="2">Tipo de sistema</th>
+                  <th rowspan="2">Temperatura ambiental (°C)</th>
+                  <th rowspan="2">Humedad Relativa (%)</th>
+                  <th rowspan="2">Condiciones de medición</th>
+                  <th rowspan="2">Tipo de suelo</th>
+                  <th rowspan="2">Hora inicial (hh:mm)</th>
+                  <th rowspan="2">Hora final (hh:mm)</th>
+                  <th colspan="7" class="measurements-points-list__group-header">Datos de medición</th>
+                  <th rowspan="2">Voltaje</th>
+                  <th rowspan="2">Existe continuidad?</th>
+                  <th rowspan="2">Fuentes generadoras</th>
+                  <th colspan="3" class="measurements-points-list__group-header">Equipos conectados</th>
+                  <th rowspan="2">Observaciones</th>
+                  <th rowspan="2"></th>
+                </tr>
+                <tr>
+                  <th>P1 (1m)</th>
+                  <th>P1 (4m)</th>
+                  <th>P1 (7m)</th>
+                  <th>P1 (10m)</th>
+                  <th>P1 (13m)</th>
+                  <th>P1 (16m)</th>
+                  <th>P1 (19m)</th>
+                  <th>1</th>
+                  <th>2</th>
+                  <th>3</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (point of points(); track point.idDoc) {
+                  <tr
+                    class="measurements-points-list__row"
+                    [class.measurements-points-list__row--active]="selectedPointId() === point.idDoc"
+                    (click)="selectPoint(point.idDoc)"
+                  >
+                    <td>{{ point.pointNumber }}</td>
+                    <td>{{ point.location || '—' }}</td>
+                    <td>{{ point.electrodeType === 'unique' ? 'Único' : 'Múltiple' }}</td>
+                    <td>{{ point.hasLightningRod ? 'Sí' : 'No' }}</td>
+                    <td>{{ point.lightningRodHeight ?? '—' }}</td>
+                    <td>{{ point.protectionRadius ?? '—' }}</td>
+                    <td>{{ point.systemType || '—' }}</td>
+                    <td>{{ point.temperature ?? '—' }}</td>
+                    <td>{{ point.humidity ?? '—' }}</td>
+                    <td>{{ point.measurementCondition === 'dry' ? 'Seco' : 'Húmedo' }}</td>
+                    <td>
+                      {{
+                        point.soilType === 'cement'
+                          ? 'Cemento'
+                          : point.soilType === 'soil'
+                            ? 'Tierra'
+                            : 'Asfalto'
+                      }}
+                    </td>
+                    <td>{{ point.startTime || '—' }}</td>
+                    <td>{{ point.endTime || '—' }}</td>
+                    <td>{{ point.measurementData.p1_1m ?? '—' }}</td>
+                    <td>{{ point.measurementData.p1_4m ?? '—' }}</td>
+                    <td>{{ point.measurementData.p1_7m ?? '—' }}</td>
+                    <td>{{ point.measurementData.p1_10m ?? '—' }}</td>
+                    <td>{{ point.measurementData.p1_13m ?? '—' }}</td>
+                    <td>{{ point.measurementData.p1_16m ?? '—' }}</td>
+                    <td>{{ point.measurementData.p1_19m ?? '—' }}</td>
+                    <td>{{
+                      point.voltageStatus === 'absence' ? 'Ausencia'
+                      : point.voltageStatus === 'presence' ? 'Presencia'
+                      : point.voltageStatus === 'empty' ? 'Vacío'
+                      : '—'
+                    }}</td>
+                    <td>{{
+                      point.hasContinuity === true ? 'Sí'
+                      : point.hasContinuity === false ? 'No'
+                      : '—'
+                    }}</td>
+                    <td>{{ labelGeneratorSources(point.generatorSources) }}</td>
+                    <td>{{ labelGeneratorSource(point.connectedEquipment[0]?.description) }}</td>
+                    <td>{{ labelGeneratorSource(point.connectedEquipment[1]?.description) }}</td>
+                    <td>{{ labelGeneratorSource(point.connectedEquipment[2]?.description) }}</td>
+                    <td>{{ point.observations || '—' }}</td>
+                    <td class="measurements-points-list__cell-delete">
+                      <button
+                        class="measurements-points-list__delete-btn"
+                        type="button"
+                        title="Eliminar punto"
+                        (click)="$event.stopPropagation(); deletePoint(point.idDoc)"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      @if (selectedPoint(); as point) {
+        <div class="measurements-points__editor">
+          <article class="m-point-card">
+            <div class="m-point-card__editor-header">
+              <span class="m-point-card__editor-title">Editando punto {{ point.pointNumber }}</span>
+              <div class="m-point-card__editor-actions">
+                <button
+                  class="m-point-card__save-btn"
+                  type="button"
+                  [disabled]="isSavingPoints()"
+                  (click)="savePoints()"
+                >
+                  {{ isSavingPoints() ? 'Guardando...' : 'Guardar' }}
+                </button>
+                <button
+                  class="m-point-card__delete-btn"
+                  type="button"
+                  (click)="deletePoint(point.idDoc)"
+                >
+                  Eliminar punto
+                </button>
+                <button
+                  class="m-point-card__close-btn"
+                  type="button"
+                  (click)="closeEditor()"
+                >
+                  &#x2715; Cerrar
+                </button>
+              </div>
+            </div>
+            <div class="m-point-card__grid">
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">No.</span>
+                <input class="m-point-card__input" type="text" [ngModel]="point.pointNumber" readonly />
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Ubicación</span>
+                <input
+                  class="m-point-card__input"
+                  type="text"
+                  [ngModel]="point.location"
+                  (ngModelChange)="updatePoint(point.idDoc, 'location', $event)"
+                />
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Tipo de Electrodo</span>
+                <select
+                  class="m-point-card__input"
+                  [ngModel]="point.electrodeType"
+                  (ngModelChange)="updatePoint(point.idDoc, 'electrodeType', $event)"
+                >
+                  <option value="unique">Único</option>
+                  <option value="multiple">Múltiple</option>
+                </select>
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Pararrayo</span>
+                <select
+                  class="m-point-card__input"
+                  [ngModel]="point.hasLightningRod ? 'yes' : 'no'"
+                  (ngModelChange)="updatePoint(point.idDoc, 'hasLightningRod', $event === 'yes')"
+                >
+                  <option value="yes">Sí</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+            </div>
+
+            @if (point.hasLightningRod) {
+              <div class="m-point-card__grid m-point-card__grid--lightning">
+                <div class="m-point-card__field">
+                  <span class="m-point-card__label">Altura del pararrayos (m)</span>
+                  <input
+                    class="m-point-card__input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="point.lightningRodHeight ?? ''"
+                    (ngModelChange)="updatePoint(point.idDoc, 'lightningRodHeight', $event === '' ? undefined : +$event)"
+                  />
+                </div>
+
+                <div class="m-point-card__field">
+                  <span class="m-point-card__label">Radio de protección (m)</span>
+                  <input
+                    class="m-point-card__input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="point.protectionRadius ?? ''"
+                    (ngModelChange)="updatePoint(point.idDoc, 'protectionRadius', $event === '' ? undefined : +$event)"
+                  />
+                </div>
+
+                <div class="m-point-card__field">
+                  <span class="m-point-card__label">Tipo de sistema</span>
+                  <input
+                    class="m-point-card__input"
+                    type="text"
+                    [ngModel]="point.systemType ?? ''"
+                    (ngModelChange)="updatePoint(point.idDoc, 'systemType', $event || undefined)"
+                  />
+                </div>
+              </div>
+            }
+
+            <div class="m-point-card__grid m-point-card__grid--conditions">
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Temperatura ambiental (°C)</span>
+                <input
+                  class="m-point-card__input"
+                  type="number"
+                  step="0.1"
+                  [ngModel]="point.temperature ?? ''"
+                  (ngModelChange)="updatePoint(point.idDoc, 'temperature', $event === '' ? undefined : +$event)"
+                />
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Humedad relativa (%)</span>
+                <input
+                  class="m-point-card__input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  [ngModel]="point.humidity ?? ''"
+                  (ngModelChange)="updatePoint(point.idDoc, 'humidity', $event === '' ? undefined : +$event)"
+                />
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Condiciones de medición</span>
+                <select
+                  class="m-point-card__input"
+                  [ngModel]="point.measurementCondition"
+                  (ngModelChange)="updatePoint(point.idDoc, 'measurementCondition', $event)"
+                >
+                  <option value="dry">Seco</option>
+                  <option value="wet">Húmedo</option>
+                </select>
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Tipo de suelo</span>
+                <select
+                  class="m-point-card__input"
+                  [ngModel]="point.soilType"
+                  (ngModelChange)="updatePoint(point.idDoc, 'soilType', $event)"
+                >
+                  <option value="cement">Cemento</option>
+                  <option value="soil">Tierra</option>
+                  <option value="asphalt">Asfalto</option>
+                </select>
+              </div>
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Hora inicial (hh:mm)</span>
+                <input
+                  class="m-point-card__input"
+                  type="time"
+                  [ngModel]="point.startTime ?? ''"
+                  (ngModelChange)="updatePoint(point.idDoc, 'startTime', $event || undefined)"
+                />
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Hora final (hh:mm)</span>
+                <input
+                  class="m-point-card__input"
+                  type="time"
+                  [ngModel]="point.endTime ?? ''"
+                  (ngModelChange)="updatePoint(point.idDoc, 'endTime', $event || undefined)"
+                />
+              </div>
+            </div>
+
+            <div class="m-point-measurements">
+              <div class="m-point-measurements__title">Datos de medición</div>
+              <div class="m-point-measurements__table">
+                <div class="m-point-measurements__head">P1 (1m)</div>
+                <div class="m-point-measurements__head">P1 (4m)</div>
+                <div class="m-point-measurements__head">P1 (7m)</div>
+                <div class="m-point-measurements__head">P1 (10m)</div>
+                <div class="m-point-measurements__head">P1 (13m)</div>
+                <div class="m-point-measurements__head">P1 (16m)</div>
+                <div class="m-point-measurements__head">P1 (19m)</div>
+
+                <input
+                  class="m-point-measurements__input"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="point.measurementData.p1_1m ?? ''"
+                  (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_1m', $event)"
+                />
+                <input
+                  class="m-point-measurements__input"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="point.measurementData.p1_4m ?? ''"
+                  (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_4m', $event)"
+                />
+                <input
+                  class="m-point-measurements__input"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="point.measurementData.p1_7m ?? ''"
+                  (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_7m', $event)"
+                />
+                <input
+                  class="m-point-measurements__input"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="point.measurementData.p1_10m ?? ''"
+                  (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_10m', $event)"
+                />
+                <input
+                  class="m-point-measurements__input"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="point.measurementData.p1_13m ?? ''"
+                  (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_13m', $event)"
+                />
+                <input
+                  class="m-point-measurements__input"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="point.measurementData.p1_16m ?? ''"
+                  (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_16m', $event)"
+                />
+                <input
+                  class="m-point-measurements__input"
+                  type="number"
+                  step="0.01"
+                  [ngModel]="point.measurementData.p1_19m ?? ''"
+                  (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_19m', $event)"
+                />
+              </div>
+            </div>
+
+            <div class="m-point-card__grid m-point-card__grid--post-measurement">
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Voltaje</span>
+                <select
+                  class="m-point-card__input"
+                  [ngModel]="point.voltageStatus ?? 'empty'"
+                  (ngModelChange)="updatePoint(point.idDoc, 'voltageStatus', $event)"
+                >
+                  <option value="empty">Sin definir</option>
+                  <option value="absence">Ausencia</option>
+                  <option value="presence">Presencia</option>
+                </select>
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Existe continuidad?</span>
+                <select
+                  class="m-point-card__input"
+                  [ngModel]="point.hasContinuity == null ? '' : (point.hasContinuity ? 'yes' : 'no')"
+                  (ngModelChange)="updatePoint(point.idDoc, 'hasContinuity', $event === '' ? undefined : $event === 'yes')"
+                >
+                  <option value="">Sin definir</option>
+                  <option value="yes">Sí</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+
+              <div class="m-point-card__field">
+                <span class="m-point-card__label">Fuentes generadoras</span>
+                <select
+                  class="m-point-card__input"
+                  [ngModel]="point.generatorSources?.[0] ?? ''"
+                  (ngModelChange)="onGeneratorSourceChange(point.idDoc, $event)"
+                >
+                  <option value="">Selecciona una fuente</option>
+                  @for (source of generatorSourceOptions; track source.value) {
+                    <option [value]="source.value">
+                      {{ source.label }}
+                    </option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="m-point-connected">
+              <div class="m-point-connected__note">
+                Indicar al menos uno de los equipos conectados, no dejar espacios en blanco, en su
+                caso anotar <strong>"Sin equipo"</strong>.
+              </div>
+              <div class="m-point-connected__title">Equipos conectados</div>
+              <div class="m-point-connected__grid">
+                <div class="m-point-connected__head">1</div>
+                <div class="m-point-connected__head">2</div>
+                <div class="m-point-connected__head">3</div>
+
+                <select
+                  class="m-point-connected__input"
+                  [ngModel]="getConnectedEquipmentValue(point, 0)"
+                  (ngModelChange)="updateConnectedEquipment(point.idDoc, 0, $event)"
+                >
+                  <option value="">Selecciona</option>
+                  @for (source of generatorSourceOptions; track source.value) {
+                    <option [value]="source.value">{{ source.label }}</option>
+                  }
+                </select>
+
+                <select
+                  class="m-point-connected__input"
+                  [ngModel]="getConnectedEquipmentValue(point, 1)"
+                  (ngModelChange)="updateConnectedEquipment(point.idDoc, 1, $event)"
+                >
+                  <option value="">Selecciona</option>
+                  @for (source of generatorSourceOptions; track source.value) {
+                    <option [value]="source.value">{{ source.label }}</option>
+                  }
+                </select>
+
+                <select
+                  class="m-point-connected__input"
+                  [ngModel]="getConnectedEquipmentValue(point, 2)"
+                  (ngModelChange)="updateConnectedEquipment(point.idDoc, 2, $event)"
+                >
+                  <option value="">Selecciona</option>
+                  @for (source of generatorSourceOptions; track source.value) {
+                    <option [value]="source.value">{{ source.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="m-point-card__field m-point-card__field--observations">
+              <span class="m-point-card__label">Observaciones</span>
+              <textarea
+                class="m-point-card__input m-point-card__input--textarea"
+                rows="3"
+                [ngModel]="point.observations ?? ''"
+                (ngModelChange)="updatePoint(point.idDoc, 'observations', $event || undefined)"
+              ></textarea>
+            </div>
+          </article>
+        </div>
+      } @else if (points().length) {
+        <div class="measurements-points__placeholder">
+          Selecciona un punto guardado o presiona <strong>Agregar punto</strong> para capturar uno nuevo.
+        </div>
+      }
+    </section>
+    } <!-- end @if activeTab === 'points' -->
+  }
+</section>

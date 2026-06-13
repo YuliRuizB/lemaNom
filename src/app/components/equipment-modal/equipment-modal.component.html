@@ -56,6 +56,22 @@
       </div>
     </div>
 
+    <div class="form-row">
+      <div class="field">
+        <label class="field__label" for="eq-frecuency">Frecuencia</label>
+        <input id="eq-frecuency" class="field__input" type="text" formControlName="frecuency" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="eq-voltage">Voltaje</label>
+        <select id="eq-voltage" class="field__input" formControlName="voltage">
+          <option value="">Selecciona un voltaje</option>
+          <option value="25V">25V</option>
+          <option value="50V">50V</option>
+        </select>
+      </div>
+    </div>
+
     <div class="field field--inline">
       <span class="field__label">Activo</span>
       <label class="toggle">

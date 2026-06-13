@@ -7,6 +7,7 @@ import {
   deleteField,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -71,6 +72,13 @@ export class ClientService {
     return from(addDoc(witnessesRef, newWitness)).pipe(map(() => void 0));
   }
 
+  getClientPlantById(clientId: string, plantId: string): Observable<ClientPlant | null> {
+    const plantRef = doc(this.firestore, 'client', clientId, 'plants', plantId);
+    return from(getDoc(plantRef)).pipe(
+      map((snapshot) => (snapshot.exists() ? this.toPlant(snapshot.id, snapshot.data()) : null))
+    );
+  }
+
   getClientPlants(clientId: string): Observable<ClientPlant[]> {
     const plantsRef = collection(this.firestore, 'client', clientId, 'plants');
     const plantsQuery = query(plantsRef, limit(500));
@@ -113,7 +121,7 @@ export class ClientService {
       'clientNumber' | 'name' | 'legalName' | 'rfc' | 'email' | 'phone' | 'active'
     > &
       Partial<Pick<Client, 'customerId' | 'customerName'>> &
-      Partial<Pick<Client, 'imageurl'>>
+      Partial<Pick<Client, 'urlLogo'>>
   ): Observable<string> {
     const ref = collection(this.firestore, 'client');
     const payload: Record<string, any> = {
@@ -129,7 +137,7 @@ export class ClientService {
     if (data.phone) payload['phone'] = data.phone;
     if (data.customerId) payload['customerId'] = data.customerId;
     if (data.customerName) payload['customerName'] = data.customerName;
-    if (data.imageurl) payload['imageurl'] = data.imageurl;
+    if (data.urlLogo) payload['urlLogo'] = data.urlLogo;
 
     return from(addDoc(ref, payload)).pipe(map((docRef) => docRef.id));
   }
@@ -152,7 +160,7 @@ export class ClientService {
 
   uploadClientImage(clientId: string, file: File): Observable<string> {
     const extension = file.name.split('.').pop() || 'png';
-    const storageRef = ref(this.storage, `client-images/${clientId}/image.${extension}`);
+    const storageRef = ref(this.storage, `customer/${clientId}/image.${extension}`);
 
     return from(uploadBytes(storageRef, file)).pipe(
       map((result) => result.ref),
@@ -263,7 +271,7 @@ export class ClientService {
       email: data['email'],
       phone: data['phone'],
       brandUrl: data['brandUrl'],
-      imageurl: data['imageurl'],
+      urlLogo: data['urlLogo'],
       customerId: data['customerId'],
       customerName: data['customerName'],
       active: data['active'],

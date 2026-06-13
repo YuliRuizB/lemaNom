@@ -35,6 +35,8 @@ export class EquipmentModalComponent implements OnInit {
     brand:      [''],
     model:      [''],
     range:      [''],
+    frecuency:  [''],
+    voltage:    [''],
     active:     [true],
   });
 
@@ -69,6 +71,8 @@ export class EquipmentModalComponent implements OnInit {
       brand:        v.brand?.trim()    || undefined,
       model:        v.model?.trim()    || undefined,
       range:        v.range?.trim()    || undefined,
+      frecuency:    v.frecuency?.trim() || undefined,
+      voltage:      v.voltage?.trim()   || undefined,
       active:       v.active!,
       customerId:   this.customerId   || undefined,
       customerName: this.customerName || undefined,

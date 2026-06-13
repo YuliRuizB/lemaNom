@@ -20,12 +20,14 @@
           <th>Modelo</th>
           <th>NS</th>
           <th>Rango</th>
+          <th>Frecuencia</th>
+          <th>Voltaje</th>
           <th>Activo</th>
         </tr>
       </thead>
       <tbody>
         @if (loading()) {
-          <tr><td colspan="7" class="equipo-table__state">Cargando…</td></tr>
+          <tr><td colspan="9" class="equipo-table__state">Cargando…</td></tr>
         } @else {
           @for (item of pagedEquipments(); track item.idDoc) {
             <tr
@@ -39,6 +41,8 @@
               <td class="equipo-table__secondary">{{ item.model ?? '—' }}</td>
               <td>{{ item.ns }}</td>
               <td class="equipo-table__secondary">{{ item.range ?? '—' }}</td>
+              <td class="equipo-table__secondary">{{ item.frecuency ?? '—' }}</td>
+              <td class="equipo-table__secondary">{{ item.voltage ?? '—' }}</td>
               <td>
                 <span class="badge" [class.badge--active]="item.active" [class.badge--inactive]="!item.active">
                   {{ item.active ? 'Activo' : 'Inactivo' }}
@@ -46,7 +50,7 @@
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="7" class="equipo-table__state">Sin equipos registrados.</td></tr>
+            <tr><td colspan="9" class="equipo-table__state">Sin equipos registrados.</td></tr>
           }
         }
       </tbody>
@@ -71,132 +75,548 @@
       <div class="equipo-detail__header">
         <span class="equipo-detail__title">{{ eq.name }}</span>
         <div class="equipo-detail__header-actions">
-          @if (!editMode()) {
+          @if (!editMode() && activeTab() === 'info') {
             <button class="btn-detail btn-detail--edit" type="button" (click)="startEdit()">Editar</button>
           }
           <button class="equipo-detail__close" type="button" (click)="selectEquipment(eq)">&#x2715;</button>
         </div>
       </div>
 
-      <!-- MODO VISTA -->
-      @if (!editMode()) {
-        <div class="equipo-detail__grid">
-          <div class="detail-item">
-            <span class="detail-item__label">Nombre</span>
-            <span class="detail-item__value">{{ eq.name }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Identificador</span>
-            <span class="detail-item__value">{{ eq.identifier }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">NS</span>
-            <span class="detail-item__value">{{ eq.ns }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Marca</span>
-            <span class="detail-item__value">{{ eq.brand || '—' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Modelo</span>
-            <span class="detail-item__value">{{ eq.model || '—' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Rango</span>
-            <span class="detail-item__value">{{ eq.range || '—' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Empresa</span>
-            <span class="detail-item__value">{{ eq.customerName || '—' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Activo</span>
-            <span class="badge" [class.badge--active]="eq.active" [class.badge--inactive]="!eq.active">
-              {{ eq.active ? 'Activo' : 'Inactivo' }}
-            </span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Creado</span>
-            <span class="detail-item__value">{{ eq.createdAt | date: 'dd/MM/yyyy' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-item__label">Actualizado</span>
-            <span class="detail-item__value">{{ eq.updatedAt ? (eq.updatedAt | date: 'dd/MM/yyyy') : '—' }}</span>
-          </div>
-        </div>
-      }
-
-      <!-- MODO EDICIÓN -->
-      @if (editMode()) {
-        <form class="equipo-detail__edit-form" [formGroup]="editForm" (ngSubmit)="saveEdit()">
-          <div class="edit-grid">
-            <div class="edit-field">
-              <label class="edit-field__label">Nombre <span class="edit-field__req">*</span></label>
-              <input class="edit-field__input" type="text" formControlName="name" />
-              @if (editForm.get('name')?.invalid && editForm.get('name')?.touched) {
-                <p class="edit-field__error">Obligatorio (mín. 2 caracteres).</p>
-              }
-            </div>
-            <div class="edit-field">
-              <label class="edit-field__label">Identificador <span class="edit-field__req">*</span></label>
-              <input class="edit-field__input" type="text" formControlName="identifier" />
-              @if (editForm.get('identifier')?.invalid && editForm.get('identifier')?.touched) {
-                <p class="edit-field__error">Obligatorio.</p>
-              }
-            </div>
-            <div class="edit-field">
-              <label class="edit-field__label">NS <span class="edit-field__req">*</span></label>
-              <input class="edit-field__input" type="text" formControlName="ns" />
-              @if (editForm.get('ns')?.invalid && editForm.get('ns')?.touched) {
-                <p class="edit-field__error">Obligatorio.</p>
-              }
-            </div>
-            <div class="edit-field">
-              <label class="edit-field__label">Marca</label>
-              <input class="edit-field__input" type="text" formControlName="brand" />
-            </div>
-            <div class="edit-field">
-              <label class="edit-field__label">Modelo</label>
-              <input class="edit-field__input" type="text" formControlName="model" />
-            </div>
-            <div class="edit-field">
-              <label class="edit-field__label">Rango</label>
-              <input class="edit-field__input" type="text" formControlName="range" />
-            </div>
-            <div class="edit-field edit-field--inline">
-              <span class="edit-field__label">Activo</span>
-              <label class="toggle">
-                <input type="checkbox" formControlName="active" />
-                <span class="toggle__track"></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="edit-actions">
-            <button class="btn-detail btn-detail--cancel" type="button" (click)="cancelEdit()">Cancelar</button>
-            <button class="btn-detail btn-detail--save" type="submit" [disabled]="saving()">
-              {{ saving() ? 'Guardando…' : 'Guardar' }}
-            </button>
-          </div>
-        </form>
-      }
-
-      <!-- Certificado (siempre visible) -->
-      <div class="equipo-detail__certificate">
-        <span class="detail-item__label">Certificado</span>
-        <div class="certificate-actions">
-          @if (eq.certificateUrl) {
-            <a class="btn-cert btn-cert--view" [href]="eq.certificateUrl" target="_blank" rel="noopener">
-              Ver / Descargar
-            </a>
-          }
-          <label class="btn-cert btn-cert--upload" [class.btn-cert--loading]="uploading()">
-            {{ uploading() ? 'Subiendo…' : (eq.certificateUrl ? 'Reemplazar' : 'Subir certificado') }}
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none"
-              [disabled]="uploading()" (change)="onCertificateSelected($event)" />
-          </label>
-        </div>
+      <!-- Tabs -->
+      <div class="equipo-detail__tabs">
+        <button
+          class="equipo-detail__tab"
+          [class.equipo-detail__tab--active]="activeTab() === 'info'"
+          type="button"
+          (click)="activeTab.set('info')"
+        >Generales</button>
+        <button
+          class="equipo-detail__tab"
+          [class.equipo-detail__tab--active]="activeTab() === 'certificates'"
+          type="button"
+          (click)="activeTab.set('certificates')"
+        >Certificados</button>
+        <button
+          class="equipo-detail__tab"
+          [class.equipo-detail__tab--active]="activeTab() === 'calibration'"
+          type="button"
+          (click)="activeTab.set('calibration')"
+        >Datos de Calibración</button>
+        <button
+          class="equipo-detail__tab"
+          [class.equipo-detail__tab--active]="activeTab() === 'rrr'"
+          type="button"
+          (click)="activeTab.set('rrr')"
+        >Repetibilidad y Reproducibilidad</button>
       </div>
+
+      <!-- TAB: GENERALES -->
+      @if (activeTab() === 'info') {
+        @if (!editMode()) {
+          <div class="equipo-detail__grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Nombre</span>
+              <span class="detail-item__value">{{ eq.name }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Identificador</span>
+              <span class="detail-item__value">{{ eq.identifier }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">NS</span>
+              <span class="detail-item__value">{{ eq.ns }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Marca</span>
+              <span class="detail-item__value">{{ eq.brand || '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Modelo</span>
+              <span class="detail-item__value">{{ eq.model || '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Rango</span>
+              <span class="detail-item__value">{{ eq.range || '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Frecuencia</span>
+              <span class="detail-item__value">{{ eq.frecuency || '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Voltaje</span>
+              <span class="detail-item__value">{{ eq.voltage || '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Empresa</span>
+              <span class="detail-item__value">{{ eq.customerName || '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Activo</span>
+              <span class="badge" [class.badge--active]="eq.active" [class.badge--inactive]="!eq.active">
+                {{ eq.active ? 'Activo' : 'Inactivo' }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Creado</span>
+              <span class="detail-item__value">{{ eq.createdAt | date: 'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Actualizado</span>
+              <span class="detail-item__value">{{ eq.updatedAt ? (eq.updatedAt | date: 'dd/MM/yyyy') : '—' }}</span>
+            </div>
+          </div>
+        }
+
+        @if (editMode()) {
+          <form class="equipo-detail__edit-form" [formGroup]="editForm" (ngSubmit)="saveEdit()">
+            <div class="edit-grid">
+              <div class="edit-field">
+                <label class="edit-field__label">Nombre <span class="edit-field__req">*</span></label>
+                <input class="edit-field__input" type="text" formControlName="name" />
+                @if (editForm.get('name')?.invalid && editForm.get('name')?.touched) {
+                  <p class="edit-field__error">Obligatorio (mín. 2 caracteres).</p>
+                }
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Identificador <span class="edit-field__req">*</span></label>
+                <input class="edit-field__input" type="text" formControlName="identifier" />
+                @if (editForm.get('identifier')?.invalid && editForm.get('identifier')?.touched) {
+                  <p class="edit-field__error">Obligatorio.</p>
+                }
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">NS <span class="edit-field__req">*</span></label>
+                <input class="edit-field__input" type="text" formControlName="ns" />
+                @if (editForm.get('ns')?.invalid && editForm.get('ns')?.touched) {
+                  <p class="edit-field__error">Obligatorio.</p>
+                }
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Marca</label>
+                <input class="edit-field__input" type="text" formControlName="brand" />
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Modelo</label>
+                <input class="edit-field__input" type="text" formControlName="model" />
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Rango</label>
+                <input class="edit-field__input" type="text" formControlName="range" />
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Frecuencia</label>
+                <input class="edit-field__input" type="text" formControlName="frecuency" />
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Voltaje</label>
+                <select class="edit-field__input" formControlName="voltage">
+                  <option value="">Selecciona un voltaje</option>
+                  <option value="25V">25V</option>
+                  <option value="50V">50V</option>
+                </select>
+              </div>
+              <div class="edit-field edit-field--inline">
+                <span class="edit-field__label">Activo</span>
+                <label class="toggle">
+                  <input type="checkbox" formControlName="active" />
+                  <span class="toggle__track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="edit-actions">
+              <button class="btn-detail btn-detail--cancel" type="button" (click)="cancelEdit()">Cancelar</button>
+              <button class="btn-detail btn-detail--save" type="submit" [disabled]="saving()">
+                {{ saving() ? 'Guardando…' : 'Guardar' }}
+              </button>
+            </div>
+          </form>
+        }
+      }
+
+      <!-- TAB: CERTIFICADOS -->
+      @if (activeTab() === 'certificates') {
+        <div class="equipo-detail__certificate">
+          <div class="cert-header">
+            <span class="detail-item__label">Historial de certificados</span>
+            <label class="btn-cert btn-cert--upload" [class.btn-cert--loading]="uploading()">
+              {{ uploading() ? 'Subiendo…' : '+ Subir certificado' }}
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none"
+                [disabled]="uploading()" (change)="onCertificateSelected($event)" />
+            </label>
+          </div>
+
+          @if (loadingCertificates()) {
+            <p class="cert-empty">Cargando historial…</p>
+          } @else if (!certificates().length) {
+            <p class="cert-empty">Sin certificados registrados.</p>
+          } @else {
+            <ul class="cert-history">
+              @for (cert of certificates(); track cert.idDoc; let i = $index) {
+                <li class="cert-history__item" [class.cert-history__item--latest]="i === 0">
+                  <div class="cert-history__info">
+                    @if (i === 0) {
+                      <span class="cert-history__badge">Vigente</span>
+                    }
+                    <span class="cert-history__name" [title]="cert.fileName">{{ cert.fileName }}</span>
+                    <span class="cert-history__date">{{ cert.uploadedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                    @if (cert.uploadedBy) {
+                      <span class="cert-history__by">{{ cert.uploadedBy }}</span>
+                    }
+                  </div>
+                  <a class="btn-cert btn-cert--view" [href]="cert.certificateUrl" target="_blank" rel="noopener">
+                    Ver
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+
+      <!-- TAB: DATOS DE CALIBRACIÓN -->
+      @if (activeTab() === 'calibration') {
+        <div class="calib-tab">
+
+          <!-- Historial de calibraciones -->
+          <div class="calib-history-header">
+            <span class="detail-item__label">Historial de calibraciones</span>
+            @if (!isNewCalibration() && !selectedCalibrationRecord()) {
+              <button class="btn-detail btn-detail--edit" type="button" (click)="openNewCalibration()">
+                + Nueva calibración
+              </button>
+            }
+          </div>
+
+          @if (loadingCalibrations()) {
+            <p class="cert-empty">Cargando historial…</p>
+          } @else if (!calibrationRecords().length && !isNewCalibration()) {
+            <p class="cert-empty">Sin calibraciones registradas.</p>
+          } @else if (!isNewCalibration() && !selectedCalibrationRecord()) {
+            <ul class="calib-history-list">
+              @for (rec of calibrationRecords(); track rec.idDoc; let i = $index) {
+                <li
+                  class="calib-history-list__item"
+                  [class.calib-history-list__item--latest]="i === 0"
+                  (click)="viewCalibrationRecord(rec)"
+                >
+                  <div class="calib-history-list__info">
+                    @if (i === 0) { <span class="cert-history__badge">Vigente</span> }
+                    <span class="calib-history-list__cert">{{ rec.certNumber }}</span>
+                    <span class="calib-history-list__voltage">{{ rec.voltage }}</span>
+                    <span class="cert-history__date">Calibración: {{ rec.calibrationDate }}</span>
+                    @if (rec.expirationDate) {
+                      <span class="cert-history__date">Comprobación: {{ rec.expirationDate }}</span>
+                    }
+                  </div>
+                  <span class="calib-history-list__arrow">›</span>
+                </li>
+              }
+            </ul>
+            <div style="padding: 0 1.25rem 1rem; text-align: right;">
+              <button class="btn-detail btn-detail--edit" type="button" (click)="openNewCalibration()">
+                + Nueva calibración
+              </button>
+            </div>
+          }
+
+          <!-- Formulario (nueva o lectura) -->
+          @if (isNewCalibration() || selectedCalibrationRecord()) {
+            <form class="equipo-detail__edit-form" [formGroup]="calibrationForm" (ngSubmit)="saveCalibration()">
+
+              <div class="calib-form-back">
+                <button class="calib-back-btn" type="button" (click)="cancelCalibrationForm()">
+                  ← Volver al historial
+                </button>
+                @if (selectedCalibrationRecord() && !isEditingCalibration()) {
+                  <span class="calib-readonly-badge">Solo lectura</span>
+                  <button class="btn-detail btn-detail--edit" type="button" (click)="startEditCalibration()">
+                    Editar
+                  </button>
+                }
+              </div>
+
+              <div class="calib-header-grid">
+                <div class="edit-field">
+                  <label class="edit-field__label">Certificado de calibración <span class="edit-field__req">*</span></label>
+                  <input class="edit-field__input" type="text" formControlName="certNumber"
+                    [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()" />
+                  @if (calibrationForm.get('certNumber')?.invalid && calibrationForm.get('certNumber')?.touched) {
+                    <p class="edit-field__error">Obligatorio.</p>
+                  }
+                </div>
+                <div class="edit-field">
+                  <label class="edit-field__label">Fecha de calibración <span class="edit-field__req">*</span></label>
+                  <input class="edit-field__input" type="date" formControlName="calibrationDate"
+                    [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()" />
+                </div>
+                <div class="edit-field">
+                  <label class="edit-field__label">Fecha de comprobación</label>
+                  <input class="edit-field__input" type="date" formControlName="expirationDate"
+                    [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()" />
+                </div>
+                <div class="edit-field">
+                  <label class="edit-field__label">Voltaje <span class="edit-field__req">*</span></label>
+                  <select class="edit-field__input" formControlName="voltage"
+                    [attr.disabled]="(selectedCalibrationRecord() && !isEditingCalibration()) ? true : null">
+                    <option value="25V">25V</option>
+                    <option value="50V">50V</option>
+                    <option value="Ambos">Ambos (25V y 50V)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Tabla 25V -->
+              @if (calibrationForm.get('voltage')?.value !== '50V') {
+                <div class="calib-table-block">
+                  <div class="calib-table-block__title calib-table-block__title--25v">
+                    Entrada Resistencia 3P a 25V &nbsp;·&nbsp; Intervalo: 0 a 2000 Ω
+                  </div>
+                  <div class="calib-table-wrap">
+                    <table class="calib-table">
+                      <thead><tr>
+                        <th>Patrón (Ω)</th><th>Valor Medido (Ω)</th><th>FC</th><th>± Ω</th><th>± %</th>
+                      </tr></thead>
+                      <tbody>
+                        @for (row of rows25v(); track $index; let i = $index) {
+                          <tr>
+                            <td><input class="calib-input" type="number" step="any"
+                              [value]="row.patron ?? ''" [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()"
+                              (change)="updateCalibrationRow('25v', i, 'patron', $any($event.target).value)" /></td>
+                            <td><input class="calib-input" type="number" step="any"
+                              [value]="row.valorMedido ?? ''" [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()"
+                              (change)="updateCalibrationRow('25v', i, 'valorMedido', $any($event.target).value)" /></td>
+                            <td class="calib-fc">{{ fc25v()[i] !== null ? (fc25v()[i] | number:'1.4-4') : '—' }}</td>
+                            <td><input class="calib-input" type="number" step="any"
+                              [value]="row.incertidumbreOhm ?? ''" [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()"
+                              (change)="updateCalibrationRow('25v', i, 'incertidumbreOhm', $any($event.target).value)" /></td>
+                            <td><input class="calib-input" type="number" step="any"
+                              [value]="row.incertidumbrePct ?? ''" [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()"
+                              (change)="updateCalibrationRow('25v', i, 'incertidumbrePct', $any($event.target).value)" /></td>
+                          </tr>
+                        }
+                      </tbody>
+                      <tfoot><tr class="calib-avg-row">
+                        <td colspan="2" class="calib-avg-label">Promedio FC</td>
+                        <td class="calib-fc calib-avg-value">{{ avg25v() !== null ? (avg25v() | number:'1.4-4') : '—' }}</td>
+                        <td colspan="2"></td>
+                      </tr></tfoot>
+                    </table>
+                  </div>
+                </div>
+              }
+
+              <!-- Tabla 50V -->
+              @if (calibrationForm.get('voltage')?.value !== '25V') {
+                <div class="calib-table-block">
+                  <div class="calib-table-block__title calib-table-block__title--50v">
+                    Entrada Resistencia 3P a 50V &nbsp;·&nbsp; Intervalo: 0 a 2000 Ω
+                  </div>
+                  <div class="calib-table-wrap">
+                    <table class="calib-table">
+                      <thead><tr>
+                        <th>Patrón (Ω)</th><th>Valor Medido (Ω)</th><th>FC</th><th>± Ω</th><th>± %</th>
+                      </tr></thead>
+                      <tbody>
+                        @for (row of rows50v(); track $index; let i = $index) {
+                          <tr>
+                            <td><input class="calib-input" type="number" step="any"
+                              [value]="row.patron ?? ''" [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()"
+                              (change)="updateCalibrationRow('50v', i, 'patron', $any($event.target).value)" /></td>
+                            <td><input class="calib-input" type="number" step="any"
+                              [value]="row.valorMedido ?? ''" [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()"
+                              (change)="updateCalibrationRow('50v', i, 'valorMedido', $any($event.target).value)" /></td>
+                            <td class="calib-fc">{{ fc50v()[i] !== null ? (fc50v()[i] | number:'1.10-10') : '—' }}</td>
+                            <td><input class="calib-input" type="number" step="any"
+                              [value]="row.incertidumbreOhm ?? ''" [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()"
+                              (change)="updateCalibrationRow('50v', i, 'incertidumbreOhm', $any($event.target).value)" /></td>
+                            <td><input class="calib-input" type="number" step="any"
+                              [value]="row.incertidumbrePct ?? ''" [readonly]="!!selectedCalibrationRecord() && !isEditingCalibration()"
+                              (change)="updateCalibrationRow('50v', i, 'incertidumbrePct', $any($event.target).value)" /></td>
+                          </tr>
+                        }
+                      </tbody>
+                      <tfoot><tr class="calib-avg-row">
+                        <td colspan="2" class="calib-avg-label">Promedio FC</td>
+                        <td class="calib-fc calib-avg-value">{{ avg50v() !== null ? (avg50v() | number:'1.4-4') : '—' }}</td>
+                        <td colspan="2"></td>
+                      </tr></tfoot>
+                    </table>
+                  </div>
+                </div>
+              }
+
+              @if (isNewCalibration()) {
+                <div class="edit-actions">
+                  <button class="btn-detail btn-detail--cancel" type="button" (click)="cancelCalibrationForm()">Cancelar</button>
+                  <button class="btn-detail btn-detail--save" type="submit" [disabled]="savingCalibration()">
+                    {{ savingCalibration() ? 'Guardando…' : 'Guardar calibración' }}
+                  </button>
+                </div>
+              }
+              @if (isEditingCalibration()) {
+                <div class="edit-actions">
+                  <button class="btn-detail btn-detail--cancel" type="button" (click)="isEditingCalibration.set(false)">Cancelar</button>
+                  <button class="btn-detail btn-detail--save" type="button" [disabled]="savingCalibration()" (click)="saveCalibrationEdit()">
+                    {{ savingCalibration() ? 'Guardando…' : 'Guardar cambios' }}
+                  </button>
+                </div>
+              }
+            </form>
+          }
+
+        </div>
+      }
+
+      <!-- TAB: REPETIBILIDAD Y REPRODUCIBILIDAD -->
+      @if (activeTab() === 'rrr') {
+        <div class="calib-tab">
+
+          <!-- Historial -->
+          @if (!isNewRepeatability() && !selectedRepeatabilityRecord()) {
+            <div class="calib-history-header">
+              <span class="detail-item__label">Historial de mediciones</span>
+              <button class="btn-detail btn-detail--edit" type="button" (click)="openNewRepeatability()">
+                + Nueva medición
+              </button>
+            </div>
+
+            @if (loadingRepeatability()) {
+              <p class="cert-empty" style="padding: 0 1.25rem;">Cargando…</p>
+            } @else if (!repeatabilityRecords().length) {
+              <p class="cert-empty" style="padding: 0 1.25rem;">Sin registros de repetibilidad.</p>
+            } @else {
+              <ul class="calib-history-list">
+                @for (rec of repeatabilityRecords(); track rec.idDoc; let i = $index) {
+                  <li class="calib-history-list__item" [class.calib-history-list__item--latest]="i === 0"
+                    (click)="viewRepeatabilityRecord(rec)">
+                    <div class="calib-history-list__info">
+                      @if (i === 0) { <span class="cert-history__badge">Vigente</span> }
+                      <span class="calib-history-list__cert">{{ rec.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                      <span class="calib-history-list__voltage">{{ rec.userReadings.length }} usuario(s)</span>
+                      @if (rec.createdBy) {
+                        <span class="cert-history__by">{{ rec.createdBy }}</span>
+                      }
+                    </div>
+                    <span class="calib-history-list__arrow">›</span>
+                  </li>
+                }
+              </ul>
+            }
+          }
+
+          <!-- Formulario nuevo / vista / edición -->
+          @if (isNewRepeatability() || selectedRepeatabilityRecord()) {
+            <div class="calib-form-back">
+              <button class="calib-back-btn" type="button" (click)="cancelRepeatabilityForm()">
+                ← Volver al historial
+              </button>
+              @if (selectedRepeatabilityRecord() && !isEditingRepeatability()) {
+                <span class="calib-readonly-badge">Solo lectura</span>
+                <button class="btn-detail btn-detail--edit" type="button" (click)="isEditingRepeatability.set(true)">
+                  Editar
+                </button>
+              }
+            </div>
+
+            <!-- Selector de usuarios (solo en nueva o edición) -->
+            @if (isNewRepeatability() || isEditingRepeatability()) {
+              <div class="rrr-user-selector">
+                <span class="detail-item__label">Selecciona los usuarios</span>
+                @if (loadingRoleUsers()) {
+                  <p class="cert-empty">Cargando usuarios…</p>
+                } @else {
+                  <div class="rrr-user-chips">
+                    @for (user of roleUsers(); track user.idDoc) {
+                      <button
+                        type="button"
+                        class="rrr-user-chip"
+                        [class.rrr-user-chip--active]="selectedUserIds().includes(user.idDoc)"
+                        (click)="toggleRoleUser(user)"
+                      >
+                        {{ user.firstName }} {{ user.lastName }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Tabla de lecturas -->
+            @if (selectedUserIds().length) {
+              <div class="calib-table-block" style="margin-top: 0.75rem;">
+                <div class="calib-table-wrap">
+                  <table class="calib-table">
+                    <thead>
+                      <tr>
+                        <th>Lectura</th>
+                        @for (uid of selectedUserIds(); track uid) {
+                          <th>{{ getRoleUserName(uid) }}</th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (i of [0,1,2,3,4,5,6,7,8,9]; track i) {
+                        <tr>
+                          <td class="calib-avg-label">Lectura {{ i + 1 }} (lx)</td>
+                          @for (uid of selectedUserIds(); track uid) {
+                            <td>
+                              <input
+                                class="calib-input"
+                                type="number"
+                                step="any"
+                                [value]="rrReadings()[uid]?.[i] ?? ''"
+                                [readonly]="!!selectedRepeatabilityRecord() && !isEditingRepeatability()"
+                                (change)="updateReading(uid, i, $any($event.target).value)"
+                              />
+                            </td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot>
+                      <tr class="calib-avg-row">
+                        <td class="calib-avg-label">Incertidumbre repetibilidad (Ur)</td>
+                        @for (uid of selectedUserIds(); track uid) {
+                          <td class="calib-fc calib-avg-value">
+                            {{ urPerUser()[uid] !== null ? (urPerUser()[uid] | number:'1.3-3') : '—' }}
+                          </td>
+                        }
+                      </tr>
+                      <tr class="calib-avg-row">
+                        <td class="calib-avg-label">Incertidumbre reproducibilidad (UR)</td>
+                        <td [attr.colspan]="selectedUserIds().length" class="calib-fc calib-avg-value">
+                          {{ urOverall() !== null ? (urOverall() | number:'1.4-4') : '—' }}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              @if (isNewRepeatability()) {
+                <div class="edit-actions">
+                  <button class="btn-detail btn-detail--cancel" type="button" (click)="cancelRepeatabilityForm()">Cancelar</button>
+                  <button class="btn-detail btn-detail--save" type="button" [disabled]="savingRepeatability()" (click)="saveRepeatability()">
+                    {{ savingRepeatability() ? 'Guardando…' : 'Guardar medición' }}
+                  </button>
+                </div>
+              }
+              @if (isEditingRepeatability()) {
+                <div class="edit-actions">
+                  <button class="btn-detail btn-detail--cancel" type="button" (click)="isEditingRepeatability.set(false)">Cancelar</button>
+                  <button class="btn-detail btn-detail--save" type="button" [disabled]="savingRepeatability()" (click)="saveRepeatabilityEdit()">
+                    {{ savingRepeatability() ? 'Guardando…' : 'Guardar cambios' }}
+                  </button>
+                </div>
+              }
+            } @else if (isNewRepeatability()) {
+              <p class="cert-empty" style="padding: 0 1.25rem;">Selecciona al menos un usuario para capturar lecturas.</p>
+            }
+          }
+
+        </div>
+      }
 
     </div>
   }

@@ -71,7 +71,7 @@
             <th>Asignado a</th>
             <th>Categorías</th>
             <th>Clave</th>
-            <th>Orden de compra</th>
+          <th>Razón social</th>
             <th>Flujo</th>
           </tr>
         </thead>
@@ -107,7 +107,7 @@
               <td>{{ order.userAssignedName || '—' }}</td>
               <td class="wo-table__secondary">{{ order.nomCategoryName || '—' }}</td>
               <td class="wo-table__code">{{ order.code }}</td>
-              <td>{{ order.purchaseOrderNumber }}</td>
+              <td>{{ order.clientName || '—' }}</td>
               <td class="wo-table__flow-cell">
                 <span
                   class="flow-tag"
@@ -212,25 +212,6 @@
             </button>
           }
         </div>
-
-        <div class="wo-flow__pager">
-          <button
-            class="wo-flow__pager-btn"
-            type="button"
-            [disabled]="selectedWorkflowNavIndex() <= 0"
-            (click)="goToPreviousWorkflowTab()"
-          >
-            Anterior
-          </button>
-          <button
-            class="wo-flow__pager-btn"
-            type="button"
-            [disabled]="selectedWorkflowNavIndex() >= workflowStepCount() - 1"
-            (click)="goToNextWorkflowTab()"
-          >
-            Siguiente
-          </button>
-        </div>
       </section>
 
       @if (selectedOrderTab() === 'work-order') {
@@ -260,6 +241,22 @@
                   }}
                 </span>
                 @if (step.status === 'in-progress') {
+                  @if (getNextWorkflowStep(step); as nextStep) {
+                    <div class="wo-step-card__assign">
+                      <label class="wo-step-card__assign-label">Asignar siguiente paso</label>
+                      <select
+                        class="wo-step-card__assign-input"
+                        [ngModel]="selectedNextAssignedUserId()"
+                        (ngModelChange)="selectedNextAssignedUserId.set($event)"
+                      >
+                        <option value="">Selecciona un usuario</option>
+                        @for (user of assignableWorkflowUsers(); track user.idDoc) {
+                          <option [value]="user.idDoc">{{ user.displayName }}</option>
+                        }
+                      </select>
+                      <span class="wo-step-card__assign-meta">Siguiente: {{ nextStep.stepName }}</span>
+                    </div>
+                  }
                   <button
                     class="wo-step-card__finish"
                     type="button"
@@ -274,7 +271,7 @@
           </div>
         }
 
-        <div class="wo-detail__grid">
+        <div class="wo-detail__row">
           <div class="wo-detail__item">
             <span class="wo-detail__label">No. de informe</span>
             <span class="wo-detail__value">{{ order.informNumber }}</span>
@@ -300,7 +297,99 @@
             <span class="wo-detail__value">{{ order.quotationNumber || '—' }}</span>
           </div>
         </div>
-        <br>
+        <div class="wo-client-card">
+          <div class="wo-client-card__item">
+            <span class="wo-client-card__label">Razón Social</span>
+            <span class="wo-client-card__value">{{ order.clientName || '—' }}</span>
+          </div>
+          <div class="wo-client-card__item">
+            <span class="wo-client-card__label">Planta</span>
+            <span class="wo-client-card__value">{{ order.plantName || '—' }}</span>
+          </div>
+          @if (selectedOrderPlant(); as plant) {
+            <div class="wo-client-card__item wo-client-card__item--address">
+              <span class="wo-client-card__label">Dirección</span>
+              <span class="wo-client-card__value">{{ buildPlantAddress(plant) }}</span>
+            </div>
+            @if (plant.contactName) {
+              <div class="wo-client-card__item">
+                <span class="wo-client-card__label">Contacto</span>
+                <span class="wo-client-card__value">{{ plant.contactName }}</span>
+              </div>
+            }
+            @if (plant.contactPhone) {
+              <div class="wo-client-card__item">
+                <span class="wo-client-card__label">Teléfono</span>
+                <span class="wo-client-card__value">{{ plant.contactPhone }}</span>
+              </div>
+            }
+          }
+          <div class="wo-client-card__row-break"></div>
+          <div class="wo-client-card__item wo-client-card__item--observer">
+            <span class="wo-client-card__label">Observador</span>
+            <select
+              class="wo-client-card__input"
+              [ngModel]="selectedOrderObserver()"
+              (ngModelChange)="selectedOrderObserver.set($event)"
+            >
+              <option value="">Selecciona un observador</option>
+              @for (opt of observerOptions; track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
+            </select>
+          </div>
+          <div class="wo-client-card__item wo-client-card__item--observer">
+            <span class="wo-client-card__label">Fecha</span>
+            <input
+              class="wo-client-card__input"
+              type="date"
+              [ngModel]="selectedOrderObservationDate()"
+              (ngModelChange)="selectedOrderObservationDate.set($event)"
+            />
+          </div>
+          <div class="wo-client-card__item wo-client-card__item--save">
+            <button
+              class="btn btn--primary btn--sm"
+              type="button"
+              [disabled]="isSavingObserver()"
+              (click)="saveSelectedOrderObserver()"
+            >
+              {{ isSavingObserver() ? 'Guardando...' : 'Guardar' }}
+            </button>
+          </div>
+          <div class="wo-client-card__row-break"></div>
+          <div class="wo-client-card__item">
+            <span class="wo-client-card__label">Valor de resistencia de los cables</span>
+            <input
+              class="wo-client-card__input"
+              type="number"
+              step="any"
+              placeholder="—"
+              [ngModel]="selectedOrderCableResistance()"
+              (ngModelChange)="selectedOrderCableResistance.set($event)"
+            />
+          </div>
+        </div>
+
+        @if (!selectedOrderEquipments().length) {
+          <p class="wo-detail__empty">Esta orden aún no tiene equipos asociados.</p>
+        } @else {
+          <div class="wo-equipment-list">
+            @for (equipmentItem of selectedOrderEquipments(); track equipmentItem.idDoc) {
+              <article class="wo-equipment-card">
+                <div class="wo-equipment-card__inline">
+                  <span><strong>Equipo:</strong> {{ equipmentItem.equipmentType || '—' }}</span>
+                  <span><strong>Marca:</strong> {{ equipmentItem.equipmentBrand || '—' }}</span>
+                  <span><strong>Modelo:</strong> {{ equipmentItem.equipmentModel || '—' }}</span>
+                  <span><strong>NS:</strong> {{ equipmentItem.equipmentNs || '—' }}</span>
+                  <span><strong>Frecuencia:</strong> {{ equipmentItem.equipmentFrecuency || '—' }}</span>
+                  <span><strong>Voltaje:</strong> {{ equipmentItem.equipmentVoltage || '—' }}</span>
+                </div>
+              </article>
+            }
+          </div>
+        }
+
         <div class="wo-detail__equipment-toolbar">
           <div class="form-field">
             <label class="form-field__label">Agregar equipo</label>
@@ -331,25 +420,6 @@
         <p class="wo-detail__hint">
           Puedes asociar hasta 3 equipos por orden.
         </p>
-
-        @if (!selectedOrderEquipments().length) {
-          <p class="wo-detail__empty">Esta orden aún no tiene equipos asociados.</p>
-        } @else {
-          <div class="wo-equipment-list">
-            @for (equipmentItem of selectedOrderEquipments(); track equipmentItem.idDoc) {
-              <article class="wo-equipment-card">
-                <h4 class="wo-equipment-card__title">{{ equipmentItem.equipmentName || 'Equipo' }}</h4>
-                <div class="wo-equipment-card__inline">
-                  <span><strong>Marca:</strong> {{ equipmentItem.equipmentBrand || '—' }}</span>
-                  <span><strong>Modelo:</strong> {{ equipmentItem.equipmentModel || '—' }}</span>
-                  <span><strong>NS:</strong> {{ equipmentItem.equipmentNs || '—' }}</span>
-                  <span><strong>Tipo:</strong> {{ equipmentItem.equipmentType || '—' }}</span>
-                  <span><strong>Serie:</strong> {{ equipmentItem.equipmentSerialNumber || '—' }}</span>
-                </div>
-              </article>
-            }
-          </div>
-        }
 
         <div class="impartiality-section">
           <div class="impartiality-section__header">
@@ -420,9 +490,9 @@
               class="btn btn--primary"
               type="button"
               [disabled]="isSavingImpartiality()"
-              (click)="saveSelectedOrderImpartiality()"
+              (click)="saveOrderChanges()"
             >
-              {{ isSavingImpartiality() ? 'Guardando...' : 'Guardar gestión de imparcialidad' }}
+              {{ isSavingImpartiality() ? 'Guardando...' : 'Guardar Cambios' }}
             </button>
           </div>
         </div>
@@ -455,6 +525,22 @@
                   }}
                 </span>
                 @if (step.status === 'in-progress') {
+                  @if (getNextWorkflowStep(step); as nextStep) {
+                    <div class="wo-step-card__assign">
+                      <label class="wo-step-card__assign-label">Asignar siguiente paso</label>
+                      <select
+                        class="wo-step-card__assign-input"
+                        [ngModel]="selectedNextAssignedUserId()"
+                        (ngModelChange)="selectedNextAssignedUserId.set($event)"
+                      >
+                        <option value="">Selecciona un usuario</option>
+                        @for (user of assignableWorkflowUsers(); track user.idDoc) {
+                          <option [value]="user.idDoc">{{ user.displayName }}</option>
+                        }
+                      </select>
+                      <span class="wo-step-card__assign-meta">Siguiente: {{ nextStep.stepName }}</span>
+                    </div>
+                  }
                   <button
                     class="wo-step-card__finish"
                     type="button"
@@ -468,10 +554,6 @@
             </div>
             <div class="wo-step-card__grid">
               <div class="wo-detail__item">
-                <span class="wo-detail__label">Código</span>
-                <span class="wo-detail__value">{{ step.stepCode || '—' }}</span>
-              </div>
-              <div class="wo-detail__item">
                 <span class="wo-detail__label">Asignado a</span>
                 <span class="wo-detail__value">{{ step.assignedUserName || '—' }}</span>
               </div>
@@ -482,6 +564,10 @@
               <div class="wo-detail__item">
                 <span class="wo-detail__label">Finalización</span>
                 <span class="wo-detail__value">{{ step.completedAt ? (step.completedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
+              </div>
+              <div class="wo-detail__item">
+                <span class="wo-detail__label">Cerrado por</span>
+                <span class="wo-detail__value">{{ step.completedByUserName || '—' }}</span>
               </div>
             </div>
           </article>
@@ -495,7 +581,11 @@
 
         @if (shouldRenderMeasurementsStep()) {
           <section class="wo-step-page">
-            <app-measurements />
+            <app-measurements
+              [workOrderId]="selectedOrder()!.idDoc"
+              [workflowStepId]="step.idDoc"
+              [cableResistance]="selectedOrder()!.cableResistance ?? null"
+            />
           </section>
         }
 
