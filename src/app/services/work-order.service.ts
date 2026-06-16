@@ -6,6 +6,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -19,7 +20,12 @@ import { Observable, from, map } from 'rxjs';
 import { NormWorkflowStep } from '../interfaces/norm-workflow-step.interface';
 import { Point, PointConnectedEquipment, PointMeasurementData } from '../interfaces/measurements.interface';
 import { equipment } from '../interfaces/meditionType.interface';
-import { workOrder, workOrderEquipment, workOrderStep } from '../interfaces/workOrder.interface';
+import {
+  workOrder,
+  workOrderEquipment,
+  workOrderStep,
+  WorkOrderClientVisitSignature,
+} from '../interfaces/workOrder.interface';
 import { User } from '../interfaces/user.interface';
 
 @Injectable({ providedIn: 'root' })
@@ -206,6 +212,14 @@ export class WorkOrderService {
       map((snapshot) =>
         snapshot.docs.map((docSnapshot) => this.toWorkOrderEquipment(docSnapshot.id, docSnapshot.data()))
       )
+    );
+  }
+
+  getWorkflowStep(workOrderId: string, workflowStepId: string): Observable<workOrderStep | null> {
+    const stepRef = doc(this.firestore, 'workOrder', workOrderId, 'workflowSteps', workflowStepId);
+
+    return from(getDoc(stepRef)).pipe(
+      map((snapshot) => (snapshot.exists() ? this.toWorkflowStep(snapshot.id, snapshot.data()) : null))
     );
   }
 
@@ -406,6 +420,45 @@ export class WorkOrderService {
     return from(batch.commit()).pipe(map(() => void 0));
   }
 
+  updateWorkflowStepAssignment(
+    workOrderId: string,
+    stepId: string,
+    assignedUser?: { id?: string; name?: string }
+  ): Observable<void> {
+    const stepRef = doc(this.firestore, 'workOrder', workOrderId, 'workflowSteps', stepId);
+
+    return from(
+      setDoc(
+        stepRef,
+        {
+          assignedUserId: assignedUser?.id || null,
+          assignedUserName: assignedUser?.name || null,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      )
+    ).pipe(map(() => void 0));
+  }
+
+  updateWorkflowStepSignature(
+    workOrderId: string,
+    stepId: string,
+    signature: WorkOrderClientVisitSignature | null
+  ): Observable<void> {
+    const stepRef = doc(this.firestore, 'workOrder', workOrderId, 'workflowSteps', stepId);
+
+    return from(
+      setDoc(
+        stepRef,
+        {
+          clientVisitSignature: signature ? this.removeUndefinedFields(signature) : null,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      )
+    ).pipe(map(() => void 0));
+  }
+
   deleteWorkOrder(workOrderId: string): Observable<void> {
     return from(this.deleteWorkOrderInternal(workOrderId));
   }
@@ -500,10 +553,33 @@ export class WorkOrderService {
         ? String(data['completedByUserName'])
         : undefined,
       observations: data['observations'] ? String(data['observations']) : undefined,
+      clientVisitSignature: this.toClientVisitSignature(
+        data['clientVisitSignature'] as Record<string, unknown> | undefined
+      ),
       startedAt: this.toDate(data['startedAt']),
       completedAt: this.toDate(data['completedAt']),
       active: Boolean(data['active']),
       createdAt: this.toDate(data['createdAt']) ?? new Date(),
+      updatedAt: this.toDate(data['updatedAt']),
+    };
+  }
+
+  private toClientVisitSignature(
+    data: Record<string, unknown> | undefined
+  ): WorkOrderClientVisitSignature | undefined {
+    if (!data) {
+      return undefined;
+    }
+
+    return {
+      signedByName: String(data['signedByName'] ?? ''),
+      signedByRole: data['signedByRole'] ? String(data['signedByRole']) : undefined,
+      signedAt: this.toDate(data['signedAt']),
+      observations: data['observations'] ? String(data['observations']) : undefined,
+      confirmedVisit: Boolean(data['confirmedVisit']),
+      signatureDataUrl: String(data['signatureDataUrl'] ?? ''),
+      updatedByUserId: data['updatedByUserId'] ? String(data['updatedByUserId']) : undefined,
+      updatedByUserName: data['updatedByUserName'] ? String(data['updatedByUserName']) : undefined,
       updatedAt: this.toDate(data['updatedAt']),
     };
   }

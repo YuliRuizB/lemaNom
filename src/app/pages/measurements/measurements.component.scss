@@ -783,3 +783,135 @@
     color: var(--lema-navy);
   }
 }
+
+.measurements-signature {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #d9e1ec;
+  border-radius: 10px;
+  background: #fff;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--lema-navy);
+  }
+
+  &__subtitle {
+    margin: 0.15rem 0 0;
+    font-size: 0.72rem;
+    color: var(--lema-gray);
+  }
+
+  &__save-btn,
+  &__clear-btn {
+    min-height: 2rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  &__save-btn {
+    border: none;
+    background: var(--lema-navy);
+    color: #fff;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__clear-btn {
+    border: 1px solid #d0d5dd;
+    background: #fff;
+    color: var(--lema-navy);
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+
+    &--full {
+      margin-bottom: 0.75rem;
+    }
+  }
+
+  &__label,
+  &__pad-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--lema-gray);
+  }
+
+  &__input {
+    width: 100%;
+    min-height: 1.95rem;
+    padding: 0.25rem 0.55rem;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    color: var(--lema-navy);
+    background: #fff;
+    outline: none;
+
+    &:focus {
+      border-color: var(--lema-blue, #174ea6);
+      box-shadow: 0 0 0 2px rgba(23, 78, 166, 0.12);
+    }
+
+    &--textarea {
+      min-height: 4.8rem;
+      resize: vertical;
+      padding-top: 0.45rem;
+    }
+  }
+
+  &__pad {
+    border: 1px solid #d9e1ec;
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: #fbfcfe;
+  }
+
+  &__pad-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-bottom: 0.55rem;
+  }
+
+  &__canvas {
+    display: block;
+    width: 100%;
+    height: 220px;
+    border: 1px dashed #b9c4d3;
+    border-radius: 8px;
+    background: #fff;
+    touch-action: none;
+    cursor: crosshair;
+  }
+}

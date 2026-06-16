@@ -69,13 +69,13 @@
         class="measurements-tab"
         [class.measurements-tab--active]="activeTab() === 'points'"
         type="button"
-        (click)="activeTab.set('points')"
+        (click)="setActiveTab('points')"
       >Puntos</button>
       <button
         class="measurements-tab"
         [class.measurements-tab--active]="activeTab() === 'correction'"
         type="button"
-        (click)="activeTab.set('correction')"
+        (click)="setActiveTab('correction')"
       >Corrección de datos</button>
     </nav>
 
@@ -689,6 +689,86 @@
           Selecciona un punto guardado o presiona <strong>Agregar punto</strong> para capturar uno nuevo.
         </div>
       }
+
+      <section class="measurements-signature">
+        <div class="measurements-signature__header">
+          <div>
+            <h4 class="measurements-signature__title">Confirmación de visita</h4>
+            <p class="measurements-signature__subtitle">
+              Firma del cliente para confirmar la visita y la toma de mediciones.
+            </p>
+          </div>
+          <button
+            class="measurements-signature__save-btn"
+            type="button"
+            [disabled]="isSavingSignature()"
+            (click)="saveClientVisitSignature()"
+          >
+            {{ isSavingSignature() ? 'Guardando...' : 'Guardar firma' }}
+          </button>
+        </div>
+
+        <div class="measurements-signature__grid">
+          <div class="measurements-signature__field">
+            <span class="measurements-signature__label">Nombre del cliente</span>
+            <input
+              class="measurements-signature__input"
+              type="text"
+              [(ngModel)]="signatureForm.signedByName"
+            />
+          </div>
+
+          <div class="measurements-signature__field">
+            <span class="measurements-signature__label">Puesto / relación</span>
+            <input
+              class="measurements-signature__input"
+              type="text"
+              [(ngModel)]="signatureForm.signedByRole"
+            />
+          </div>
+
+          <div class="measurements-signature__field">
+            <span class="measurements-signature__label">Fecha y hora</span>
+            <input
+              class="measurements-signature__input"
+              type="datetime-local"
+              [ngModel]="signatureSignedAt()"
+              (ngModelChange)="signatureSignedAt.set($event)"
+            />
+          </div>
+        </div>
+
+        <div class="measurements-signature__field measurements-signature__field--full">
+          <span class="measurements-signature__label">Observaciones</span>
+          <textarea
+            class="measurements-signature__input measurements-signature__input--textarea"
+            rows="3"
+            [(ngModel)]="signatureForm.observations"
+          ></textarea>
+        </div>
+
+        <div class="measurements-signature__pad">
+          <div class="measurements-signature__pad-top">
+            <span class="measurements-signature__pad-label">Firma del cliente</span>
+            <button
+              class="measurements-signature__clear-btn"
+              type="button"
+              (click)="clearSignature()"
+            >
+              Limpiar firma
+            </button>
+          </div>
+
+          <canvas
+            #signatureCanvas
+            class="measurements-signature__canvas"
+            (pointerdown)="startSignatureDraw($event)"
+            (pointermove)="moveSignatureDraw($event)"
+            (pointerup)="endSignatureDraw()"
+            (pointerleave)="endSignatureDraw()"
+          ></canvas>
+        </div>
+      </section>
     </section>
     } <!-- end @if activeTab === 'points' -->
   }

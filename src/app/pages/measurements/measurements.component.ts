@@ -1,5 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, OnInit, SimpleChanges, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Input,
+  OnChanges,
+  OnInit,
+  SimpleChanges,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, map, of, switchMap, take } from 'rxjs';
 import * as XLSX from 'xlsx';
@@ -7,7 +18,7 @@ import * as XLSX from 'xlsx';
 import { AuthService } from '../../services/auth.service';
 import { CalibrationRow, equipment } from '../../interfaces/meditionType.interface';
 import { GeneratorSource, Point } from '../../interfaces/measurements.interface';
-import { workOrderEquipment } from '../../interfaces/workOrder.interface';
+import { WorkOrderClientVisitSignature, workOrderEquipment } from '../../interfaces/workOrder.interface';
 import { EquipmentService } from '../../services/equipment.service';
 import { ToastService } from '../../services/toast.service';
 import { WorkOrderService } from '../../services/work-order.service';
@@ -20,6 +31,8 @@ import { WorkOrderService } from '../../services/work-order.service';
   styleUrl: './measurements.component.scss',
 })
 export class MeasurementsComponent implements OnInit, OnChanges {
+  @ViewChild('signatureCanvas') signatureCanvas?: ElementRef<HTMLCanvasElement>;
+
   @Input() workOrderId = '';
   @Input() workflowStepId = '';
   @Input() cableResistance: number | null = null;
@@ -37,8 +50,18 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   voltageEdits = signal<Record<string, string>>({});
   savingVoltageId = signal<string | null>(null);
   isSavingPoints = signal(false);
+  isSavingSignature = signal(false);
   isLoading = signal(true);
   currentUserId = signal('');
+  savedSignaturePreview = signal('');
+  signatureSignedAt = signal('');
+  signatureForm = {
+    signedByName: '',
+    signedByRole: '',
+    observations: '',
+  };
+  private isDrawingSignature = false;
+  private hasSignatureStroke = false;
   readonly generatorSourceOptions: Array<{ value: GeneratorSource; label: string }> = [
     { value: 'structure', label: 'Estructura' },
     { value: 'electrical_equipment', label: 'Equipo eléctrico' },
@@ -101,8 +124,11 @@ export class MeasurementsComponent implements OnInit, OnChanges {
             points: this.workOrderService
               .getMeasurementPoints(this.workOrderId, this.workflowStepId)
               .pipe(take(1)),
+            step: this.workOrderService
+              .getWorkflowStep(this.workOrderId, this.workflowStepId)
+              .pipe(take(1)),
           }).subscribe({
-            next: ({ orderEquipments, stepEquipments, points }) => {
+            next: ({ orderEquipments, stepEquipments, points, step }) => {
               const stepEquipmentsMap = new Map(stepEquipments.map((item) => [item.idDoc, item]));
               const merged = orderEquipments.map((item) => {
                 const step = stepEquipmentsMap.get(item.idDoc);
@@ -117,12 +143,15 @@ export class MeasurementsComponent implements OnInit, OnChanges {
               const currentSelectedId = this.selectedPointId();
               const existsSelected = points.some((point) => point.idDoc === currentSelectedId);
               this.selectedPointId.set(existsSelected ? currentSelectedId : '');
+              this.applyClientVisitSignature(step?.clientVisitSignature);
               this.isLoading.set(false);
 
               // Para equipos con voltaje guardado pero sin promedioFC, calcularlo automáticamente
               merged
                 .filter((e) => e.equipmentVoltage && e.promedioFC == null)
                 .forEach((e) => this.recalcPromedioFC(e));
+
+              setTimeout(() => this.renderSignatureCanvas(), 0);
             },
             error: () => {
               this.toastService.error('No fue posible cargar la información de medición.');
@@ -466,6 +495,158 @@ export class MeasurementsComponent implements OnInit, OnChanges {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Puntos');
     XLSX.writeFile(wb, `mediciones-${this.workOrderId}.xlsx`);
+  }
+
+  setActiveTab(tab: 'points' | 'correction'): void {
+    this.activeTab.set(tab);
+    if (tab === 'points') {
+      setTimeout(() => this.renderSignatureCanvas(), 0);
+    }
+  }
+
+  startSignatureDraw(event: PointerEvent): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    this.isDrawingSignature = true;
+    this.hasSignatureStroke = true;
+    const { x, y } = this.getSignatureCoordinates(event, canvas);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }
+
+  moveSignatureDraw(event: PointerEvent): void {
+    if (!this.isDrawingSignature) return;
+    const canvas = this.signatureCanvas?.nativeElement;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    const { x, y } = this.getSignatureCoordinates(event, canvas);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+
+  endSignatureDraw(): void {
+    this.isDrawingSignature = false;
+  }
+
+  clearSignature(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this.hasSignatureStroke = false;
+    this.savedSignaturePreview.set('');
+  }
+
+  saveClientVisitSignature(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+    if (!this.workOrderId || !this.workflowStepId || this.isSavingSignature()) {
+      return;
+    }
+
+    if (!this.signatureForm.signedByName.trim()) {
+      this.toastService.warning('Captura el nombre de quien firma por parte del cliente.');
+      return;
+    }
+
+    const signatureDataUrl = this.hasSignatureStroke && canvas
+      ? canvas.toDataURL('image/png')
+      : this.savedSignaturePreview();
+
+    if (!signatureDataUrl) {
+      this.toastService.warning('Captura la firma del cliente antes de guardar.');
+      return;
+    }
+
+    const signedAt = this.signatureSignedAt()
+      ? new Date(this.signatureSignedAt())
+      : new Date();
+
+    const signature: WorkOrderClientVisitSignature = {
+      signedByName: this.signatureForm.signedByName.trim(),
+      signedByRole: this.signatureForm.signedByRole.trim() || undefined,
+      signedAt,
+      observations: this.signatureForm.observations.trim() || undefined,
+      confirmedVisit: true,
+      signatureDataUrl,
+      updatedByUserId: this.currentUserId() || undefined,
+      updatedByUserName: undefined,
+      updatedAt: new Date(),
+    };
+
+    this.isSavingSignature.set(true);
+    this.workOrderService
+      .updateWorkflowStepSignature(this.workOrderId, this.workflowStepId, signature)
+      .pipe(take(1))
+      .subscribe({
+        next: () => {
+          this.savedSignaturePreview.set(signatureDataUrl);
+          this.signatureSignedAt.set(this.toDateTimeLocalValue(signedAt));
+          this.isSavingSignature.set(false);
+          this.toastService.success('La firma del cliente se guardó correctamente.');
+        },
+        error: () => {
+          this.isSavingSignature.set(false);
+          this.toastService.error('No fue posible guardar la firma del cliente.');
+        },
+      });
+  }
+
+  private applyClientVisitSignature(signature?: WorkOrderClientVisitSignature): void {
+    this.signatureForm.signedByName = signature?.signedByName || '';
+    this.signatureForm.signedByRole = signature?.signedByRole || '';
+    this.signatureForm.observations = signature?.observations || '';
+    this.signatureSignedAt.set(
+      signature?.signedAt ? this.toDateTimeLocalValue(signature.signedAt) : ''
+    );
+    this.savedSignaturePreview.set(signature?.signatureDataUrl || '');
+    this.hasSignatureStroke = Boolean(signature?.signatureDataUrl);
+  }
+
+  private renderSignatureCanvas(): void {
+    const canvas = this.signatureCanvas?.nativeElement;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) {
+      return;
+    }
+
+    canvas.width = 760;
+    canvas.height = 220;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#1f2937';
+
+    const dataUrl = this.savedSignaturePreview();
+    if (!dataUrl) {
+      this.hasSignatureStroke = false;
+      return;
+    }
+
+    const image = new Image();
+    image.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      this.hasSignatureStroke = true;
+    };
+    image.src = dataUrl;
+  }
+
+  private getSignatureCoordinates(event: PointerEvent, canvas: HTMLCanvasElement): { x: number; y: number } {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * canvas.width,
+      y: ((event.clientY - rect.top) / rect.height) * canvas.height,
+    };
+  }
+
+  private toDateTimeLocalValue(value: Date): string {
+    const pad = (part: number) => String(part).padStart(2, '0');
+    return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
   }
 
   private merge(item: workOrderEquipment, master: equipment | null): workOrderEquipment {

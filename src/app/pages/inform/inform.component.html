@@ -1,1 +1,417 @@
-<section class="inform-page">Informes</section>
+<section class="inform-page">
+  <div class="inform-toolbar">
+    <button class="inform-toolbar__button" type="button">
+      Generar Informe
+    </button>
+  </div>
+
+  <div class="inform-tabs">
+    <button
+      class="inform-tabs__tab"
+      type="button"
+      [class.inform-tabs__tab--active]="activeTab() === 'tables'"
+      (click)="activeTab.set('tables')"
+    >
+      Tablas
+    </button>
+    <button
+      class="inform-tabs__tab"
+      type="button"
+      [class.inform-tabs__tab--active]="activeTab() === 'charts'"
+      (click)="activeTab.set('charts')"
+    >
+      Gráficos
+    </button>
+  </div>
+
+  @if (activeTab() === 'tables') {
+  <div class="inform-grid">
+  <article
+    id="inform-section-static-electricity-sources"
+    class="inform-section"
+  >
+    <h3
+      id="inform-title-static-electricity-sources"
+      class="inform-section__title"
+    >
+      4.2.2.- Descripción de las fuentes generadoras de electricidad estática.
+    </h3>
+
+    @if (isLoading()) {
+      <p class="inform-section__state">Cargando puntos...</p>
+    } @else if (!points().length) {
+      <p class="inform-section__state">
+        No se encontraron puntos de medición para mostrar en el informe.
+      </p>
+    } @else {
+      <div
+        id="inform-table-wrap-static-electricity-sources"
+        class="inform-table-wrap"
+      >
+        <table
+          id="inform-table-static-electricity-sources"
+          class="inform-table"
+        >
+          <thead>
+            <tr>
+              <th>Punto</th>
+              <th>Ubicación</th>
+              <th>Fuente Generadora</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (point of points(); track point.idDoc) {
+              <tr>
+                <td>{{ point.pointNumber }}</td>
+                <td>{{ point.location || '—' }}</td>
+                <td>{{ labelGeneratorSource(point) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+
+  <article
+    id="inform-section-earth-resistance-values"
+    class="inform-section"
+  >
+    <h3
+      id="inform-title-earth-resistance-values"
+      class="inform-section__title"
+    >
+      5.1.- Valores de resistencia a tierra de la red de puesta a tierra e indicación de la continuidad eléctrica de los puntos de conexión del sistema.
+    </h3>
+
+    @if (isLoading()) {
+      <p class="inform-section__state">Cargando puntos...</p>
+    } @else if (!points().length) {
+      <p class="inform-section__state">
+        No se encontraron puntos de medición para mostrar en el informe.
+      </p>
+    } @else {
+      <div
+        id="inform-table-wrap-earth-resistance-values"
+        class="inform-table-wrap"
+      >
+        <table
+          id="inform-table-earth-resistance-values"
+          class="inform-table"
+        >
+          <thead>
+            <tr>
+              <th>Punto</th>
+              <th>Ubicación</th>
+              <th>Tipo de electrodo</th>
+              <th>Continuidad</th>
+              <th>Valor Registrado</th>
+              <th>Límite (Ω) NOM-022-STPS-2015</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (point of points(); track point.idDoc) {
+              <tr>
+                <td>{{ point.pointNumber }}</td>
+                <td>{{ point.location || '—' }}</td>
+                <td>{{ getElectrodeType(point) }}</td>
+                <td>{{ getContinuityLabel(point) }}</td>
+                <td>
+                  {{
+                    getCorrectedP113(point) != null
+                      ? (getCorrectedP113(point)! | number:'1.2-2') + ' Ω'
+                      : '—'
+                  }}
+                </td>
+                <td>{{ getLimit(point) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+
+  <article
+    id="inform-section-relative-humidity-values"
+    class="inform-section"
+  >
+    <h3
+      id="inform-title-relative-humidity-values"
+      class="inform-section__title"
+    >
+      5.2 Valores de las mediciones de Humedad Relativa
+    </h3>
+
+    @if (isLoading()) {
+      <p class="inform-section__state">Cargando puntos...</p>
+    } @else if (!points().length) {
+      <p class="inform-section__state">
+        No se encontraron puntos de medición para mostrar en el informe.
+      </p>
+    } @else {
+      <div
+        id="inform-table-wrap-relative-humidity-values"
+        class="inform-table-wrap"
+      >
+        <table
+          id="inform-table-relative-humidity-values"
+          class="inform-table"
+        >
+          <thead>
+            <tr>
+              <th>Punto</th>
+              <th>Ubicación</th>
+              <th>Humedad Relativa (%)</th>
+              <th>Temperatura ambiental (°C)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (point of points(); track point.idDoc) {
+              <tr>
+                <td>{{ point.pointNumber }}</td>
+                <td>{{ point.location || '—' }}</td>
+                <td>{{ point.humidity != null ? point.humidity : 'N/A' }}</td>
+                <td>{{ point.temperature != null ? point.temperature : 'N/A' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+
+  <article
+    id="inform-section-lightning-system-characteristics"
+    class="inform-section"
+  >
+    <h3
+      id="inform-title-lightning-system-characteristics"
+      class="inform-section__title"
+    >
+      5.3 Características del sistema de Pararrayos
+    </h3>
+
+    @if (isLoading()) {
+      <p class="inform-section__state">Cargando puntos...</p>
+    } @else if (!points().length) {
+      <p class="inform-section__state">
+        No se encontraron puntos de medición para mostrar en el informe.
+      </p>
+    } @else {
+      <div
+        id="inform-table-wrap-lightning-system-characteristics"
+        class="inform-table-wrap"
+      >
+        <table
+          id="inform-table-lightning-system-characteristics"
+          class="inform-table"
+        >
+          <thead>
+            <tr>
+              <th>Punto</th>
+              <th>Tipo de sistema</th>
+              <th>Altura de las terminales (metros)</th>
+              <th>Ubicación</th>
+              <th>Radio de protección (m)</th>
+              <th>Área de cobertura de protección (Diámetro en m2)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (point of points(); track point.idDoc) {
+              <tr>
+                <td>{{ point.pointNumber }}</td>
+                <td>{{ getSystemTypeLabel(point) }}</td>
+                <td>{{ getLightningRodHeightLabel(point) }}</td>
+                <td>{{ point.location || '—' }}</td>
+                <td>{{ getProtectionRadiusLabel(point) }}</td>
+                <td>
+                  {{
+                    getProtectionArea(point) != null
+                      ? (getProtectionArea(point)! | number:'1.2-2')
+                      : ''
+                  }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+  </div>
+  } @else {
+    <section class="inform-charts">
+      <h3 class="inform-charts__title">Gráficos</h3>
+      @if (isLoading()) {
+        <p class="inform-section__state">Cargando puntos...</p>
+      } @else if (!points().length) {
+        <p class="inform-section__state">
+          No se encontraron puntos de medición para mostrar en gráficos.
+        </p>
+      } @else {
+        <div class="inform-chart-grid">
+          @for (point of points(); track point.idDoc) {
+            <article
+              class="inform-chart-card"
+              [id]="'inform-chart-card-point-' + point.pointNumber"
+            >
+              <table
+                class="inform-chart-card__summary"
+                [id]="'inform-chart-summary-point-' + point.pointNumber"
+              >
+                <tbody>
+                  <tr>
+                    <th>Punto No.</th>
+                    <td>{{ point.pointNumber }}</td>
+                  </tr>
+                  <tr>
+                    <th>Ubicación</th>
+                    <td>{{ point.location || '—' }}</td>
+                  </tr>
+                  <tr>
+                    <th>Tipo de electrodo</th>
+                    <td>{{ getElectrodeTypeDisplay(point) }}</td>
+                  </tr>
+                  <tr>
+                    <th>**Valor de la resistencia a tierra de la red de puesta a tierra</th>
+                    <td>
+                      {{
+                        getP15Resistance(point) != null
+                          ? (getP15Resistance(point)! | number:'1.2-2') + ' Ω'
+                          : '—'
+                      }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>Continuidad</th>
+                    <td>{{ getContinuityLabel(point) }}</td>
+                  </tr>
+                  <tr>
+                    <th>Voltaje</th>
+                    <td>{{ getVoltageLabel(point) }}</td>
+                  </tr>
+                  <tr>
+                    <th rowspan="3">Equipos conectados</th>
+                    <td>{{ getConnectedEquipmentRows(point)[0] }}</td>
+                  </tr>
+                  <tr>
+                    <td>{{ getConnectedEquipmentRows(point)[1] }}</td>
+                  </tr>
+                  <tr>
+                    <td>{{ getConnectedEquipmentRows(point)[2] }}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <p class="inform-chart-card__note">
+                **Nota: El valor de la resistencia a tierra de la red de puesta a tierra
+                corresponde a P1 (5).
+              </p>
+
+              <table
+                class="inform-chart-card__measurements"
+                [id]="'inform-chart-measurements-point-' + point.pointNumber"
+              >
+                <thead>
+                  <tr>
+                    <th colspan="8">
+                      Valor de las mediciones, Punto {{ point.pointNumber }}
+                      {{ point.location || '' }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th>Punto de medición</th>
+                    @for (item of getMeasurementSeries(point); track item.label) {
+                      <td>{{ item.label }}</td>
+                    }
+                  </tr>
+                  <tr>
+                    <th>Distancia (m)</th>
+                    @for (item of getMeasurementSeries(point); track item.label) {
+                      <td>{{ item.distance }}</td>
+                    }
+                  </tr>
+                  <tr>
+                    <th>Valores de resistencia</th>
+                    @for (item of getMeasurementSeries(point); track item.label) {
+                      <td>{{ item.value != null ? ((item.value | number:'1.2-2') + ' Ω') : '—' }}</td>
+                    }
+                  </tr>
+                </tbody>
+              </table>
+
+              <div
+                class="inform-chart-card__graph"
+                [id]="'inform-chart-graph-point-' + point.pointNumber"
+              >
+                <p class="inform-chart-card__graph-title">
+                  Valor de las mediciones, Punto {{ point.pointNumber }}
+                  {{ point.location || '' }}
+                </p>
+                <svg
+                  class="inform-chart-card__svg"
+                  [attr.viewBox]="'0 0 ' + chartWidth + ' ' + chartHeight"
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  @for (tick of getChartYTicks(point); track $index) {
+                    <g>
+                      <line
+                        class="inform-chart-card__grid-line"
+                        [attr.x1]="chartPadding.left"
+                        [attr.x2]="chartWidth - chartPadding.right"
+                        [attr.y1]="getChartYPosition(point, tick)"
+                        [attr.y2]="getChartYPosition(point, tick)"
+                      />
+                      <text
+                        class="inform-chart-card__axis-label"
+                        [attr.x]="chartPadding.left - 8"
+                        [attr.y]="getChartYPosition(point, tick) + 4"
+                        text-anchor="end"
+                      >
+                        {{ tick | number:'1.1-2' }}
+                      </text>
+                    </g>
+                  }
+
+                  <line
+                    class="inform-chart-card__axis-line"
+                    [attr.x1]="chartPadding.left"
+                    [attr.x2]="chartPadding.left"
+                    [attr.y1]="chartPadding.top"
+                    [attr.y2]="chartHeight - chartPadding.bottom"
+                  />
+                  <line
+                    class="inform-chart-card__axis-line"
+                    [attr.x1]="chartPadding.left"
+                    [attr.x2]="chartWidth - chartPadding.right"
+                    [attr.y1]="chartHeight - chartPadding.bottom"
+                    [attr.y2]="chartHeight - chartPadding.bottom"
+                  />
+
+                  @for (item of getMeasurementSeries(point); track item.label; let i = $index) {
+                    <text
+                      class="inform-chart-card__axis-label"
+                      [attr.x]="getChartXPosition(i)"
+                      [attr.y]="chartHeight - 12"
+                      text-anchor="middle"
+                    >
+                      {{ item.distance }}
+                    </text>
+                  }
+
+                  <polyline
+                    class="inform-chart-card__line"
+                    [attr.points]="getChartPolyline(point)"
+                  />
+                </svg>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+</section>

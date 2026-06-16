@@ -255,6 +255,18 @@
                         }
                       </select>
                       <span class="wo-step-card__assign-meta">Siguiente: {{ nextStep.stepName }}</span>
+                      <button
+                        class="wo-step-card__assign-save"
+                        type="button"
+                        [disabled]="isSavingNextAssignmentStepId() === step.idDoc"
+                        (click)="saveNextWorkflowAssignment(step)"
+                      >
+                        {{
+                          isSavingNextAssignmentStepId() === step.idDoc
+                            ? 'Guardando...'
+                            : 'Guardar asignación'
+                        }}
+                      </button>
                     </div>
                   }
                   <button
@@ -539,6 +551,18 @@
                         }
                       </select>
                       <span class="wo-step-card__assign-meta">Siguiente: {{ nextStep.stepName }}</span>
+                      <button
+                        class="wo-step-card__assign-save"
+                        type="button"
+                        [disabled]="isSavingNextAssignmentStepId() === step.idDoc"
+                        (click)="saveNextWorkflowAssignment(step)"
+                      >
+                        {{
+                          isSavingNextAssignmentStepId() === step.idDoc
+                            ? 'Guardando...'
+                            : 'Guardar asignación'
+                        }}
+                      </button>
                     </div>
                   }
                   <button
@@ -591,7 +615,10 @@
 
         @if (shouldRenderInformStep()) {
           <section class="wo-step-page">
-            <app-inform />
+            <app-inform
+              [workOrderId]="selectedOrder()!.idDoc"
+              [cableResistance]="selectedOrder()!.cableResistance ?? null"
+            />
           </section>
         }
       }

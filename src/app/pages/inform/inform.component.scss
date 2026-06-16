@@ -4,5 +4,258 @@
 
 .inform-page {
   min-height: 100%;
-  padding: 2rem;
+  padding: 0.2rem;
+}
+
+.inform-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.6rem;
+  margin-top: 0.35rem;
+  padding-right: 0.35rem;
+
+  &__button {
+    min-height: 2.2rem;
+    padding: 0.42rem 1rem;
+    border: none;
+    border-radius: 999px;
+    background: var(--lema-accent);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+}
+
+.inform-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-bottom: 0.8rem;
+
+  &__tab {
+    min-height: 2.45rem;
+    padding: 0.48rem 1.2rem;
+    border: 1px solid #d9e1ec;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--lema-navy);
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease;
+
+    &--active {
+      border-color: var(--lema-accent);
+      background: var(--lema-accent);
+      color: #fff;
+    }
+  }
+}
+
+.inform-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.inform-charts {
+  min-height: 8rem;
+
+  &__title {
+    margin: 0 0 0.75rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #111827;
+  }
+}
+
+.inform-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.inform-chart-card {
+  padding: 0.8rem;
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+  background: #fff;
+
+  &__summary,
+  &__measurements {
+    width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+      padding: 0.28rem 0.36rem;
+      border: 1px solid #1f2937;
+      font-size: 0.63rem;
+      color: #111827;
+      vertical-align: middle;
+    }
+
+    th {
+      font-weight: 700;
+      background: #f3f4f6;
+    }
+
+    td {
+      text-align: center;
+      background: #fff;
+    }
+  }
+
+  &__summary {
+    margin-bottom: 0.55rem;
+
+    th {
+      width: 48%;
+      text-align: center;
+    }
+  }
+
+  &__measurements {
+    margin-bottom: 0.7rem;
+
+    th:first-child {
+      width: 22%;
+      text-align: center;
+    }
+  }
+
+  &__note {
+    margin: 0 0 0.55rem;
+    font-size: 0.58rem;
+    line-height: 1.25;
+    color: #111827;
+  }
+
+  &__graph {
+    border: 1px solid #9ca3af;
+    background: #fff;
+    padding: 0.55rem 0.45rem 0.35rem;
+  }
+
+  &__graph-title {
+    margin: 0 0 0.45rem;
+    text-align: center;
+    font-size: 0.66rem;
+    color: #111827;
+  }
+
+  &__svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  &__grid-line {
+    stroke: #d1d5db;
+    stroke-width: 1;
+  }
+
+  &__axis-line {
+    stroke: #6b7280;
+    stroke-width: 1.1;
+  }
+
+  &__axis-label {
+    fill: #4b5563;
+    font-size: 10px;
+  }
+
+  &__line {
+    fill: none;
+    stroke: #2563eb;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.inform-section {
+  border: 1px solid #d9e1ec;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+
+  &__title {
+    margin: 0;
+    padding: 0.38rem 0.5rem;
+    border-bottom: 1px solid #d9e1ec;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #111827;
+    background: #ffffff;
+  }
+
+  &__state {
+    margin: 0;
+    padding: 0.5rem;
+    font-size: 0.58rem;
+    color: var(--lema-gray);
+  }
+}
+
+.inform-table-wrap {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.inform-table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.24rem 0.32rem;
+    border: 1px solid #1f2937;
+    text-align: left;
+    font-size: 0.56rem;
+    color: #111827;
+    line-height: 1.1;
+  }
+
+  th {
+    font-weight: 700;
+    background: #e5e7eb;
+  }
+
+  td:first-child,
+  th:first-child {
+    width: 2.4rem;
+    text-align: center;
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 1200px) {
+  .inform-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inform-chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .inform-grid {
+    grid-template-columns: 1fr;
+  }
 }

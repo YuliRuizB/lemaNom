@@ -99,6 +99,7 @@ export class WorkOrderComponent {
   selectedNextAssignedUserId = signal('');
   isAddingSelectedOrderEquipment = signal(false);
   isFinalizingStepId = signal<string | null>(null);
+  isSavingNextAssignmentStepId = signal<string | null>(null);
   isDeletingSelectedOrder = signal(false);
   isSavingImpartiality = signal(false);
   selectedOrderPlant = signal<ClientPlant | null>(null);
@@ -583,6 +584,54 @@ export class WorkOrderComponent {
     const selectedId = this.selectedNextAssignedUserId();
     const user = this.assignableWorkflowUsers().find((item) => item.idDoc === selectedId);
     return user ? this.getReadableUserName(user) : undefined;
+  }
+
+  saveNextWorkflowAssignment(step: workOrderStep): void {
+    const order = this.selectedOrder();
+    const nextStep = this.getNextWorkflowStep(step);
+    const selectedUserId = this.selectedNextAssignedUserId();
+
+    if (!order || !nextStep || this.isSavingNextAssignmentStepId()) {
+      return;
+    }
+
+    if (!selectedUserId) {
+      this.toastService.warning('Selecciona a quién se asignará el siguiente paso.');
+      return;
+    }
+
+    const selectedUserName =
+      this.getSelectedNextAssignedUserName() ||
+      this.assignableWorkflowUsers().find((user) => user.idDoc === selectedUserId)?.displayName ||
+      '';
+
+    this.isSavingNextAssignmentStepId.set(step.idDoc);
+    this.workOrderService
+      .updateWorkflowStepAssignment(order.idDoc, nextStep.idDoc, {
+        id: selectedUserId,
+        name: selectedUserName,
+      })
+      .subscribe({
+        next: () => {
+          this.selectedOrderWorkflowSteps.update((steps) =>
+            steps.map((item) =>
+              item.idDoc === nextStep.idDoc
+                ? {
+                    ...item,
+                    assignedUserId: selectedUserId,
+                    assignedUserName: selectedUserName,
+                  }
+                : item
+            )
+          );
+          this.isSavingNextAssignmentStepId.set(null);
+          this.toastService.success('La asignación del siguiente paso se guardó correctamente.');
+        },
+        error: () => {
+          this.isSavingNextAssignmentStepId.set(null);
+          this.toastService.error('No fue posible guardar la asignación del siguiente paso.');
+        },
+      });
   }
 
   goToPreviousWorkflowTab(): void {

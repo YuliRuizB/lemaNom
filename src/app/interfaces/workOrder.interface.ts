@@ -65,6 +65,18 @@ export interface WorkOrderImpartiality {
   observations?: string;
 }
 
+export interface WorkOrderClientVisitSignature {
+  signedByName: string;
+  signedByRole?: string;
+  signedAt?: Date;
+  observations?: string;
+  confirmedVisit: boolean;
+  signatureDataUrl: string;
+  updatedByUserId?: string;
+  updatedByUserName?: string;
+  updatedAt?: Date;
+}
+
 export interface workOrderStep {
   idDoc: string; // sugerido: 01-solicitud, 02-planeacion, etc.
   workOrderId: string;
@@ -80,6 +92,7 @@ export interface workOrderStep {
   completedByUserId?: string;
   completedByUserName?: string;
   observations?: string;
+  clientVisitSignature?: WorkOrderClientVisitSignature;
   startedAt?: Date;
   completedAt?: Date;
   active: boolean;
