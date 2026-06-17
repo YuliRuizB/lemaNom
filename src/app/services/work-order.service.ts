@@ -54,6 +54,14 @@ export class WorkOrderService {
     );
   }
 
+  getWorkOrderById(workOrderId: string): Observable<workOrder | null> {
+    const workOrderRef = doc(this.firestore, 'workOrder', workOrderId);
+
+    return from(getDoc(workOrderRef)).pipe(
+      map((snapshot) => (snapshot.exists() ? this.toWorkOrder(snapshot.id, snapshot.data()) : null))
+    );
+  }
+
   createWorkOrder(data: Omit<workOrder, 'idDoc' | 'updatedAt'>): Observable<string> {
     const workOrdersRef = collection(this.firestore, 'workOrder');
 

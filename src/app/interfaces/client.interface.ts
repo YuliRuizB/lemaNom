@@ -11,6 +11,7 @@ export interface Client {
   // Si tu sistema maneja customer padre
   customerId?: string;
   customerName?: string;
+  activity?: string; // Actividad económica del cliente
   active: boolean;
   urlLogo?: string;
   createdAt: Date;

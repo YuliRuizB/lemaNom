@@ -158,6 +158,14 @@ export class ClientService {
     return from(deleteDoc(clientRef));
   }
 
+  getClientById(clientId: string): Observable<Client | null> {
+    const clientRef = doc(this.firestore, 'client', clientId);
+
+    return from(getDoc(clientRef)).pipe(
+      map((snapshot) => (snapshot.exists() ? this.toClient(snapshot.id, snapshot.data()) : null))
+    );
+  }
+
   uploadClientImage(clientId: string, file: File): Observable<string> {
     const extension = file.name.split('.').pop() || 'png';
     const storageRef = ref(this.storage, `customer/${clientId}/image.${extension}`);

@@ -1,7 +1,12 @@
 <section class="inform-page">
   <div class="inform-toolbar">
-    <button class="inform-toolbar__button" type="button">
-      Generar Informe
+    <button
+      class="inform-toolbar__button"
+      type="button"
+      [disabled]="isGenerating()"
+      (click)="generateInform()"
+    >
+      {{ isGenerating() ? 'Generando...' : 'Generar Informe' }}
     </button>
   </div>
 
@@ -27,11 +32,11 @@
   @if (activeTab() === 'tables') {
   <div class="inform-grid">
   <article
-    id="inform-section-static-electricity-sources"
+    id="table_422"
     class="inform-section"
   >
     <h3
-      id="inform-title-static-electricity-sources"
+      id="table_422_title"
       class="inform-section__title"
     >
       4.2.2.- Descripción de las fuentes generadoras de electricidad estática.
@@ -45,11 +50,11 @@
       </p>
     } @else {
       <div
-        id="inform-table-wrap-static-electricity-sources"
+        id="table_422_wrap"
         class="inform-table-wrap"
       >
         <table
-          id="inform-table-static-electricity-sources"
+          id="table_422_table"
           class="inform-table"
         >
           <thead>
@@ -74,11 +79,11 @@
   </article>
 
   <article
-    id="inform-section-earth-resistance-values"
+    id="table_51"
     class="inform-section"
   >
     <h3
-      id="inform-title-earth-resistance-values"
+      id="table_51_title"
       class="inform-section__title"
     >
       5.1.- Valores de resistencia a tierra de la red de puesta a tierra e indicación de la continuidad eléctrica de los puntos de conexión del sistema.
@@ -92,11 +97,11 @@
       </p>
     } @else {
       <div
-        id="inform-table-wrap-earth-resistance-values"
+        id="table_51_wrap"
         class="inform-table-wrap"
       >
         <table
-          id="inform-table-earth-resistance-values"
+          id="table_51_table"
           class="inform-table"
         >
           <thead>
@@ -133,11 +138,11 @@
   </article>
 
   <article
-    id="inform-section-relative-humidity-values"
+    id="table_52"
     class="inform-section"
   >
     <h3
-      id="inform-title-relative-humidity-values"
+      id="table_52_title"
       class="inform-section__title"
     >
       5.2 Valores de las mediciones de Humedad Relativa
@@ -151,11 +156,11 @@
       </p>
     } @else {
       <div
-        id="inform-table-wrap-relative-humidity-values"
+        id="table_52_wrap"
         class="inform-table-wrap"
       >
         <table
-          id="inform-table-relative-humidity-values"
+          id="table_52_table"
           class="inform-table"
         >
           <thead>
@@ -182,11 +187,11 @@
   </article>
 
   <article
-    id="inform-section-lightning-system-characteristics"
+    id="table_53"
     class="inform-section"
   >
     <h3
-      id="inform-title-lightning-system-characteristics"
+      id="table_53_title"
       class="inform-section__title"
     >
       5.3 Características del sistema de Pararrayos
@@ -200,11 +205,11 @@
       </p>
     } @else {
       <div
-        id="inform-table-wrap-lightning-system-characteristics"
+        id="table_53_wrap"
         class="inform-table-wrap"
       >
         <table
-          id="inform-table-lightning-system-characteristics"
+          id="table_53_table"
           class="inform-table"
         >
           <thead>
