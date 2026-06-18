@@ -61,6 +61,8 @@ export class EquipmentService {
     if (data.model)        payload['model']        = data.model;
     if (data.range)        payload['range']        = data.range;
     if (data.frecuency)    payload['frecuency']    = data.frecuency;
+    if (data.precition)    payload['precition']    = data.precition;
+    if (data.especify_equipment) payload['especify_equipment'] = data.especify_equipment;
     if (data.voltage)      payload['voltage']      = data.voltage;
     if (data.customerId)   payload['customerId']   = data.customerId;
     if (data.customerName) payload['customerName'] = data.customerName;
@@ -70,7 +72,10 @@ export class EquipmentService {
 
   updateEquipment(
     idDoc: string,
-    data: Pick<equipment, 'name' | 'identifier' | 'ns' | 'brand' | 'model' | 'range' | 'frecuency' | 'voltage' | 'active'>
+    data: Pick<
+      equipment,
+      'name' | 'identifier' | 'ns' | 'brand' | 'model' | 'range' | 'frecuency' | 'precition' | 'especify_equipment' | 'voltage' | 'active'
+    >
   ): Observable<void> {
     const docRef = doc(this.firestore, 'equipment', idDoc);
     const payload: Record<string, any> = {
@@ -84,6 +89,8 @@ export class EquipmentService {
     if (data.model !== undefined)     payload['model']     = data.model || null;
     if (data.range !== undefined)     payload['range']     = data.range || null;
     if (data.frecuency !== undefined) payload['frecuency'] = data.frecuency || null;
+    if (data.precition !== undefined) payload['precition'] = data.precition || null;
+    if (data.especify_equipment !== undefined) payload['especify_equipment'] = data.especify_equipment || null;
     if (data.voltage !== undefined)   payload['voltage']   = data.voltage || null;
 
     return from(setDoc(docRef, payload, { merge: true }));
@@ -209,6 +216,8 @@ export class EquipmentService {
       ns: data['ns'],
       range: data['range'],
       frecuency: data['frecuency'],
+      precition: data['precition'],
+      especify_equipment: data['especify_equipment'],
       voltage: data['voltage'],
       customerId: data['customerId'],
       customerName: data['customerName'],

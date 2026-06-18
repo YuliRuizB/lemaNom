@@ -143,6 +143,14 @@
               <span class="detail-item__value">{{ eq.frecuency || '—' }}</span>
             </div>
             <div class="detail-item">
+              <span class="detail-item__label">Precisión</span>
+              <span class="detail-item__value">{{ eq.precition || '—' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-item__label">Especificar equipo</span>
+              <span class="detail-item__value">{{ eq.especify_equipment || '—' }}</span>
+            </div>
+            <div class="detail-item">
               <span class="detail-item__label">Voltaje</span>
               <span class="detail-item__value">{{ eq.voltage || '—' }}</span>
             </div>
@@ -206,6 +214,14 @@
               <div class="edit-field">
                 <label class="edit-field__label">Frecuencia</label>
                 <input class="edit-field__input" type="text" formControlName="frecuency" />
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Precisión</label>
+                <input class="edit-field__input" type="text" formControlName="precition" />
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Especificar equipo</label>
+                <input class="edit-field__input" type="text" formControlName="especify_equipment" />
               </div>
               <div class="edit-field">
                 <label class="edit-field__label">Voltaje</label>

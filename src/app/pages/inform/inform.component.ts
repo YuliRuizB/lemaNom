@@ -6,9 +6,11 @@ import { catchError, firstValueFrom, forkJoin, of, switchMap, take } from 'rxjs'
 
 import { ClientPlant } from '../../interfaces/client.interface';
 import { InformNom22Data } from '../../interfaces/documents/informNom22.interface';
+import { equipment } from '../../interfaces/meditionType.interface';
 import { Point } from '../../interfaces/measurements.interface';
 import { workOrder, workOrderEquipment, workOrderStep } from '../../interfaces/workOrder.interface';
 import { ClientService } from '../../services/client.service';
+import { EquipmentService } from '../../services/equipment.service';
 import { ToastService } from '../../services/toast.service';
 import { WorkOrderService } from '../../services/work-order.service';
 
@@ -22,10 +24,13 @@ import { WorkOrderService } from '../../services/work-order.service';
 export class InformComponent implements OnInit, OnChanges {
   private readonly table422Id = 'table_422';
   private readonly table51Id = 'table_51';
+  private readonly table52Id = 'table_52';
   private readonly imagePlaceholderKeys = new Set<keyof InformNom22Data>([
     'tabla_4_2_2_id',
     'tabla_5_1_id',
+    'tabla_5_2_id',
   ]);
+  private readonly stackedImagePlaceholderKeys = new Set<keyof InformNom22Data>(['charts']);
   readonly chartWidth = 420;
   readonly chartHeight = 240;
   readonly chartPadding = { top: 22, right: 18, bottom: 34, left: 42 };
@@ -42,6 +47,7 @@ export class InformComponent implements OnInit, OnChanges {
   private readonly templatePath = '/base22.docx';
   private workOrderService = inject(WorkOrderService);
   private clientService = inject(ClientService);
+  private equipmentService = inject(EquipmentService);
   private toastService = inject(ToastService);
 
   @Input() workOrderId = '';
@@ -49,10 +55,12 @@ export class InformComponent implements OnInit, OnChanges {
 
   isLoading = signal(false);
   isGenerating = signal(false);
+  showHumidityQuestion = false;
   activeTab = signal<'tables' | 'charts'>('tables');
   points = signal<Point[]>([]);
   measurementStep = signal<workOrderStep | null>(null);
   stepEquipments = signal<workOrderEquipment[]>([]);
+  private humidityQuestionResolver: ((value: boolean) => void) | null = null;
   readonly factorCorreccion = computed(
     () => this.stepEquipments().find((equipment) => equipment.promedioFC != null)?.promedioFC ?? null
   );
@@ -299,7 +307,9 @@ export class InformComponent implements OnInit, OnChanges {
     this.isGenerating.set(true);
 
     try {
-      const informData = await this.buildInformData();
+      const includeHumidityControl = await this.askHumidityControlQuestion();
+      const informData = await this.buildInformData(includeHumidityControl);
+
       const response = await fetch(this.templatePath);
 
       if (!response.ok) {
@@ -320,9 +330,12 @@ export class InformComponent implements OnInit, OnChanges {
         zip.file(xmlEntry.name, updatedXml);
       }
 
-      const tableImages = await this.captureReportTableImages();
-      if (tableImages.length) {
-        await this.embedTableImagesIntoDocument(zip, tableImages);
+      const tableImages = await this.captureReportTableImages(includeHumidityControl);
+      const chartImages = await this.captureChartImages();
+      const reportImages = [...tableImages, ...chartImages];
+
+      if (reportImages.length) {
+        await this.embedImagesIntoDocument(zip, reportImages);
       }
 
       const generatedDoc = await zip.generateAsync({
@@ -340,7 +353,7 @@ export class InformComponent implements OnInit, OnChanges {
     }
   }
 
-  private async buildInformData(): Promise<InformNom22Data> {
+  private async buildInformData(includeHumidityControl: boolean): Promise<InformNom22Data> {
     const order = await firstValueFrom(this.workOrderService.getWorkOrderById(this.workOrderId));
 
     if (!order) {
@@ -358,29 +371,40 @@ export class InformComponent implements OnInit, OnChanges {
     ]);
 
     const mainEquipment = equipments.find((equipment) => equipment.active) ?? equipments[0] ?? null;
+    const masterEquipment =
+      mainEquipment?.equipmentId
+        ? await firstValueFrom(this.equipmentService.getEquipmentById(mainEquipment.equipmentId))
+        : null;
+    const resolvedEquipment = this.mergeWorkOrderEquipmentWithMaster(mainEquipment, masterEquipment);
     const today = new Date();
 
     return {
       client_image: client?.urlLogo?.trim() || '',
       client_name: client?.name?.trim() || order.clientName?.trim() || '',
+      client_activity: client?.client_activity?.trim() || '',
       client_address: this.buildClientAddress(plant),
       inform_number: order.informNumber?.trim() || '',
       date_address: this.buildDateAddress(plant, today),
       client_rfc: client?.rfc?.trim() || '',
       client_phone: client?.phone?.trim() || '',
-      client_activity: client?.activity?.trim() || '',
       date: this.formatLongDate(today),
       signatario_name: order.signatoryName?.trim() || '',
-      identifier: mainEquipment?.equipmentType?.trim() || '',
-      model: mainEquipment?.equipmentModel?.trim() || '',
-      ns: mainEquipment?.equipmentNs?.trim() || '',
-      medition_interval: this.getMeasurementInterval(order, mainEquipment),
-      precition: this.getEquipmentPrecision(order, mainEquipment),
-      frecuency: mainEquipment?.equipmentFrecuency?.trim() || '',
-      especify_equipment: this.getEquipmentDescription(mainEquipment),
+      identifier: resolvedEquipment?.equipmentType?.trim() || '',
+      model: resolvedEquipment?.equipmentModel?.trim() || '',
+      ns: resolvedEquipment?.equipmentNs?.trim() || '',
+      medition_interval:
+        resolvedEquipment?.equipmentMeditionInterval?.trim() ||
+        this.getMeasurementInterval(order, resolvedEquipment),
+      precition:
+        resolvedEquipment?.equipmentPrecition?.trim() ||
+        this.getEquipmentPrecision(order, resolvedEquipment),
+      frecuency: resolvedEquipment?.equipmentFrecuency?.trim() || '',
+      especify_equipment:
+        resolvedEquipment?.equipmentSpecifyEquipment?.trim() ||
+        this.getEquipmentDescription(resolvedEquipment),
       tabla_4_2_2_id: this.table422Id,
       tabla_5_1_id: this.table51Id,
-      tabla_5_2_id: '',
+      tabla_5_2_id: includeHumidityControl ? this.table52Id : '',
       tabla_5_3_id: '',
       charts: '',
     };
@@ -464,7 +488,11 @@ export class InformComponent implements OnInit, OnChanges {
     let output = xml;
 
     for (const [key, value] of replacements) {
-      if (this.imagePlaceholderKeys.has(key)) {
+      if (this.stackedImagePlaceholderKeys.has(key)) {
+        continue;
+      }
+
+      if (this.imagePlaceholderKeys.has(key) && value) {
         continue;
       }
       const escapedValue = this.escapeXml(value);
@@ -501,13 +529,18 @@ export class InformComponent implements OnInit, OnChanges {
     URL.revokeObjectURL(url);
   }
 
-  private async captureReportTableImages(): Promise<ReportTableImage[]> {
+  private async captureReportTableImages(
+    includeHumidityControl: boolean
+  ): Promise<ReportEmbeddedImage[]> {
     const targets = [
       { placeholder: 'tabla_4_2_2_id', elementId: this.table422Id },
       { placeholder: 'tabla_5_1_id', elementId: this.table51Id },
+      ...(includeHumidityControl
+        ? ([{ placeholder: 'tabla_5_2_id', elementId: this.table52Id }] as const)
+        : []),
     ] as const;
 
-    const results: ReportTableImage[] = [];
+    const results: ReportEmbeddedImage[] = [];
 
     for (const target of targets) {
       const element = document.getElementById(target.elementId);
@@ -536,9 +569,48 @@ export class InformComponent implements OnInit, OnChanges {
     return results;
   }
 
-  private async embedTableImagesIntoDocument(
+  private async captureChartImages(): Promise<ReportEmbeddedImage[]> {
+    const previousTab = this.activeTab();
+    this.activeTab.set('charts');
+    await this.waitForDomRender();
+
+    try {
+      const results: ReportEmbeddedImage[] = [];
+
+      for (const point of this.points()) {
+        const element = document.getElementById(`inform-chart-card-point-${point.pointNumber}`);
+        if (!element) {
+          continue;
+        }
+
+        const canvas = await html2canvas(element, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+
+        const blob = await this.canvasToBlob(canvas);
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+
+        results.push({
+          placeholder: 'charts',
+          bytes,
+          widthPx: canvas.width,
+          heightPx: canvas.height,
+        });
+      }
+
+      return results;
+    } finally {
+      this.activeTab.set(previousTab);
+      await this.waitForDomRender();
+    }
+  }
+
+  private async embedImagesIntoDocument(
     zip: JSZip,
-    images: ReportTableImage[]
+    images: ReportEmbeddedImage[]
   ): Promise<void> {
     const documentFile = zip.file('word/document.xml');
     const relsFile = zip.file('word/_rels/document.xml.rels');
@@ -551,6 +623,8 @@ export class InformComponent implements OnInit, OnChanges {
     let relsXml = await relsFile.async('string');
     let nextRelationshipId = this.getNextRelationshipId(relsXml);
     let nextImageIndex = this.getNextImageIndex(relsXml);
+    let nextDocPrId = nextImageIndex + 1000;
+    const placeholderParagraphs = new Map<ReportEmbeddedImage['placeholder'], string[]>();
 
     for (const image of images) {
       const relationshipId = `rId${nextRelationshipId++}`;
@@ -567,13 +641,19 @@ export class InformComponent implements OnInit, OnChanges {
         imageName,
         image.widthPx,
         image.heightPx,
-        nextImageIndex + 1000
+        nextDocPrId++
       );
 
+      const existingParagraphs = placeholderParagraphs.get(image.placeholder) ?? [];
+      existingParagraphs.push(imageParagraph);
+      placeholderParagraphs.set(image.placeholder, existingParagraphs);
+    }
+
+    for (const [placeholder, paragraphs] of placeholderParagraphs.entries()) {
       documentXml = this.replaceParagraphPlaceholderWithImage(
         documentXml,
-        image.placeholder,
-        imageParagraph
+        placeholder,
+        placeholder === 'charts' ? this.joinImageParagraphsWithPageBreaks(paragraphs) : paragraphs.join('')
       );
     }
 
@@ -592,7 +672,13 @@ export class InformComponent implements OnInit, OnChanges {
       'g'
     );
 
-    return xml.replace(paragraphPattern, imageParagraph);
+    const splitParagraphPattern = new RegExp(
+      `<w:p[^>]*>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<w:t>\\{\\{<\\/w:t>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<w:t>${escapedPlaceholder}<\\/w:t>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<w:t>\\}\\}<\\/w:t>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<\\/w:p>`,
+      'g'
+    );
+
+    const replaced = xml.replace(paragraphPattern, imageParagraph);
+    return replaced.replace(splitParagraphPattern, imageParagraph);
   }
 
   private buildWordImageParagraph(
@@ -615,6 +701,18 @@ export class InformComponent implements OnInit, OnChanges {
     heightEmu = Math.max(1, Math.round(heightEmu * ratio));
 
     return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="114300" distR="114300" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="${widthEmu}" cy="${heightEmu}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${docPrId}" name="${imageName}"/><wp:cNvGraphicFramePr/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="${imageName}"/><pic:cNvPicPr preferRelativeResize="0"/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${relationshipId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${widthEmu}" cy="${heightEmu}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+  }
+
+  private joinImageParagraphsWithPageBreaks(paragraphs: string[]): string {
+    return paragraphs
+      .map((paragraph, index) =>
+        index === 0 ? paragraph : `${this.buildWordPageBreakParagraph()}${paragraph}`
+      )
+      .join('');
+  }
+
+  private buildWordPageBreakParagraph(): string {
+    return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
   }
 
   private getNextRelationshipId(relsXml: string): number {
@@ -643,10 +741,55 @@ export class InformComponent implements OnInit, OnChanges {
       }, 'image/png');
     });
   }
+
+  private waitForDomRender(): Promise<void> {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  private askHumidityControlQuestion(): Promise<boolean> {
+    this.showHumidityQuestion = true;
+
+    return new Promise<boolean>((resolve) => {
+      this.humidityQuestionResolver = resolve;
+    });
+  }
+
+  answerHumidityControlQuestion(answer: boolean): void {
+    this.showHumidityQuestion = false;
+    this.humidityQuestionResolver?.(answer);
+    this.humidityQuestionResolver = null;
+  }
+
+  private mergeWorkOrderEquipmentWithMaster(
+    item: workOrderEquipment | null,
+    master: equipment | null
+  ): workOrderEquipment | null {
+    if (!item) {
+      return null;
+    }
+
+    if (!master) {
+      return item;
+    }
+
+    return {
+      ...item,
+      equipmentName: item.equipmentName || master.name,
+      equipmentType: item.equipmentType || master.identifier,
+      equipmentBrand: item.equipmentBrand || master.brand,
+      equipmentModel: item.equipmentModel || master.model,
+      equipmentNs: item.equipmentNs || master.ns,
+      equipmentSerialNumber: item.equipmentSerialNumber || master.ns,
+      equipmentFrecuency: item.equipmentFrecuency || master.frecuency,
+      equipmentMeditionInterval: item.equipmentMeditionInterval || master.range,
+      equipmentPrecition: item.equipmentPrecition || master.precition,
+      equipmentSpecifyEquipment: item.equipmentSpecifyEquipment || master.especify_equipment,
+    };
+  }
 }
 
-interface ReportTableImage {
-  placeholder: 'tabla_4_2_2_id' | 'tabla_5_1_id';
+interface ReportEmbeddedImage {
+  placeholder: 'tabla_4_2_2_id' | 'tabla_5_1_id' | 'tabla_5_2_id' | 'charts';
   bytes: Uint8Array;
   widthPx: number;
   heightPx: number;

@@ -1515,6 +1515,9 @@ export class WorkOrderComponent {
       equipmentNs: workOrderEquipmentItem.equipmentNs || masterEquipment.ns,
       equipmentSerialNumber: workOrderEquipmentItem.equipmentSerialNumber || masterEquipment.ns,
       equipmentFrecuency: workOrderEquipmentItem.equipmentFrecuency || masterEquipment.frecuency,
+      equipmentMeditionInterval: workOrderEquipmentItem.equipmentMeditionInterval || masterEquipment.range,
+      equipmentPrecition: workOrderEquipmentItem.equipmentPrecition || masterEquipment.precition,
+      equipmentSpecifyEquipment: workOrderEquipmentItem.equipmentSpecifyEquipment || masterEquipment.especify_equipment,
     };
   }
 

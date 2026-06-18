@@ -264,6 +264,8 @@ export class EquipoMedicionComponent {
     model:      [''],
     range:      [''],
     frecuency:  [''],
+    precition:  [''],
+    especify_equipment: [''],
     voltage:    [''],
     active:     [true],
   });
@@ -458,6 +460,8 @@ export class EquipoMedicionComponent {
       model:      eq.model ?? '',
       range:      eq.range ?? '',
       frecuency:  eq.frecuency ?? '',
+      precition:  eq.precition ?? '',
+      especify_equipment: eq.especify_equipment ?? '',
       voltage:    eq.voltage ?? '',
       active:     eq.active,
     });
@@ -487,6 +491,8 @@ export class EquipoMedicionComponent {
       model:      v.model?.trim() ?? '',
       range:      v.range?.trim() ?? '',
       frecuency:  v.frecuency?.trim() ?? '',
+      precition:  v.precition?.trim() ?? '',
+      especify_equipment: v.especify_equipment?.trim() ?? '',
       voltage:    v.voltage?.trim() ?? '',
       active:     v.active!,
     }).subscribe({
@@ -500,6 +506,8 @@ export class EquipoMedicionComponent {
           model:      v.model?.trim() || undefined,
           range:      v.range?.trim() || undefined,
           frecuency:  v.frecuency?.trim() || undefined,
+          precition:  v.precition?.trim() || undefined,
+          especify_equipment: v.especify_equipment?.trim() || undefined,
           voltage:    v.voltage?.trim() || undefined,
           active:     v.active!,
           updatedAt:  new Date(),

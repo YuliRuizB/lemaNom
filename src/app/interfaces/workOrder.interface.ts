@@ -111,6 +111,9 @@ export interface workOrderEquipment {
   equipmentNs?: string;
   equipmentSerialNumber?: string;
   equipmentFrecuency?: string;
+  equipmentMeditionInterval?: string;
+  equipmentPrecition?: string;
+  equipmentSpecifyEquipment?: string;
   equipmentVoltage?: string;
   promedioFC?: number;
   active: boolean;

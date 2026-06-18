@@ -118,7 +118,7 @@ export class ClientService {
   createClient(
     data: Pick<
       Client,
-      'clientNumber' | 'name' | 'legalName' | 'rfc' | 'email' | 'phone' | 'active'
+      'clientNumber' | 'name' | 'legalName' | 'rfc' | 'email' | 'phone' | 'client_activity' | 'active'
     > &
       Partial<Pick<Client, 'customerId' | 'customerName'>> &
       Partial<Pick<Client, 'urlLogo'>>
@@ -135,6 +135,7 @@ export class ClientService {
     if (data.rfc)   payload['rfc']   = data.rfc;
     if (data.email) payload['email'] = data.email;
     if (data.phone) payload['phone'] = data.phone;
+    if (data.client_activity) payload['client_activity'] = data.client_activity;
     if (data.customerId) payload['customerId'] = data.customerId;
     if (data.customerName) payload['customerName'] = data.customerName;
     if (data.urlLogo) payload['urlLogo'] = data.urlLogo;
@@ -278,6 +279,7 @@ export class ClientService {
       rfc: data['rfc'],
       email: data['email'],
       phone: data['phone'],
+      client_activity: data['client_activity'] ?? data['activity'],
       brandUrl: data['brandUrl'],
       urlLogo: data['urlLogo'],
       customerId: data['customerId'],

@@ -4,6 +4,7 @@ import {
   Timestamp,
   addDoc,
   collection,
+  deleteField,
   deleteDoc,
   doc,
   getDoc,
@@ -170,6 +171,9 @@ export class WorkOrderService {
         equipmentNs: equipmentItem.ns || undefined,
         equipmentSerialNumber: equipmentItem.ns || undefined,
         equipmentFrecuency: equipmentItem.frecuency || undefined,
+        equipmentMeditionInterval: equipmentItem.range || undefined,
+        equipmentPrecition: equipmentItem.precition || undefined,
+        equipmentSpecifyEquipment: equipmentItem.especify_equipment || undefined,
         active: true,
         createdAt: new Date(),
       };
@@ -261,8 +265,15 @@ export class WorkOrderService {
           equipmentNs: equipment.equipmentNs || null,
           equipmentSerialNumber: equipment.equipmentSerialNumber || null,
           equipmentFrecuency: equipment.equipmentFrecuency || null,
+          equipmentMeditionInterval: equipment.equipmentMeditionInterval || null,
+          equipmentPrecition: equipment.equipmentPrecition || null,
+          equipmentSpecifyEquipment: equipment.equipmentSpecifyEquipment || null,
           equipmentVoltage: voltage || null,
           promedioFC: promedioFC ?? null,
+          frecuency: deleteField(),
+          medition_interval: deleteField(),
+          precition: deleteField(),
+          especify_equipment: deleteField(),
           active: equipment.active,
           updatedAt: serverTimestamp(),
         },
@@ -595,7 +606,18 @@ export class WorkOrderService {
   updateEquipmentVoltage(workOrderId: string, equipmentId: string, voltage: string): Observable<void> {
     const equipmentRef = doc(this.firestore, 'workOrder', workOrderId, 'equipments', equipmentId);
     return from(
-      setDoc(equipmentRef, { equipmentVoltage: voltage, updatedAt: serverTimestamp() }, { merge: true })
+      setDoc(
+        equipmentRef,
+        {
+          equipmentVoltage: voltage,
+          frecuency: deleteField(),
+          medition_interval: deleteField(),
+          precition: deleteField(),
+          especify_equipment: deleteField(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      )
     );
   }
 
@@ -612,7 +634,26 @@ export class WorkOrderService {
       equipmentSerialNumber: data['equipmentSerialNumber']
         ? String(data['equipmentSerialNumber'])
         : undefined,
-      equipmentFrecuency: data['equipmentFrecuency'] ? String(data['equipmentFrecuency']) : undefined,
+      equipmentFrecuency: data['equipmentFrecuency']
+        ? String(data['equipmentFrecuency'])
+        : data['frecuency']
+          ? String(data['frecuency'])
+          : undefined,
+      equipmentMeditionInterval: data['equipmentMeditionInterval']
+        ? String(data['equipmentMeditionInterval'])
+        : data['medition_interval']
+          ? String(data['medition_interval'])
+          : undefined,
+      equipmentPrecition: data['equipmentPrecition']
+        ? String(data['equipmentPrecition'])
+        : data['precition']
+          ? String(data['precition'])
+          : undefined,
+      equipmentSpecifyEquipment: data['equipmentSpecifyEquipment']
+        ? String(data['equipmentSpecifyEquipment'])
+        : data['especify_equipment']
+          ? String(data['especify_equipment'])
+          : undefined,
       equipmentVoltage: data['equipmentVoltage'] ? String(data['equipmentVoltage']) : undefined,
       promedioFC: data['promedioFC'] != null ? Number(data['promedioFC']) : undefined,
       active: Boolean(data['active']),

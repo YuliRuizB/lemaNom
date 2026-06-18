@@ -1,4 +1,30 @@
 <section class="inform-page">
+  @if (showHumidityQuestion) {
+    <div class="inform-confirm">
+      <div class="inform-confirm__backdrop"></div>
+      <div class="inform-confirm__dialog" role="dialog" aria-modal="true">
+        <p class="inform-confirm__title">Generar informe</p>
+        <p class="inform-confirm__message">¿Tiene humedad relativa como medida de control?</p>
+        <div class="inform-confirm__actions">
+          <button
+            class="inform-confirm__button inform-confirm__button--secondary"
+            type="button"
+            (click)="answerHumidityControlQuestion(false)"
+          >
+            No
+          </button>
+          <button
+            class="inform-confirm__button inform-confirm__button--primary"
+            type="button"
+            (click)="answerHumidityControlQuestion(true)"
+          >
+            Sí
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <div class="inform-toolbar">
     <button
       class="inform-toolbar__button"

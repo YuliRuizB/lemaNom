@@ -8,6 +8,8 @@ export interface equipment {
   ns: string;
   range?: string;
   frecuency?: string;
+  precition?: string;
+  especify_equipment?: string;
   voltage?: string;
   customerId?: string;
   customerName?: string;

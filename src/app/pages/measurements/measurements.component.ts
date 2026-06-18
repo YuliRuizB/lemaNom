@@ -659,6 +659,9 @@ export class MeasurementsComponent implements OnInit, OnChanges {
       equipmentModel: item.equipmentModel || master.model,
       equipmentNs: item.equipmentNs || master.ns,
       equipmentFrecuency: item.equipmentFrecuency || master.frecuency,
+      equipmentMeditionInterval: item.equipmentMeditionInterval || master.range,
+      equipmentPrecition: item.equipmentPrecition || master.precition,
+      equipmentSpecifyEquipment: item.equipmentSpecifyEquipment || master.especify_equipment,
     };
   }
 }
