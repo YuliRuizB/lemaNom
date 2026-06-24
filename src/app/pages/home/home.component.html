@@ -1,42 +1,128 @@
 <section class="home-page">
-  <section class="home-hero">
-    <div class="home-hero__copy">
-      <p class="home-hero__eyebrow">LEMA GESTION NORMATIVA</p>
-      <h2>Bienvenido al entorno principal</h2>
-      <p>
-        Desde aquí podrás concentrar accesos, vistas y módulos operativos conforme
-        avancemos con la construcción del sistema.
-      </p>
-    </div>
-
-    <div class="home-hero__mark">
-      <img src="assets/5.png" alt="LEMA Gestion Normativa" />
+  <section class="home-brand">
+    <div class="home-brand__surface">
+      <img class="home-brand__image" [src]="logoUrl()" alt="Logo del cliente" />
     </div>
   </section>
 
   <section class="home-grid">
+
+    <!-- Donut: estados -->
     <article class="home-card">
-      <p class="home-card__label">Resumen</p>
-      <h3>Espacio listo para indicadores</h3>
-      <p>
-        Este bloque puede alojar métricas, alertas o un resumen ejecutivo del sistema.
-      </p>
+      <p class="home-card__label">Resumen {{ currentYear }}</p>
+      <h3>Órdenes de trabajo</h3>
+      @if (summaryLoading()) {
+        <p class="home-loading">Cargando...</p>
+      } @else if (!workOrderSummary().total) {
+        <p class="home-loading">Sin órdenes registradas.</p>
+      } @else {
+        <div class="home-donut">
+          <svg class="home-donut__svg" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="45" fill="none" stroke="#eef1f6" stroke-width="14" />
+            @for (seg of chartSegments(); track seg.label) {
+              <circle
+                cx="60" cy="60" r="45" fill="none"
+                [attr.stroke]="seg.color"
+                stroke-width="14" stroke-linecap="butt"
+                [attr.stroke-dasharray]="seg.dash + ' ' + seg.gap"
+                [attr.stroke-dashoffset]="seg.offset"
+                transform="rotate(-90 60 60)"
+              />
+            }
+            <text x="60" y="56" text-anchor="middle" class="home-donut__total-num">{{ workOrderSummary().total }}</text>
+            <text x="60" y="68" text-anchor="middle" class="home-donut__total-lbl">total</text>
+          </svg>
+          <ul class="home-donut__legend">
+            <li class="home-donut__legend-item">
+              <span class="home-donut__dot" style="background:#94a3b8"></span>
+              <span>Por iniciar</span><strong>{{ workOrderSummary().pending }}</strong>
+            </li>
+            <li class="home-donut__legend-item">
+              <span class="home-donut__dot" style="background:#0052cc"></span>
+              <span>En progreso</span><strong>{{ workOrderSummary().inProgress }}</strong>
+            </li>
+            <li class="home-donut__legend-item">
+              <span class="home-donut__dot" style="background:#16a34a"></span>
+              <span>Concluidas</span><strong>{{ workOrderSummary().completed }}</strong>
+            </li>
+            <li class="home-donut__legend-item">
+              <span class="home-donut__dot" style="background:#dc2626"></span>
+              <span>Canceladas</span><strong>{{ workOrderSummary().cancelled }}</strong>
+            </li>
+          </ul>
+        </div>
+      }
     </article>
 
+    <!-- Barras verticales: mensual -->
     <article class="home-card">
-      <p class="home-card__label">Accesos</p>
-      <h3>Zona preparada para atajos</h3>
-      <p>
-        Aquí podremos colocar acciones rápidas hacia catálogos, normas, usuarios o reportes.
-      </p>
+      <p class="home-card__label">Mensual {{ currentYear }}</p>
+      <h3>Órdenes por mes</h3>
+      @if (summaryLoading()) {
+        <p class="home-loading">Cargando...</p>
+      } @else {
+        <div class="home-bars">
+          @for (count of monthlyOrders(); track $index) {
+            <div class="home-bars__col">
+              <span class="home-bars__value">{{ count || '' }}</span>
+              <div class="home-bars__track">
+                <div class="home-bars__fill" [style.height.%]="barHeight(count, maxMonthly())"></div>
+              </div>
+              <span class="home-bars__label">{{ monthLabels[$index] }}</span>
+            </div>
+          }
+        </div>
+      }
     </article>
 
-    <article class="home-card home-card--wide">
-      <p class="home-card__label">Contenido</p>
-      <h3>Contenedor principal en construcción</h3>
-      <p>
-        El diseño base ya está listo para crecer sin perder consistencia visual dentro del shell.
-      </p>
+    <!-- Barras horizontales: por norma -->
+    <article class="home-card">
+      <p class="home-card__label">Por norma {{ currentYear }}</p>
+      <h3>Órdenes por categoría</h3>
+      @if (summaryLoading()) {
+        <p class="home-loading">Cargando...</p>
+      } @else if (!byNorm().length) {
+        <p class="home-loading">Sin datos.</p>
+      } @else {
+        <div class="home-hbars">
+          @for (entry of byNorm(); track entry.label) {
+            <div class="home-hbars__row">
+              <span class="home-hbars__label" [title]="entry.label">{{ entry.label }}</span>
+              <div class="home-hbars__track">
+                <div class="home-hbars__fill" [style.width.%]="barWidth(entry.count, maxNorm())"></div>
+              </div>
+              <span class="home-hbars__value">{{ entry.count }}</span>
+            </div>
+          }
+        </div>
+      }
     </article>
+
+    <!-- Barras horizontales: por signatario -->
+    <article class="home-card">
+      <p class="home-card__label">Por signatario {{ currentYear }}</p>
+      <h3>Órdenes por signatario</h3>
+      @if (summaryLoading()) {
+        <p class="home-loading">Cargando...</p>
+      } @else if (!bySignatory().length) {
+        <p class="home-loading">Sin datos.</p>
+      } @else {
+        <div class="home-hbars">
+          @for (entry of bySignatory(); track entry.label) {
+            <div class="home-hbars__row">
+              <span class="home-hbars__label" [title]="entry.label">{{ entry.label }}</span>
+              <div class="home-hbars__track">
+                <div
+                  class="home-hbars__fill home-hbars__fill--alt"
+                  [style.width.%]="barWidth(entry.count, maxSignatory())"
+                ></div>
+              </div>
+              <span class="home-hbars__value">{{ entry.count }}</span>
+            </div>
+          }
+        </div>
+      }
+    </article>
+
   </section>
 </section>

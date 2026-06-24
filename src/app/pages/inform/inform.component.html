@@ -1,4 +1,22 @@
 <section class="inform-page">
+  @if (showProgressModal()) {
+    <div class="inform-progress-modal">
+      <div class="inform-progress-modal__backdrop"></div>
+      <div class="inform-progress-modal__dialog" role="dialog" aria-modal="true">
+        <p class="inform-progress-modal__title">Generando informe</p>
+        <p class="inform-progress-modal__step">{{ generationStep() }}</p>
+        <div class="inform-progress-modal__bar-track">
+          <div
+            class="inform-progress-modal__bar-fill"
+            [style.width.%]="generationProgress()"
+            [class.inform-progress-modal__bar-fill--done]="generationProgress() === 100"
+          ></div>
+        </div>
+        <p class="inform-progress-modal__pct">{{ generationProgress() }}%</p>
+      </div>
+    </div>
+  }
+
   @if (showHumidityQuestion) {
     <div class="inform-confirm">
       <div class="inform-confirm__backdrop"></div>
@@ -6,6 +24,13 @@
         <p class="inform-confirm__title">Generar informe</p>
         <p class="inform-confirm__message">¿Tiene humedad relativa como medida de control?</p>
         <div class="inform-confirm__actions">
+          <button
+            class="inform-confirm__button inform-confirm__button--cancel"
+            type="button"
+            (click)="answerHumidityControlQuestion(null)"
+          >
+            Cancelar
+          </button>
           <button
             class="inform-confirm__button inform-confirm__button--secondary"
             type="button"
@@ -26,10 +51,13 @@
   }
 
   <div class="inform-toolbar">
+    @if (workOrderStatus !== 'completed') {
+      <p class="inform-toolbar__notice">La orden debe estar completada para poder generar el informe.</p>
+    }
     <button
       class="inform-toolbar__button"
       type="button"
-      [disabled]="isGenerating()"
+      [disabled]="isGenerating() || workOrderStatus !== 'completed'"
       (click)="generateInform()"
     >
       {{ isGenerating() ? 'Generando...' : 'Generar Informe' }}

@@ -710,7 +710,7 @@
 
         <div class="measurements-signature__grid">
           <div class="measurements-signature__field">
-            <span class="measurements-signature__label">Nombre del cliente</span>
+            <span class="measurements-signature__label">Nombre</span>
             <input
               class="measurements-signature__input"
               type="text"
@@ -728,10 +728,10 @@
           </div>
 
           <div class="measurements-signature__field">
-            <span class="measurements-signature__label">Fecha y hora</span>
+            <span class="measurements-signature__label">Fecha</span>
             <input
               class="measurements-signature__input"
-              type="datetime-local"
+              type="date"
               [ngModel]="signatureSignedAt()"
               (ngModelChange)="signatureSignedAt.set($event)"
             />

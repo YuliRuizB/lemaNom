@@ -93,7 +93,8 @@ export class WorkOrderService {
     workOrderId: string,
     nomId: string,
     steps: NormWorkflowStep[],
-    sessionUser: User
+    sessionUser: User,
+    assignments?: Record<string, { userId: string; userName: string }>
   ): Observable<void> {
     const batch = writeBatch(this.firestore);
 
@@ -121,6 +122,9 @@ export class WorkOrderService {
         stepPayload['assignedUserId']   = sessionUser.idDoc;
         stepPayload['assignedUserName'] = sessionUser.displayName;
         stepPayload['startedAt']        = serverTimestamp();
+      } else if (assignments?.[step.stepUid]) {
+        stepPayload['assignedUserId']   = assignments[step.stepUid].userId;
+        stepPayload['assignedUserName'] = assignments[step.stepUid].userName;
       }
 
       batch.set(stepRef, stepPayload);
@@ -387,7 +391,7 @@ export class WorkOrderService {
   finalizeWorkflowStep(
     workOrderId: string,
     currentStepId: string,
-    nextStep?: Pick<workOrderStep, 'idDoc'> | null,
+    nextStep?: Pick<workOrderStep, 'idDoc' | 'stepName'> | null,
     assignedUser?: { id?: string; name?: string },
     completedByUser?: { id?: string; name?: string },
     completeWorkOrder?: boolean
@@ -427,14 +431,20 @@ export class WorkOrderService {
     }
 
     const workOrderRef = doc(this.firestore, 'workOrder', workOrderId);
-    batch.set(
-      workOrderRef,
-      {
-        status: completeWorkOrder ? 'completed' : 'in-progress',
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    const workOrderPayload: Record<string, unknown> = {
+      status: completeWorkOrder ? 'completed' : 'in-progress',
+      updatedAt: serverTimestamp(),
+    };
+
+    if (nextStep?.idDoc) {
+      workOrderPayload['currentStepId'] = nextStep.idDoc;
+      workOrderPayload['currentStepName'] = nextStep.stepName ?? null;
+    } else {
+      workOrderPayload['currentStepId'] = null;
+      workOrderPayload['currentStepName'] = null;
+    }
+
+    batch.set(workOrderRef, workOrderPayload, { merge: true });
 
     return from(batch.commit()).pipe(map(() => void 0));
   }
@@ -518,6 +528,8 @@ export class WorkOrderService {
       createdUserName: data['createdUserName'] ? String(data['createdUserName']) : undefined,
       active: Boolean(data['active']),
       status: (data['status'] as workOrder['status']) ?? 'pending',
+      currentStepId: data['currentStepId'] != null ? String(data['currentStepId']) : null,
+      currentStepName: data['currentStepName'] != null ? String(data['currentStepName']) : null,
       updatedAt: this.toDate(data['updatedAt']),
     };
   }
@@ -712,6 +724,10 @@ export class WorkOrderService {
   private removeUndefinedFields<T>(value: T): T {
     if (Array.isArray(value)) {
       return value.map((item) => this.removeUndefinedFields(item)) as T;
+    }
+
+    if (value instanceof Date || value instanceof Timestamp) {
+      return value;
     }
 
     if (value && typeof value === 'object') {

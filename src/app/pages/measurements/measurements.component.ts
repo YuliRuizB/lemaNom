@@ -562,7 +562,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
     }
 
     const signedAt = this.signatureSignedAt()
-      ? new Date(this.signatureSignedAt())
+      ? (() => { const [y, m, d] = this.signatureSignedAt().split('-').map(Number); return new Date(y, m - 1, d); })()
       : new Date();
 
     const signature: WorkOrderClientVisitSignature = {
@@ -646,7 +646,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
 
   private toDateTimeLocalValue(value: Date): string {
     const pad = (part: number) => String(part).padStart(2, '0');
-    return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}T${pad(value.getHours())}:${pad(value.getMinutes())}`;
+    return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
   }
 
   private merge(item: workOrderEquipment, master: equipment | null): workOrderEquipment {

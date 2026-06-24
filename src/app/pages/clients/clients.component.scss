@@ -258,6 +258,16 @@
   color: #9d1f1f;
 }
 
+.add-field--full {
+  grid-column: 1 / -1;
+}
+
+.add-field__input--textarea {
+  min-height: 7.25rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
 .mini-delete {
   min-height: 1.9rem;
   padding: 0.3rem 0.65rem;

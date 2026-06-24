@@ -1,85 +1,32 @@
-:host {
-  display: block;
-}
+:host { display: block; }
 
 .home-page {
-  display: grid;
-  gap: 1.5rem;
   min-height: 100%;
-}
-
-.eyebrow,
-.home-hero__eyebrow,
-.home-card__label {
-  margin: 0;
-  color: #a6a6a6;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.home-hero__copy h2,
-.home-card h3 {
-  margin: 0;
-  color: #193050;
-  font-family: "Aptos Display", "Trebuchet MS", "Segoe UI", sans-serif;
-}
-.home-hero__copy p,
-.home-hero__copy p,
-.home-card p {
-  color: #6f7a88;
-}
-
-.home-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(14rem, 0.7fr);
   gap: 1.5rem;
-  padding: 1.6rem;
-  border: 1px solid rgba(25, 48, 80, 0.08);
-  border-radius: 1.5rem;
-  background:
-    linear-gradient(135deg, rgba(25, 48, 80, 0.98) 0%, rgba(25, 48, 80, 0.92) 100%);
+  padding: 1.5rem;
 }
 
-.home-hero__copy {
-  display: grid;
-  gap: 0.9rem;
-}
+.home-brand {
+  &__surface {
+    width: 100%;
+    min-height: 14rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 2.5rem;
+    border: 1px solid rgba(25, 48, 80, 0.08);
+    border-radius: 1.5rem;
+    background: #ffffff;
+    box-shadow: 0 14px 38px rgba(25, 48, 80, 0.06);
+  }
 
-.home-hero__eyebrow {
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.home-hero__copy h2,
-.home-hero__copy p {
-  color: #ffffff;
-}
-
-.home-hero__copy h2 {
-  font-size: clamp(1.6rem, 3vw, 2.4rem);
-  line-height: 1.08;
-}
-
-.home-hero__copy p {
-  margin: 0;
-  max-width: 42rem;
-  line-height: 1.75;
-}
-
-.home-hero__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  border-radius: 1.2rem;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.home-hero__mark img {
-  width: min(100%, 13rem);
-  height: auto;
-  display: block;
+  &__image {
+    width: min(100%, 32rem);
+    max-height: 10rem;
+    object-fit: contain;
+    display: block;
+  }
 }
 
 .home-grid {
@@ -89,47 +36,201 @@
 }
 
 .home-card {
-  display: grid;
-  gap: 0.8rem;
-  min-height: 13rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
   padding: 1.4rem;
   border: 1px solid rgba(25, 48, 80, 0.08);
   border-radius: 1.35rem;
-  background-color: #ffffff;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(25, 48, 80, 0.04);
+
+  &__label {
+    margin: 0;
+    color: #a6a6a6;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  h3 {
+    margin: 0;
+    color: #193050;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
 }
 
-.home-card--wide {
-  grid-column: 1 / -1;
+.home-loading {
+  margin: auto;
+  color: #9aa3af;
+  font-size: 0.85rem;
 }
 
-.home-card h3 {
-  font-size: 1.25rem;
-  line-height: 1.15;
+/* ── Donut ─────────────────────────────────── */
+.home-donut {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex: 1;
+
+  &__svg {
+    flex-shrink: 0;
+    width: 9rem;
+    height: 9rem;
+  }
+
+  &__total-num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    fill: #193050;
+    font-family: inherit;
+  }
+
+  &__total-lbl {
+    font-size: 0.55rem;
+    fill: #94a3b8;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  &__legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    flex: 1;
+  }
+
+  &__legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: #475569;
+
+    strong { margin-left: auto; font-size: 0.9rem; color: #193050; }
+  }
+
+  &__dot {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
 }
 
-.home-card p {
-  margin: 0;
-  line-height: 1.7;
+/* ── Barras verticales (mensual) ───────────── */
+.home-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.3rem;
+  flex: 1;
+
+  &__col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+
+  &__value {
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #0052cc;
+    min-height: 0.8rem;
+  }
+
+  &__track {
+    width: 100%;
+    height: 8rem;
+    background: #f1f5f9;
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+
+  &__fill {
+    width: 100%;
+    background: linear-gradient(180deg, #0052cc 0%, #193050 100%);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.4s ease;
+    min-height: 2px;
+  }
+
+  &__label {
+    font-size: 0.56rem;
+    color: #94a3b8;
+    font-weight: 600;
+  }
+}
+
+/* ── Barras horizontales (norma / signatario) ─ */
+.home-hbars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  &__label {
+    flex: 0 0 9rem;
+    font-size: 0.75rem;
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__track {
+    flex: 1;
+    height: 0.7rem;
+    background: #f1f5f9;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  &__fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0052cc 0%, #193050 100%);
+    border-radius: 999px;
+    transition: width 0.4s ease;
+    min-width: 2px;
+
+    &--alt {
+      background: linear-gradient(90deg, #16a34a 0%, #166534 100%);
+    }
+  }
+
+  &__value {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #193050;
+    width: 1.8rem;
+    text-align: right;
+  }
 }
 
 @media (max-width: 960px) {
-  .home-hero,
-  .home-grid {
-    grid-template-columns: 1fr;
-  }
+  .home-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
-  .home-page {
-    gap: 1rem;
-  }
-
-  .home-hero,
-  .home-card {
-    padding: 1.15rem;
-  }
-
-  .home-card {
-    min-height: auto;
-  }
+  .home-page { padding: 0.75rem; gap: 1rem; }
+  .home-brand__surface { min-height: 10rem; padding: 1.25rem; border-radius: 1rem; }
+  .home-donut { flex-direction: column; align-items: flex-start; }
+  .home-donut__svg { width: 7rem; height: 7rem; }
+  .home-hbars__label { flex: 0 0 6rem; }
 }

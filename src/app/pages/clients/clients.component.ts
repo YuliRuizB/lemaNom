@@ -57,6 +57,7 @@ export class ClientsComponent {
     rfc:       [''],
     email:     ['', [Validators.email]],
     phone:     [''],
+    client_activity: [''],
     active:    [true],
   });
 
@@ -120,6 +121,7 @@ export class ClientsComponent {
       rfc: client.rfc || '',
       email: client.email || '',
       phone: client.phone || '',
+      client_activity: client.client_activity || '',
       active: client.active,
     });
     this.showAddForm.set(true);
@@ -170,6 +172,7 @@ export class ClientsComponent {
         rfc: v.rfc?.trim() || undefined,
         email: v.email?.trim() || undefined,
         phone: v.phone?.trim() || undefined,
+        client_activity: v.client_activity?.trim() || undefined,
         active: v.active!,
       };
 
@@ -224,6 +227,7 @@ export class ClientsComponent {
       rfc:       v.rfc?.trim()   || undefined,
       email:     v.email?.trim() || undefined,
       phone:     v.phone?.trim() || undefined,
+      client_activity: v.client_activity?.trim() || undefined,
       active:    v.active!,
     }).pipe(
       switchMap((clientId) => {

@@ -1,7 +1,7 @@
 <section class="wo-page">
   @if (!selectedOrder()) {
     <div class="wo-page__toolbar">
-      <div class="filters-grid">
+      <div class="filters-row">
         <div class="filter-field filter-field--search">
           <label class="filter-field__label">Buscar</label>
           <input
@@ -12,7 +12,6 @@
             (ngModelChange)="onSearch($event)"
           />
         </div>
-
         <div class="filter-field">
           <label class="filter-field__label">Fecha</label>
           <input
@@ -22,7 +21,6 @@
             (ngModelChange)="onDateFilterChange($event)"
           />
         </div>
-
         <div class="filter-field">
           <label class="filter-field__label">Categoría</label>
           <select
@@ -36,7 +34,6 @@
             }
           </select>
         </div>
-
         <div class="filter-field">
           <label class="filter-field__label">Servicio</label>
           <select
@@ -51,13 +48,27 @@
             }
           </select>
         </div>
-
-        <div class="filter-field filter-field--action">
-          <label class="filter-field__label filter-field__label--hidden">Acción</label>
-          <button class="btn-add" type="button" (click)="openCreateModal()">
-            + Agregar Orden de Trabajo
-          </button>
-        </div>
+        @if (serviceFilter()) {
+          <div class="filter-field">
+            <label class="filter-field__label">Status</label>
+            <select
+              class="filter-field__input"
+              [ngModel]="stepFilter()"
+              (ngModelChange)="onStepFilterChange($event)"
+            >
+              <option value="">Todos</option>
+              @for (step of availableStepNames(); track step) {
+                <option [value]="step">{{ step }}</option>
+              }
+            </select>
+          </div>
+        }
+        <button class="btn-export" type="button" (click)="exportToCsv()" title="Exportar a CSV">
+          ↓ Exportar
+        </button>
+        <button class="btn-add filters-row__add" type="button" (click)="openCreateModal()">
+          + Agregar Orden de Trabajo
+        </button>
       </div>
     </div>
 
@@ -240,44 +251,64 @@
                           : 'Cancelado'
                   }}
                 </span>
-                @if (step.status === 'in-progress') {
-                  @if (getNextWorkflowStep(step); as nextStep) {
-                    <div class="wo-step-card__assign">
-                      <label class="wo-step-card__assign-label">Asignar siguiente paso</label>
-                      <select
-                        class="wo-step-card__assign-input"
-                        [ngModel]="selectedNextAssignedUserId()"
-                        (ngModelChange)="selectedNextAssignedUserId.set($event)"
-                      >
-                        <option value="">Selecciona un usuario</option>
-                        @for (user of assignableWorkflowUsers(); track user.idDoc) {
-                          <option [value]="user.idDoc">{{ user.displayName }}</option>
+                <div class="wo-step-card__footer">
+                  @if (step.status === 'in-progress') {
+                    @if (getNextWorkflowStep(step); as nextStep) {
+                      <div class="wo-step-card__assign">
+                        <span class="wo-step-card__assign-label">Siguiente paso: <strong>{{ nextStep.stepName }}</strong></span>
+                        @if (nextStep.assignedUserId) {
+                          <span class="wo-step-card__assign-meta">Asignado a {{ nextStep.assignedUserName }}</span>
+                        } @else {
+                          <select
+                            class="wo-step-card__assign-input"
+                            [ngModel]="selectedNextAssignedUserId()"
+                            (ngModelChange)="selectedNextAssignedUserId.set($event)"
+                          >
+                            <option value="">Selecciona responsable</option>
+                            @for (user of assignableWorkflowUsers(); track user.idDoc) {
+                              <option [value]="user.idDoc">{{ user.displayName }}</option>
+                            }
+                          </select>
+                          <button
+                            class="wo-step-card__assign-save"
+                            type="button"
+                            [disabled]="isSavingNextAssignmentStepId() === step.idDoc"
+                            (click)="saveNextWorkflowAssignment(step)"
+                          >
+                            {{ isSavingNextAssignmentStepId() === step.idDoc ? 'Guardando...' : 'Guardar asignación' }}
+                          </button>
                         }
-                      </select>
-                      <span class="wo-step-card__assign-meta">Siguiente: {{ nextStep.stepName }}</span>
-                      <button
-                        class="wo-step-card__assign-save"
-                        type="button"
-                        [disabled]="isSavingNextAssignmentStepId() === step.idDoc"
-                        (click)="saveNextWorkflowAssignment(step)"
-                      >
-                        {{
-                          isSavingNextAssignmentStepId() === step.idDoc
-                            ? 'Guardando...'
-                            : 'Guardar asignación'
-                        }}
-                      </button>
-                    </div>
+                      </div>
+                    }
+                  }
+                  @if (step.status === 'completed') {
+                    <span class="wo-step-card__completed-meta">
+                      Fecha creación: {{ step.createdAt | date:'dd/MM/yyyy' }}
+                    </span>
                   }
                   <button
                     class="wo-step-card__finish"
                     type="button"
-                    [disabled]="isFinalizingStepId() === step.idDoc"
+                    [disabled]="step.status !== 'in-progress' || isFinalizingStepId() === step.idDoc"
                     (click)="finalizeSelectedOrderStep(step)"
                   >
-                    {{ isFinalizingStepId() === step.idDoc ? 'Finalizando...' : 'Finalizar paso' }}
+                    {{ isFinalizingStepId() === step.idDoc ? 'Completando...' : 'Completar Orden' }}
                   </button>
-                }
+                </div>
+              </div>
+            </div>
+            <div class="wo-step-card__grid">
+              <div class="wo-detail__item">
+                <span class="wo-detail__label">Asignado a</span>
+                <span class="wo-detail__value">{{ step.assignedUserName || '—' }}</span>
+              </div>
+              <div class="wo-detail__item">
+                <span class="wo-detail__label">Fecha Creación</span>
+                <span class="wo-detail__value">{{ step.createdAt | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <div class="wo-detail__item">
+                <span class="wo-detail__label">Inicio</span>
+                <span class="wo-detail__value">{{ step.startedAt ? (step.startedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
               </div>
             </div>
           </div>
@@ -383,50 +414,35 @@
           </div>
         </div>
 
-        @if (!selectedOrderEquipments().length) {
-          <p class="wo-detail__empty">Esta orden aún no tiene equipos asociados.</p>
-        } @else {
-          <div class="wo-equipment-list">
-            @for (equipmentItem of selectedOrderEquipments(); track equipmentItem.idDoc) {
-              <article class="wo-equipment-card">
-                <div class="wo-equipment-card__inline">
-                  <span><strong>Equipo:</strong> {{ equipmentItem.equipmentType || '—' }}</span>
-                  <span><strong>Marca:</strong> {{ equipmentItem.equipmentBrand || '—' }}</span>
-                  <span><strong>Modelo:</strong> {{ equipmentItem.equipmentModel || '—' }}</span>
-                  <span><strong>NS:</strong> {{ equipmentItem.equipmentNs || '—' }}</span>
-                  <span><strong>Frecuencia:</strong> {{ equipmentItem.equipmentFrecuency || '—' }}</span>
-                  <span><strong>Voltaje:</strong> {{ equipmentItem.equipmentVoltage || '—' }}</span>
-                </div>
-              </article>
+        <div class="wo-equipment-section">
+          <div class="wo-equipment-section__header">
+            <span class="wo-equipment-section__title">Equipo Asignado</span>
+            @if (selectedOrderEquipments().length < 3) {
+              <button
+                class="btn-add btn-add--secondary btn-add--sm"
+                type="button"
+                (click)="showAddEquipmentModal.set(true)"
+              >+ Agregar equipo</button>
             }
           </div>
-        }
-
-        <div class="wo-detail__equipment-toolbar">
-          <div class="form-field">
-            <label class="form-field__label">Agregar equipo</label>
-            <select
-              class="form-field__input"
-              [ngModel]="selectedDetailEquipmentId()"
-              [disabled]="selectedOrderEquipments().length >= 3 || !availableEquipmentsForSelectedOrder().length || isAddingSelectedOrderEquipment()"
-              (ngModelChange)="selectedDetailEquipmentId.set($event)"
-            >
-              <option value="">Selecciona un equipo</option>
-              @for (equipmentItem of availableEquipmentsForSelectedOrder(); track equipmentItem.idDoc) {
-                <option [value]="equipmentItem.idDoc">
-                  {{ equipmentItem.name }}{{ equipmentItem.identifier ? ' · ' + equipmentItem.identifier : '' }}
-                </option>
+          @if (!selectedOrderEquipments().length) {
+            <p class="wo-detail__empty">Esta orden aún no tiene equipos asociados.</p>
+          } @else {
+            <div class="wo-equipment-list">
+              @for (equipmentItem of selectedOrderEquipments(); track equipmentItem.idDoc) {
+                <article class="wo-equipment-card">
+                  <div class="wo-equipment-card__inline">
+                    <span><strong>Equipo:</strong> {{ equipmentItem.equipmentType || '—' }}</span>
+                    <span><strong>Marca:</strong> {{ equipmentItem.equipmentBrand || '—' }}</span>
+                    <span><strong>Modelo:</strong> {{ equipmentItem.equipmentModel || '—' }}</span>
+                    <span><strong>NS:</strong> {{ equipmentItem.equipmentNs || '—' }}</span>
+                    <span><strong>Frecuencia:</strong> {{ equipmentItem.equipmentFrecuency || '—' }}</span>
+                    <span><strong>Voltaje:</strong> {{ equipmentItem.equipmentVoltage || '—' }}</span>
+                  </div>
+                </article>
               }
-            </select>
-          </div>
-          <button
-            class="btn-add btn-add--secondary"
-            type="button"
-            [disabled]="!selectedDetailEquipmentId() || selectedOrderEquipments().length >= 3 || isAddingSelectedOrderEquipment()"
-            (click)="addEquipmentToSelectedOrder(selectedDetailEquipmentId())"
-          >
-            {{ isAddingSelectedOrderEquipment() ? 'Agregando...' : '+ Agregar equipo' }}
-          </button>
+            </div>
+          }
         </div>
 
         <p class="wo-detail__hint">
@@ -536,44 +552,50 @@
                           : 'Cancelado'
                   }}
                 </span>
-                @if (step.status === 'in-progress') {
-                  @if (getNextWorkflowStep(step); as nextStep) {
-                    <div class="wo-step-card__assign">
-                      <label class="wo-step-card__assign-label">Asignar siguiente paso</label>
-                      <select
-                        class="wo-step-card__assign-input"
-                        [ngModel]="selectedNextAssignedUserId()"
-                        (ngModelChange)="selectedNextAssignedUserId.set($event)"
-                      >
-                        <option value="">Selecciona un usuario</option>
-                        @for (user of assignableWorkflowUsers(); track user.idDoc) {
-                          <option [value]="user.idDoc">{{ user.displayName }}</option>
+                <div class="wo-step-card__footer">
+                  @if (step.status === 'in-progress') {
+                    @if (getNextWorkflowStep(step); as nextStep) {
+                      <div class="wo-step-card__assign">
+                        <span class="wo-step-card__assign-label">Siguiente paso: <strong>{{ nextStep.stepName }}</strong></span>
+                        @if (nextStep.assignedUserId) {
+                          <span class="wo-step-card__assign-meta">Asignado a {{ nextStep.assignedUserName }}</span>
+                        } @else {
+                          <select
+                            class="wo-step-card__assign-input"
+                            [ngModel]="selectedNextAssignedUserId()"
+                            (ngModelChange)="selectedNextAssignedUserId.set($event)"
+                          >
+                            <option value="">Selecciona responsable</option>
+                            @for (user of assignableWorkflowUsers(); track user.idDoc) {
+                              <option [value]="user.idDoc">{{ user.displayName }}</option>
+                            }
+                          </select>
+                          <button
+                            class="wo-step-card__assign-save"
+                            type="button"
+                            [disabled]="isSavingNextAssignmentStepId() === step.idDoc"
+                            (click)="saveNextWorkflowAssignment(step)"
+                          >
+                            {{ isSavingNextAssignmentStepId() === step.idDoc ? 'Guardando...' : 'Guardar asignación' }}
+                          </button>
                         }
-                      </select>
-                      <span class="wo-step-card__assign-meta">Siguiente: {{ nextStep.stepName }}</span>
-                      <button
-                        class="wo-step-card__assign-save"
-                        type="button"
-                        [disabled]="isSavingNextAssignmentStepId() === step.idDoc"
-                        (click)="saveNextWorkflowAssignment(step)"
-                      >
-                        {{
-                          isSavingNextAssignmentStepId() === step.idDoc
-                            ? 'Guardando...'
-                            : 'Guardar asignación'
-                        }}
-                      </button>
-                    </div>
+                      </div>
+                    }
+                  }
+                  @if (step.status === 'completed') {
+                    <span class="wo-step-card__completed-meta">
+                      Fecha creación: {{ step.createdAt | date:'dd/MM/yyyy' }}
+                    </span>
                   }
                   <button
                     class="wo-step-card__finish"
                     type="button"
-                    [disabled]="isFinalizingStepId() === step.idDoc"
+                    [disabled]="step.status !== 'in-progress' || isFinalizingStepId() === step.idDoc"
                     (click)="finalizeSelectedOrderStep(step)"
                   >
-                    {{ isFinalizingStepId() === step.idDoc ? 'Finalizando...' : 'Finalizar paso' }}
+                    {{ isFinalizingStepId() === step.idDoc ? 'Completando...' : 'Completar Orden' }}
                   </button>
-                }
+                </div>
               </div>
             </div>
             <div class="wo-step-card__grid">
@@ -582,16 +604,12 @@
                 <span class="wo-detail__value">{{ step.assignedUserName || '—' }}</span>
               </div>
               <div class="wo-detail__item">
+                <span class="wo-detail__label">Fecha Creación</span>
+                <span class="wo-detail__value">{{ step.createdAt | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <div class="wo-detail__item">
                 <span class="wo-detail__label">Inicio</span>
                 <span class="wo-detail__value">{{ step.startedAt ? (step.startedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
-              </div>
-              <div class="wo-detail__item">
-                <span class="wo-detail__label">Finalización</span>
-                <span class="wo-detail__value">{{ step.completedAt ? (step.completedAt | date: 'dd/MM/yyyy HH:mm') : '—' }}</span>
-              </div>
-              <div class="wo-detail__item">
-                <span class="wo-detail__label">Cerrado por</span>
-                <span class="wo-detail__value">{{ step.completedByUserName || '—' }}</span>
               </div>
             </div>
           </article>
@@ -617,6 +635,7 @@
           <section class="wo-step-page">
             <app-inform
               [workOrderId]="selectedOrder()!.idDoc"
+              [workOrderStatus]="selectedOrder()!.status"
               [cableResistance]="selectedOrder()!.cableResistance ?? null"
             />
           </section>
@@ -954,12 +973,28 @@
           <div class="flow-preview__track">
             @for (step of createWorkflowPreview(); track step.stepUid; let isLast = $last; let isFirst = $first) {
               <div class="flow-preview__item">
-                <span
-                  class="flow-preview__tag"
-                  [class.flow-preview__tag--current]="isFirst"
-                >
-                  {{ step.name }}
-                </span>
+                <div class="flow-preview__step">
+                  <span
+                    class="flow-preview__tag"
+                    [class.flow-preview__tag--current]="isFirst"
+                  >
+                    {{ step.name }}
+                  </span>
+                  @if (isFirst) {
+                    <span class="flow-preview__assigned">{{ currentAppUser()?.displayName || currentAppUser()?.firstName || 'Tú' }}</span>
+                  } @else {
+                    <select
+                      class="flow-preview__assign-select"
+                      [ngModel]="createStepAssignments()[step.stepUid] ?? ''"
+                      (ngModelChange)="setStepAssignment(step.stepUid, $event)"
+                    >
+                      <option value="">Sin asignar</option>
+                      @for (user of availableSignatories(); track user.idDoc) {
+                        <option [value]="user.idDoc">{{ user.displayName || user.firstName + ' ' + user.lastName }}</option>
+                      }
+                    </select>
+                  }
+                </div>
                 @if (!isLast) {
                   <span class="flow-preview__arrow">&#8594;</span>
                 }
@@ -976,6 +1011,50 @@
       <button class="btn btn--ghost" type="button" (click)="closeCreateModal()">Cerrar</button>
       <button class="btn btn--primary" type="button" [disabled]="isSaving()" (click)="saveWorkOrder()">
         {{ isSaving() ? 'Guardando...' : 'Guardar' }}
+      </button>
+    </footer>
+  </div>
+}
+
+@if (showAddEquipmentModal()) {
+  <div class="modal-backdrop" (click)="showAddEquipmentModal.set(false)"></div>
+  <div class="wo-modal wo-modal--sm">
+    <header class="wo-modal__header">
+      <div class="wo-modal__header-main">
+        <h2 class="wo-modal__title">Agregar equipo</h2>
+      </div>
+      <button class="wo-modal__close" type="button" (click)="showAddEquipmentModal.set(false)">&#x2715;</button>
+    </header>
+    <div class="wo-modal__body">
+      @if (!availableEquipmentsForSelectedOrder().length) {
+        <p class="wo-detail__empty">No hay equipos disponibles para agregar.</p>
+      } @else {
+        <div class="form-field">
+          <label class="form-field__label">Selecciona un equipo</label>
+          <select
+            class="form-field__input"
+            [ngModel]="selectedDetailEquipmentId()"
+            (ngModelChange)="selectedDetailEquipmentId.set($event)"
+          >
+            <option value="">— Selecciona —</option>
+            @for (equipmentItem of availableEquipmentsForSelectedOrder(); track equipmentItem.idDoc) {
+              <option [value]="equipmentItem.idDoc">
+                {{ equipmentItem.name }}{{ equipmentItem.identifier ? ' · ' + equipmentItem.identifier : '' }}
+              </option>
+            }
+          </select>
+        </div>
+      }
+    </div>
+    <footer class="wo-modal__footer">
+      <button class="btn btn--ghost" type="button" (click)="showAddEquipmentModal.set(false)">Cancelar</button>
+      <button
+        class="btn btn--primary"
+        type="button"
+        [disabled]="!selectedDetailEquipmentId() || isAddingSelectedOrderEquipment()"
+        (click)="addEquipmentToSelectedOrder(selectedDetailEquipmentId())"
+      >
+        {{ isAddingSelectedOrderEquipment() ? 'Agregando...' : 'Agregar' }}
       </button>
     </footer>
   </div>

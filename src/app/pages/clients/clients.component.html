@@ -155,6 +155,10 @@
             <span class="info-item__label">Teléfono</span>
             <span class="info-item__value">{{ client.phone || '—' }}</span>
           </div>
+          <div class="info-item info-item--full">
+            <span class="info-item__label">Actividad del cliente</span>
+            <span class="info-item__value">{{ client.client_activity || '—' }}</span>
+          </div>
           <div class="info-item">
             <span class="info-item__label">Empresa</span>
             <span class="info-item__value">{{ client.customerName || '—' }}</span>
@@ -491,6 +495,15 @@
           <div class="add-field">
             <label class="add-field__label">Teléfono</label>
             <input class="add-field__input" type="text" formControlName="phone" autocomplete="off" />
+          </div>
+          <div class="add-field add-field--full">
+            <label class="add-field__label">Actividad del cliente</label>
+            <textarea
+              class="add-field__input add-field__input--textarea"
+              formControlName="client_activity"
+              rows="4"
+              autocomplete="off"
+            ></textarea>
           </div>
           <div class="add-field">
             <label class="add-field__label">Imagen</label>

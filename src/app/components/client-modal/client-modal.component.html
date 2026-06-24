@@ -56,6 +56,19 @@
         <label class="field__label" for="c-phone">Teléfono</label>
         <input id="c-phone" class="field__input" type="text" formControlName="phone" autocomplete="off" />
       </div>
+      <div class="field field--full">
+        <label class="field__label" for="c-activity">Actividad del cliente</label>
+        <textarea
+          id="c-activity"
+          class="field__input field__input--textarea"
+          formControlName="client_activity"
+          rows="4"
+          autocomplete="off"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="form-row">
       <div class="field field--inline">
         <span class="field__label">Activo</span>
         <label class="toggle">

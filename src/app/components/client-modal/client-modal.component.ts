@@ -35,6 +35,7 @@ export class ClientModalComponent {
     rfc:       [''],
     email:     ['', [Validators.email]],
     phone:     [''],
+    client_activity: [''],
     active:    [true],
   });
 
@@ -62,6 +63,7 @@ export class ClientModalComponent {
       rfc:       v.rfc?.trim()   || undefined,
       email:     v.email?.trim() || undefined,
       phone:     v.phone?.trim() || undefined,
+      client_activity: v.client_activity?.trim() || undefined,
       active:    v.active!,
     }).subscribe({
       next: () => {

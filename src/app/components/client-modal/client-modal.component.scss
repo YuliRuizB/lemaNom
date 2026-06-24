@@ -85,6 +85,10 @@
   flex-direction: column;
   gap: 0.35rem;
 
+  &--full {
+    grid-column: 1 / -1;
+  }
+
   &--inline {
     flex-direction: row;
     align-items: center;
@@ -107,6 +111,12 @@
     outline: none;
     transition: border-color 0.15s;
     &:focus { border-color: var(--lema-accent); }
+  }
+
+  &__input--textarea {
+    min-height: 7.25rem;
+    resize: vertical;
+    line-height: 1.45;
   }
 
   &__error { margin: 0; font-size: 0.75rem; color: #de350b; }

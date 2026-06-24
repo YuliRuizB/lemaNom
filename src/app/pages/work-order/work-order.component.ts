@@ -75,6 +75,7 @@ export class WorkOrderComponent {
   dateFilter = signal('');
   normFilter = signal('');
   serviceFilter = signal('');
+  stepFilter = signal('');
   currentPage = signal(1);
   showCreateModal = signal(false);
   isSaving = signal(false);
@@ -98,6 +99,7 @@ export class WorkOrderComponent {
   selectedDetailEquipmentId = signal('');
   selectedNextAssignedUserId = signal('');
   isAddingSelectedOrderEquipment = signal(false);
+  showAddEquipmentModal = signal(false);
   isFinalizingStepId = signal<string | null>(null);
   isSavingNextAssignmentStepId = signal<string | null>(null);
   isDeletingSelectedOrder = signal(false);
@@ -115,6 +117,11 @@ export class WorkOrderComponent {
   ];
   createWorkflowPreview = signal<NormWorkflowStep[]>([]);
   isLoadingCreateWorkflowPreview = signal(false);
+  createStepAssignments = signal<Record<string, string>>({});
+
+  setStepAssignment(stepUid: string, userId: string): void {
+    this.createStepAssignments.update((a) => ({ ...a, [stepUid]: userId }));
+  }
   createImpartiality: WorkOrderImpartiality = this.buildEmptyImpartiality();
   readonly pageSize = 8;
   readonly impartialityQuestions: Array<{
@@ -201,6 +208,20 @@ export class WorkOrderComponent {
       .map((service) => service.name)
       .sort((a, b) => a.localeCompare(b))
   );
+
+  readonly availableStepNames = computed(() => {
+    const categoryId = this.normFilter().trim();
+    const service = this.serviceFilter().trim();
+    if (!service) return [];
+    const names = new Set<string>();
+    this.workOrders()
+      .filter((o) =>
+        (!categoryId || o.nomCategoryId === categoryId) &&
+        (o.nomCategoryServiceName === service || o.serviceName === service)
+      )
+      .forEach((o) => { if (o.flowStepName) names.add(o.flowStepName); });
+    return [...names].sort((a, b) => a.localeCompare(b));
+  });
 
   readonly availableEquipmentsForSelectedOrder = computed(() => {
     const selectedIds = new Set(this.selectedOrderEquipments().map((item) => item.equipmentId));
@@ -291,6 +312,7 @@ export class WorkOrderComponent {
     const selectedDate = this.dateFilter();
     const selectedCategoryId = this.normFilter().trim();
     const selectedService = this.serviceFilter().trim();
+    const selectedStep = this.stepFilter().trim();
 
     return this.workOrders().filter((order) => {
       const matchesSearch =
@@ -310,8 +332,9 @@ export class WorkOrderComponent {
         !selectedService ||
         order.nomCategoryServiceName === selectedService ||
         order.serviceName === selectedService;
+      const matchesStep = !selectedStep || order.flowStepName === selectedStep;
 
-      return matchesSearch && matchesDate && matchesCategory && matchesService;
+      return matchesSearch && matchesDate && matchesCategory && matchesService && matchesStep;
     });
   });
 
@@ -346,12 +369,19 @@ export class WorkOrderComponent {
   onNormFilterChange(value: string): void {
     this.normFilter.set(value);
     this.serviceFilter.set('');
+    this.stepFilter.set('');
     this.currentPage.set(1);
     this.loadCategoryServices(value);
   }
 
   onServiceFilterChange(value: string): void {
     this.serviceFilter.set(value);
+    this.stepFilter.set('');
+    this.currentPage.set(1);
+  }
+
+  onStepFilterChange(value: string): void {
+    this.stepFilter.set(value);
     this.currentPage.set(1);
   }
 
@@ -361,6 +391,42 @@ export class WorkOrderComponent {
 
   nextPage(): void {
     this.currentPage.update((page) => Math.min(this.totalPages(), page + 1));
+  }
+
+  exportToCsv(): void {
+    const datePipe = new DatePipe('es-MX');
+    const headers = [
+      'No. OT', 'No. Informe', 'Fecha emisión', 'Asignado a',
+      'Categoría', 'Servicio', 'Clave', 'Razón social',
+      'OC', 'Cotización', 'Flujo', 'Status',
+    ];
+
+    const rows = this.filteredWorkOrders().map((o) => [
+      o.workOrderNumber,
+      o.informNumber,
+      datePipe.transform(o.createdAt, 'dd/MM/yyyy') ?? '',
+      o.userAssignedName ?? '',
+      o.nomCategoryName ?? '',
+      o.serviceName ?? '',
+      o.code,
+      o.clientName ?? '',
+      o.purchaseOrderNumber ?? '',
+      o.quotationNumber ?? '',
+      o.flowStepName ?? '',
+      o.status === 'pending'     ? 'Por iniciar'  :
+      o.status === 'in-progress' ? 'En progreso'  :
+      o.status === 'completed'   ? 'Completada'   : 'Cancelada',
+    ]);
+
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map((r) => r.map(escape).join(',')).join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `ordenes_trabajo_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   openCreateModal(): void {
@@ -529,6 +595,7 @@ export class WorkOrderComponent {
     this.workOrderService.createEquipments(order.idDoc, [equipmentItem]).subscribe({
       next: () => {
         this.selectedDetailEquipmentId.set('');
+        this.showAddEquipmentModal.set(false);
         this.loadSelectedOrderDetail(order, () => {
           this.isAddingSelectedOrderEquipment.set(false);
           this.toastService.success('El equipo se agregó a la orden de trabajo.');
@@ -755,6 +822,31 @@ export class WorkOrderComponent {
     const nextAssignedUserName =
       this.getSelectedNextAssignedUserName() ||
       (this.currentAppUser() ? this.getReadableUserName(this.currentAppUser()) : '');
+
+    if (!this.selectedOrderObserver().trim()) {
+      this.toastService.warning('Debes registrar el observador antes de completar la orden.');
+      return;
+    }
+
+    if (!this.selectedOrderObservationDate()) {
+      this.toastService.warning('Debes registrar la fecha del observador antes de completar la orden.');
+      return;
+    }
+
+    const cable = this.selectedOrderCableResistance();
+    if (cable == null || isNaN(Number(cable))) {
+      this.toastService.warning('Debes registrar el valor de resistencia de los cables antes de completar la orden.');
+      return;
+    }
+
+    const isMeasurementsStep = step.workflowId === 'ZHvnk9BPyKO6c4mJot5A';
+    if (isMeasurementsStep) {
+      const sig = step.clientVisitSignature;
+      if (!sig?.confirmedVisit || !sig?.signedByName?.trim() || !sig?.signatureDataUrl) {
+        this.toastService.warning('Debes completar la confirmación de visita con firma del cliente antes de completar la orden.');
+        return;
+      }
+    }
 
     if (nextStep && !nextAssignedUserId) {
       this.toastService.warning('Selecciona a quién se asignará el siguiente paso.');
@@ -1063,8 +1155,15 @@ export class WorkOrderComponent {
             return;
           }
 
+          const rawAssignments = this.createStepAssignments();
+          const assignments: Record<string, { userId: string; userName: string }> = {};
+          for (const [stepUid, userId] of Object.entries(rawAssignments)) {
+            const user = this.availableSignatories().find((u) => u.idDoc === userId);
+            if (user) assignments[stepUid] = { userId: user.idDoc, userName: user.displayName || `${user.firstName} ${user.lastName}` };
+          }
+
           this.workOrderService
-            .createWorkflowSteps(idDoc, payload.nomId, steps, currentUser)
+            .createWorkflowSteps(idDoc, payload.nomId, steps, currentUser, assignments)
             .subscribe({
               next: () => {
                 const hasOtStep = steps.some((step) => step.code === 'OT');
@@ -1475,6 +1574,13 @@ export class WorkOrderComponent {
       };
     }
 
+    if (workOrderItem.currentStepName && workOrderItem.status === 'in-progress') {
+      return {
+        stepName: workOrderItem.currentStepName,
+        statusLabel: 'En progreso',
+      };
+    }
+
     const pendingStep = workflowSteps.find((step) => step.status === 'pending');
     if (pendingStep) {
       return {
@@ -1735,6 +1841,7 @@ export class WorkOrderComponent {
           this.createWorkflowPreview.set(
             [...steps].sort((a, b) => (a.order || 0) - (b.order || 0))
           );
+          this.createStepAssignments.set({});
           this.isLoadingCreateWorkflowPreview.set(false);
         },
         error: (error) => {

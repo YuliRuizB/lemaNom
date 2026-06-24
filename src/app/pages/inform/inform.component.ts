@@ -51,16 +51,20 @@ export class InformComponent implements OnInit, OnChanges {
   private toastService = inject(ToastService);
 
   @Input() workOrderId = '';
+  @Input() workOrderStatus = '';
   @Input() cableResistance: number | null = null;
 
   isLoading = signal(false);
   isGenerating = signal(false);
+  showProgressModal = signal(false);
+  generationProgress = signal(0);
+  generationStep = signal('');
   showHumidityQuestion = false;
   activeTab = signal<'tables' | 'charts'>('tables');
   points = signal<Point[]>([]);
   measurementStep = signal<workOrderStep | null>(null);
   stepEquipments = signal<workOrderEquipment[]>([]);
-  private humidityQuestionResolver: ((value: boolean) => void) | null = null;
+  private humidityQuestionResolver: ((value: boolean | null) => void) | null = null;
   readonly factorCorreccion = computed(
     () => this.stepEquipments().find((equipment) => equipment.promedioFC != null)?.promedioFC ?? null
   );
@@ -307,9 +311,20 @@ export class InformComponent implements OnInit, OnChanges {
     this.isGenerating.set(true);
 
     try {
-      const includeHumidityControl = await this.askHumidityControlQuestion();
-      const informData = await this.buildInformData(includeHumidityControl);
+      const answer = await this.askHumidityControlQuestion();
+      if (answer === null) {
+        return;
+      }
 
+      this.generationProgress.set(0);
+      this.generationStep.set('Cargando datos de la orden...');
+      this.showProgressModal.set(true);
+
+      const includeHumidityControl = answer;
+      const informData = await this.buildInformData(includeHumidityControl);
+      this.generationProgress.set(15);
+
+      this.generationStep.set('Descargando plantilla...');
       const response = await fetch(this.templatePath);
 
       if (!response.ok) {
@@ -317,6 +332,9 @@ export class InformComponent implements OnInit, OnChanges {
       }
 
       const templateBuffer = await response.arrayBuffer();
+      this.generationProgress.set(30);
+
+      this.generationStep.set('Procesando documento...');
       const zip = await JSZip.loadAsync(templateBuffer);
       const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
 
@@ -329,27 +347,42 @@ export class InformComponent implements OnInit, OnChanges {
         const updatedXml = this.replaceTemplateValues(currentXml, informData);
         zip.file(xmlEntry.name, updatedXml);
       }
+      this.generationProgress.set(50);
 
+      this.generationStep.set('Capturando tablas...');
       const tableImages = await this.captureReportTableImages(includeHumidityControl);
+      this.generationProgress.set(65);
+
+      this.generationStep.set('Capturando gráficas...');
       const chartImages = await this.captureChartImages();
       const reportImages = [...tableImages, ...chartImages];
+      this.generationProgress.set(78);
 
       if (reportImages.length) {
+        this.generationStep.set('Integrando imágenes...');
         await this.embedImagesIntoDocument(zip, reportImages);
+        this.generationProgress.set(90);
       }
 
+      this.generationStep.set('Generando archivo...');
       const generatedDoc = await zip.generateAsync({
         type: 'uint8array',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       });
+      this.generationProgress.set(98);
+
+      this.generationStep.set('Descargando...');
       const fileName = `${(informData.inform_number || 'informe').replace(/[^\w.-]+/g, '_')}.docx`;
       this.downloadGeneratedDocument(generatedDoc, fileName);
-      this.toastService.success('Informe generado con la plantilla base.');
+      this.generationProgress.set(100);
+      this.generationStep.set('¡Informe generado!');
     } catch (error) {
       console.error(error);
       this.toastService.error('No fue posible generar el informe.');
+      this.showProgressModal.set(false);
     } finally {
       this.isGenerating.set(false);
+      setTimeout(() => this.showProgressModal.set(false), 900);
     }
   }
 
@@ -746,15 +779,15 @@ export class InformComponent implements OnInit, OnChanges {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
 
-  private askHumidityControlQuestion(): Promise<boolean> {
+  private askHumidityControlQuestion(): Promise<boolean | null> {
     this.showHumidityQuestion = true;
 
-    return new Promise<boolean>((resolve) => {
+    return new Promise<boolean | null>((resolve) => {
       this.humidityQuestionResolver = resolve;
     });
   }
 
-  answerHumidityControlQuestion(answer: boolean): void {
+  answerHumidityControlQuestion(answer: boolean | null): void {
     this.showHumidityQuestion = false;
     this.humidityQuestionResolver?.(answer);
     this.humidityQuestionResolver = null;

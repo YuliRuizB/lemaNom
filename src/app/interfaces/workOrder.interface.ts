@@ -47,6 +47,8 @@ export interface workOrder{
   createdUserName?: string;
   active: boolean;
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  currentStepId?: string | null;
+  currentStepName?: string | null;
   updatedAt?: Date;
 
 }
