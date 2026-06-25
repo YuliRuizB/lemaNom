@@ -25,10 +25,12 @@ export class InformComponent implements OnInit, OnChanges {
   private readonly table422Id = 'table_422';
   private readonly table51Id = 'table_51';
   private readonly table52Id = 'table_52';
+  private readonly table53Id = 'table_53';
   private readonly imagePlaceholderKeys = new Set<keyof InformNom22Data>([
     'tabla_4_2_2_id',
     'tabla_5_1_id',
     'tabla_5_2_id',
+    'tabla_5_3_id',
   ]);
   private readonly stackedImagePlaceholderKeys = new Set<keyof InformNom22Data>(['charts']);
   readonly chartWidth = 420;
@@ -438,7 +440,7 @@ export class InformComponent implements OnInit, OnChanges {
       tabla_4_2_2_id: this.table422Id,
       tabla_5_1_id: this.table51Id,
       tabla_5_2_id: includeHumidityControl ? this.table52Id : '',
-      tabla_5_3_id: '',
+      tabla_5_3_id: this.table53Id,
       charts: '',
     };
   }
@@ -571,6 +573,7 @@ export class InformComponent implements OnInit, OnChanges {
       ...(includeHumidityControl
         ? ([{ placeholder: 'tabla_5_2_id', elementId: this.table52Id }] as const)
         : []),
+      { placeholder: 'tabla_5_3_id', elementId: this.table53Id },
     ] as const;
 
     const results: ReportEmbeddedImage[] = [];
@@ -822,7 +825,7 @@ export class InformComponent implements OnInit, OnChanges {
 }
 
 interface ReportEmbeddedImage {
-  placeholder: 'tabla_4_2_2_id' | 'tabla_5_1_id' | 'tabla_5_2_id' | 'charts';
+  placeholder: 'tabla_4_2_2_id' | 'tabla_5_1_id' | 'tabla_5_2_id' | 'tabla_5_3_id' | 'charts';
   bytes: Uint8Array;
   widthPx: number;
   heightPx: number;

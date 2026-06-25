@@ -373,6 +373,7 @@
             <select
               class="wo-client-card__input"
               [ngModel]="selectedOrderObserver()"
+              [disabled]="!isSelectedOrderDetailEditable()"
               (ngModelChange)="selectedOrderObserver.set($event)"
             >
               <option value="">Selecciona un observador</option>
@@ -387,6 +388,7 @@
               class="wo-client-card__input"
               type="date"
               [ngModel]="selectedOrderObservationDate()"
+              [disabled]="!isSelectedOrderDetailEditable()"
               (ngModelChange)="selectedOrderObservationDate.set($event)"
             />
           </div>
@@ -394,7 +396,7 @@
             <button
               class="btn btn--primary btn--sm"
               type="button"
-              [disabled]="isSavingObserver()"
+              [disabled]="isSavingObserver() || !isSelectedOrderDetailEditable()"
               (click)="saveSelectedOrderObserver()"
             >
               {{ isSavingObserver() ? 'Guardando...' : 'Guardar' }}
@@ -409,6 +411,7 @@
               step="any"
               placeholder="—"
               [ngModel]="selectedOrderCableResistance()"
+              [disabled]="!isSelectedOrderDetailEditable()"
               (ngModelChange)="selectedOrderCableResistance.set($event)"
             />
           </div>
@@ -417,7 +420,7 @@
         <div class="wo-equipment-section">
           <div class="wo-equipment-section__header">
             <span class="wo-equipment-section__title">Equipo Asignado</span>
-            @if (selectedOrderEquipments().length < 3) {
+            @if (isSelectedOrderDetailEditable() && selectedOrderEquipments().length < 3) {
               <button
                 class="btn-add btn-add--secondary btn-add--sm"
                 type="button"
@@ -465,6 +468,7 @@
                       type="radio"
                       [name]="'detail-' + question.key + '-answer'"
                       [checked]="order.impartiality?.[question.key] === true"
+                      [disabled]="!isSelectedOrderDetailEditable()"
                       (change)="updateSelectedOrderImpartialityAnswer(question.key, true)"
                     />
                     <span>Sí</span>
@@ -475,6 +479,7 @@
                       type="radio"
                       [name]="'detail-' + question.key + '-answer'"
                       [checked]="order.impartiality?.[question.key] === false"
+                      [disabled]="!isSelectedOrderDetailEditable()"
                       (change)="updateSelectedOrderImpartialityAnswer(question.key, false)"
                     />
                     <span>No</span>
@@ -483,6 +488,7 @@
                   <button
                     class="impartiality-clear"
                     type="button"
+                    [disabled]="!isSelectedOrderDetailEditable()"
                     (click)="updateSelectedOrderImpartialityAnswer(question.key, null)"
                   >
                     Limpiar
@@ -498,6 +504,7 @@
               class="form-field__input form-field__input--textarea"
               rows="3"
               [ngModel]="order.impartiality?.observations || ''"
+              [disabled]="!isSelectedOrderDetailEditable()"
               (ngModelChange)="updateSelectedOrderImpartialityObservations($event)"
             ></textarea>
           </div>
@@ -517,7 +524,7 @@
             <button
               class="btn btn--primary"
               type="button"
-              [disabled]="isSavingImpartiality()"
+              [disabled]="isSavingImpartiality() || !isSelectedOrderDetailEditable()"
               (click)="saveOrderChanges()"
             >
               {{ isSavingImpartiality() ? 'Guardando...' : 'Guardar Cambios' }}
@@ -626,6 +633,7 @@
             <app-measurements
               [workOrderId]="selectedOrder()!.idDoc"
               [workflowStepId]="step.idDoc"
+              [workOrderStatus]="selectedOrder()!.status"
               [cableResistance]="selectedOrder()!.cableResistance ?? null"
             />
           </section>

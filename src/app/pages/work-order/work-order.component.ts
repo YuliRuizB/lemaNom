@@ -276,6 +276,8 @@ export class WorkOrderComponent {
     return sortedSteps.find((step) => this.isWorkOrderStep(step)) || null;
   });
 
+  readonly isSelectedOrderDetailEditable = computed(() => this.workOrderTabStep()?.status === 'in-progress');
+
   readonly selectedWorkflowNavIndex = computed(() =>
     this.workflowNavigationItems().findIndex((item) => item.tabId === this.selectedOrderTab())
   );
@@ -567,7 +569,7 @@ export class WorkOrderComponent {
 
   addEquipmentToSelectedOrder(equipmentId: string): void {
     const order = this.selectedOrder();
-    if (!order || !equipmentId || this.isAddingSelectedOrderEquipment()) {
+    if (!order || !equipmentId || this.isAddingSelectedOrderEquipment() || !this.isSelectedOrderDetailEditable()) {
       return;
     }
 
@@ -746,7 +748,7 @@ export class WorkOrderComponent {
     value: boolean | null
   ): void {
     const order = this.selectedOrder();
-    if (!order) {
+    if (!order || !this.isSelectedOrderDetailEditable()) {
       return;
     }
 
@@ -765,7 +767,7 @@ export class WorkOrderComponent {
 
   updateSelectedOrderImpartialityObservations(value: string): void {
     const order = this.selectedOrder();
-    if (!order) {
+    if (!order || !this.isSelectedOrderDetailEditable()) {
       return;
     }
 
@@ -783,7 +785,7 @@ export class WorkOrderComponent {
 
   saveSelectedOrderImpartiality(): void {
     const order = this.selectedOrder();
-    if (!order || this.isSavingImpartiality()) {
+    if (!order || this.isSavingImpartiality() || !this.isSelectedOrderDetailEditable()) {
       return;
     }
 
@@ -1629,7 +1631,7 @@ export class WorkOrderComponent {
 
   saveSelectedOrderObserver(): void {
     const order = this.selectedOrder();
-    if (!order || this.isSavingObserver()) return;
+    if (!order || this.isSavingObserver() || !this.isSelectedOrderDetailEditable()) return;
 
     const observerName = this.selectedOrderObserver().trim() || undefined;
     const dateValue = this.selectedOrderObservationDate();
@@ -1655,7 +1657,7 @@ export class WorkOrderComponent {
 
   saveOrderChanges(): void {
     const order = this.selectedOrder();
-    if (!order || this.isSavingImpartiality() || this.isSavingObserver()) return;
+    if (!order || this.isSavingImpartiality() || this.isSavingObserver() || !this.isSelectedOrderDetailEditable()) return;
 
     const observerName = this.selectedOrderObserver().trim() || undefined;
     const dateValue = this.selectedOrderObservationDate();

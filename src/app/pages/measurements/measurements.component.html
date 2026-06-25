@@ -42,6 +42,7 @@
                   <select
                     class="m-equipment-card__voltage-input"
                     [ngModel]="voltageEdits()[item.idDoc] ?? (item.equipmentVoltage || '')"
+                    [disabled]="isReadOnly()"
                     (ngModelChange)="setVoltageEdit(item.idDoc, $event)"
                   >
                     <option value="">Selecciona</option>
@@ -51,7 +52,7 @@
                   <button
                     class="m-equipment-card__save-btn"
                     type="button"
-                    [disabled]="savingVoltageId() === item.idDoc"
+                    [disabled]="savingVoltageId() === item.idDoc || isReadOnly()"
                     (click)="saveVoltage(item)"
                   >
                     {{ savingVoltageId() === item.idDoc ? 'Guardando...' : 'Guardar' }}
@@ -202,13 +203,13 @@
           </p>
         </div>
         <div class="measurements-points__actions">
-        <button class="measurements-points__add-btn" type="button" (click)="addPoint()">
+        <button class="measurements-points__add-btn" type="button" [disabled]="isReadOnly()" (click)="addPoint()">
             + Agregar punto
           </button>
           <button
             class="measurements-points__save-btn"
             type="button"
-            [disabled]="!points().length || isSavingPoints()"
+            [disabled]="!points().length || isSavingPoints() || isReadOnly()"
             (click)="savePoints()"
           >
             {{ isSavingPoints() ? 'Guardando...' : 'Guardar' }}
@@ -328,6 +329,7 @@
                         class="measurements-points-list__delete-btn"
                         type="button"
                         title="Eliminar punto"
+                        [disabled]="isReadOnly()"
                         (click)="$event.stopPropagation(); deletePoint(point.idDoc)"
                       >
                         ✕
@@ -350,7 +352,7 @@
                 <button
                   class="m-point-card__save-btn"
                   type="button"
-                  [disabled]="isSavingPoints()"
+                  [disabled]="isSavingPoints() || isReadOnly()"
                   (click)="savePoints()"
                 >
                   {{ isSavingPoints() ? 'Guardando...' : 'Guardar' }}
@@ -358,6 +360,7 @@
                 <button
                   class="m-point-card__delete-btn"
                   type="button"
+                  [disabled]="isReadOnly()"
                   (click)="deletePoint(point.idDoc)"
                 >
                   Eliminar punto
@@ -383,6 +386,7 @@
                   class="m-point-card__input"
                   type="text"
                   [ngModel]="point.location"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'location', $event)"
                 />
               </div>
@@ -392,6 +396,7 @@
                 <select
                   class="m-point-card__input"
                   [ngModel]="point.electrodeType"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'electrodeType', $event)"
                 >
                   <option value="unique">Único</option>
@@ -404,6 +409,7 @@
                 <select
                   class="m-point-card__input"
                   [ngModel]="point.hasLightningRod ? 'yes' : 'no'"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'hasLightningRod', $event === 'yes')"
                 >
                   <option value="yes">Sí</option>
@@ -422,6 +428,7 @@
                     min="0"
                     step="0.01"
                     [ngModel]="point.lightningRodHeight ?? ''"
+                    [disabled]="isReadOnly()"
                     (ngModelChange)="updatePoint(point.idDoc, 'lightningRodHeight', $event === '' ? undefined : +$event)"
                   />
                 </div>
@@ -434,6 +441,7 @@
                     min="0"
                     step="0.01"
                     [ngModel]="point.protectionRadius ?? ''"
+                    [disabled]="isReadOnly()"
                     (ngModelChange)="updatePoint(point.idDoc, 'protectionRadius', $event === '' ? undefined : +$event)"
                   />
                 </div>
@@ -444,6 +452,7 @@
                     class="m-point-card__input"
                     type="text"
                     [ngModel]="point.systemType ?? ''"
+                    [disabled]="isReadOnly()"
                     (ngModelChange)="updatePoint(point.idDoc, 'systemType', $event || undefined)"
                   />
                 </div>
@@ -458,6 +467,7 @@
                   type="number"
                   step="0.1"
                   [ngModel]="point.temperature ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'temperature', $event === '' ? undefined : +$event)"
                 />
               </div>
@@ -471,6 +481,7 @@
                   max="100"
                   step="0.1"
                   [ngModel]="point.humidity ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'humidity', $event === '' ? undefined : +$event)"
                 />
               </div>
@@ -480,6 +491,7 @@
                 <select
                   class="m-point-card__input"
                   [ngModel]="point.measurementCondition"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'measurementCondition', $event)"
                 >
                   <option value="dry">Seco</option>
@@ -492,6 +504,7 @@
                 <select
                   class="m-point-card__input"
                   [ngModel]="point.soilType"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'soilType', $event)"
                 >
                   <option value="cement">Cemento</option>
@@ -505,6 +518,7 @@
                   class="m-point-card__input"
                   type="time"
                   [ngModel]="point.startTime ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'startTime', $event || undefined)"
                 />
               </div>
@@ -515,6 +529,7 @@
                   class="m-point-card__input"
                   type="time"
                   [ngModel]="point.endTime ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'endTime', $event || undefined)"
                 />
               </div>
@@ -536,6 +551,7 @@
                   type="number"
                   step="0.01"
                   [ngModel]="point.measurementData.p1_1m ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_1m', $event)"
                 />
                 <input
@@ -543,6 +559,7 @@
                   type="number"
                   step="0.01"
                   [ngModel]="point.measurementData.p1_4m ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_4m', $event)"
                 />
                 <input
@@ -550,6 +567,7 @@
                   type="number"
                   step="0.01"
                   [ngModel]="point.measurementData.p1_7m ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_7m', $event)"
                 />
                 <input
@@ -557,6 +575,7 @@
                   type="number"
                   step="0.01"
                   [ngModel]="point.measurementData.p1_10m ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_10m', $event)"
                 />
                 <input
@@ -564,6 +583,7 @@
                   type="number"
                   step="0.01"
                   [ngModel]="point.measurementData.p1_13m ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_13m', $event)"
                 />
                 <input
@@ -571,6 +591,7 @@
                   type="number"
                   step="0.01"
                   [ngModel]="point.measurementData.p1_16m ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_16m', $event)"
                 />
                 <input
@@ -578,6 +599,7 @@
                   type="number"
                   step="0.01"
                   [ngModel]="point.measurementData.p1_19m ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePointMeasurementValue(point.idDoc, 'p1_19m', $event)"
                 />
               </div>
@@ -589,6 +611,7 @@
                 <select
                   class="m-point-card__input"
                   [ngModel]="point.voltageStatus ?? 'empty'"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'voltageStatus', $event)"
                 >
                   <option value="empty">Sin definir</option>
@@ -602,6 +625,7 @@
                 <select
                   class="m-point-card__input"
                   [ngModel]="point.hasContinuity == null ? '' : (point.hasContinuity ? 'yes' : 'no')"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updatePoint(point.idDoc, 'hasContinuity', $event === '' ? undefined : $event === 'yes')"
                 >
                   <option value="">Sin definir</option>
@@ -615,6 +639,7 @@
                 <select
                   class="m-point-card__input"
                   [ngModel]="point.generatorSources?.[0] ?? ''"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="onGeneratorSourceChange(point.idDoc, $event)"
                 >
                   <option value="">Selecciona una fuente</option>
@@ -641,6 +666,7 @@
                 <select
                   class="m-point-connected__input"
                   [ngModel]="getConnectedEquipmentValue(point, 0)"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updateConnectedEquipment(point.idDoc, 0, $event)"
                 >
                   <option value="">Selecciona</option>
@@ -652,6 +678,7 @@
                 <select
                   class="m-point-connected__input"
                   [ngModel]="getConnectedEquipmentValue(point, 1)"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updateConnectedEquipment(point.idDoc, 1, $event)"
                 >
                   <option value="">Selecciona</option>
@@ -663,6 +690,7 @@
                 <select
                   class="m-point-connected__input"
                   [ngModel]="getConnectedEquipmentValue(point, 2)"
+                  [disabled]="isReadOnly()"
                   (ngModelChange)="updateConnectedEquipment(point.idDoc, 2, $event)"
                 >
                   <option value="">Selecciona</option>
@@ -679,6 +707,7 @@
                 class="m-point-card__input m-point-card__input--textarea"
                 rows="3"
                 [ngModel]="point.observations ?? ''"
+                [disabled]="isReadOnly()"
                 (ngModelChange)="updatePoint(point.idDoc, 'observations', $event || undefined)"
               ></textarea>
             </div>
@@ -701,7 +730,7 @@
           <button
             class="measurements-signature__save-btn"
             type="button"
-            [disabled]="isSavingSignature()"
+            [disabled]="isSavingSignature() || isReadOnly()"
             (click)="saveClientVisitSignature()"
           >
             {{ isSavingSignature() ? 'Guardando...' : 'Guardar firma' }}
@@ -714,6 +743,7 @@
             <input
               class="measurements-signature__input"
               type="text"
+              [disabled]="isReadOnly()"
               [(ngModel)]="signatureForm.signedByName"
             />
           </div>
@@ -723,6 +753,7 @@
             <input
               class="measurements-signature__input"
               type="text"
+              [disabled]="isReadOnly()"
               [(ngModel)]="signatureForm.signedByRole"
             />
           </div>
@@ -733,6 +764,7 @@
               class="measurements-signature__input"
               type="date"
               [ngModel]="signatureSignedAt()"
+              [disabled]="isReadOnly()"
               (ngModelChange)="signatureSignedAt.set($event)"
             />
           </div>
@@ -743,6 +775,7 @@
           <textarea
             class="measurements-signature__input measurements-signature__input--textarea"
             rows="3"
+            [disabled]="isReadOnly()"
             [(ngModel)]="signatureForm.observations"
           ></textarea>
         </div>
@@ -753,6 +786,7 @@
             <button
               class="measurements-signature__clear-btn"
               type="button"
+              [disabled]="isReadOnly()"
               (click)="clearSignature()"
             >
               Limpiar firma

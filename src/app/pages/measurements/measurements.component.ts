@@ -18,7 +18,12 @@ import * as XLSX from 'xlsx';
 import { AuthService } from '../../services/auth.service';
 import { CalibrationRow, equipment } from '../../interfaces/meditionType.interface';
 import { GeneratorSource, Point } from '../../interfaces/measurements.interface';
-import { WorkOrderClientVisitSignature, workOrderEquipment } from '../../interfaces/workOrder.interface';
+import {
+  WorkOrderClientVisitSignature,
+  workOrder,
+  workOrderEquipment,
+  workOrderStep,
+} from '../../interfaces/workOrder.interface';
 import { EquipmentService } from '../../services/equipment.service';
 import { ToastService } from '../../services/toast.service';
 import { WorkOrderService } from '../../services/work-order.service';
@@ -36,6 +41,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   @Input() workOrderId = '';
   @Input() workflowStepId = '';
   @Input() cableResistance: number | null = null;
+  @Input() workOrderStatus: workOrder['status'] | null = null;
 
   private authService = inject(AuthService);
   private workOrderService = inject(WorkOrderService);
@@ -53,6 +59,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   isSavingSignature = signal(false);
   isLoading = signal(true);
   currentUserId = signal('');
+  workflowStepStatus = signal<workOrderStep['status'] | null>(null);
   savedSignaturePreview = signal('');
   signatureSignedAt = signal('');
   signatureForm = {
@@ -74,6 +81,9 @@ export class MeasurementsComponent implements OnInit, OnChanges {
 
   readonly selectedPoint = computed(
     () => this.points().find((point) => point.idDoc === this.selectedPointId()) || null
+  );
+  readonly isReadOnly = computed(
+    () => this.workOrderStatus === 'completed' || this.workflowStepStatus() === 'completed'
   );
 
   ngOnInit(): void {
@@ -143,6 +153,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
               const currentSelectedId = this.selectedPointId();
               const existsSelected = points.some((point) => point.idDoc === currentSelectedId);
               this.selectedPointId.set(existsSelected ? currentSelectedId : '');
+              this.workflowStepStatus.set(step?.status ?? null);
               this.applyClientVisitSignature(step?.clientVisitSignature);
               this.isLoading.set(false);
 
@@ -167,11 +178,12 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   setVoltageEdit(equipmentId: string, value: string): void {
+    if (this.isReadOnly()) return;
     this.voltageEdits.update((edits) => ({ ...edits, [equipmentId]: value }));
   }
 
   saveVoltage(item: workOrderEquipment): void {
-    if (this.savingVoltageId()) return;
+    if (this.savingVoltageId() || this.isReadOnly()) return;
 
     const voltage = (this.voltageEdits()[item.idDoc] ?? item.equipmentVoltage ?? '').trim();
 
@@ -246,6 +258,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   addPoint(): void {
+    if (this.isReadOnly()) return;
     const nextNumber = this.points().length + 1;
     const newPoint: Point = {
       idDoc: `point-${Date.now()}`,
@@ -276,7 +289,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   savePoints(): void {
-    if (!this.points().length || this.isSavingPoints()) {
+    if (!this.points().length || this.isSavingPoints() || this.isReadOnly()) {
       return;
     }
 
@@ -319,6 +332,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   updatePoint<K extends keyof Point>(pointId: string, key: K, value: Point[K]): void {
+    if (this.isReadOnly()) return;
     this.points.update((items) =>
       items.map((item) => (item.idDoc === pointId ? { ...item, [key]: value } : item))
     );
@@ -338,6 +352,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   deletePoint(pointId: string): void {
+    if (this.isReadOnly()) return;
     const isDraft = this.draftPointId() === pointId;
     this.points.update((items) => items.filter((p) => p.idDoc !== pointId));
     if (this.selectedPointId() === pointId) {
@@ -363,6 +378,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
     key: keyof Point['measurementData'],
     value: string
   ): void {
+    if (this.isReadOnly()) return;
     const measurementDataValue = value === '' ? undefined : Number(value);
     this.points.update((items) =>
       items.map((item) =>
@@ -406,6 +422,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   updateConnectedEquipment(pointId: string, index: number, value: string): void {
+    if (this.isReadOnly()) return;
     this.points.update((items) =>
       items.map((item) => {
         if (item.idDoc !== pointId) {
@@ -505,6 +522,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   startSignatureDraw(event: PointerEvent): void {
+    if (this.isReadOnly()) return;
     const canvas = this.signatureCanvas?.nativeElement;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
@@ -517,7 +535,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   moveSignatureDraw(event: PointerEvent): void {
-    if (!this.isDrawingSignature) return;
+    if (!this.isDrawingSignature || this.isReadOnly()) return;
     const canvas = this.signatureCanvas?.nativeElement;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
@@ -532,6 +550,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   }
 
   clearSignature(): void {
+    if (this.isReadOnly()) return;
     const canvas = this.signatureCanvas?.nativeElement;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
@@ -543,7 +562,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
 
   saveClientVisitSignature(): void {
     const canvas = this.signatureCanvas?.nativeElement;
-    if (!this.workOrderId || !this.workflowStepId || this.isSavingSignature()) {
+    if (!this.workOrderId || !this.workflowStepId || this.isSavingSignature() || this.isReadOnly()) {
       return;
     }
 
