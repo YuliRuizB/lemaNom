@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { take } from 'rxjs';
 
 import { UserRoleModalComponent } from '../../components/user-role-modal/user-role-modal.component';
 import { User } from '../../interfaces/user.interface';
+import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 
 @Component({
@@ -14,12 +16,16 @@ import { UserService } from '../../services/user.service';
   styleUrl: './users.component.scss',
 })
 export class UsersComponent {
+  private readonly superAdminRoleId = 'NPsdyKHT4qpRnRULhC7R';
+  private authService = inject(AuthService);
   private userService = inject(UserService);
 
   private allUsers = signal<User[]>([]);
   search = signal('');
   loading = signal(true);
+  deletingUserId = signal<string | null>(null);
   selectedUser = signal<User | null>(null);
+  currentAppUser = signal<User | null>(null);
 
   readonly pageSize = 10;
   currentPage = signal(1);
@@ -43,7 +49,10 @@ export class UsersComponent {
     return this.filteredUsers().slice(start, start + this.pageSize);
   });
 
+  canDeleteUsers = computed(() => this.currentAppUser()?.roleId === this.superAdminRoleId);
+
   constructor() {
+    this.loadCurrentUser();
     this.loadUsers();
   }
 
@@ -64,6 +73,46 @@ export class UsersComponent {
     if (changed) this.loadUsers();
   }
 
+  deleteUser(user: User, event: Event): void {
+    event.stopPropagation();
+
+    if (!this.canDeleteUsers()) {
+      return;
+    }
+
+    if (this.currentAppUser()?.idDoc === user.idDoc) {
+      window.alert('No puedes eliminar tu propio usuario desde esta pantalla.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Se eliminará el usuario ${user.displayName || user.email} de la colección "user".`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.deletingUserId.set(user.idDoc);
+    this.userService
+      .deleteUserDocument(user.idDoc)
+      .pipe(take(1))
+      .subscribe({
+        next: () => {
+          this.allUsers.update((items) => items.filter((item) => item.idDoc !== user.idDoc));
+          if (this.selectedUser()?.idDoc === user.idDoc) {
+            this.selectedUser.set(null);
+          }
+          this.deletingUserId.set(null);
+          window.alert('Usuario eliminado de la colección "user". La baja en Firebase Auth requiere backend/Admin SDK.');
+        },
+        error: () => {
+          this.deletingUserId.set(null);
+          window.alert('No fue posible eliminar el usuario.');
+        },
+      });
+  }
+
   private loadUsers(): void {
     this.loading.set(true);
     this.userService.getUsers().subscribe({
@@ -72,6 +121,19 @@ export class UsersComponent {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  private loadCurrentUser(): void {
+    this.authService.currentUser$.pipe(take(1)).subscribe((firebaseUser) => {
+      if (!firebaseUser) {
+        return;
+      }
+
+      this.userService
+        .getUserById(firebaseUser.uid)
+        .pipe(take(1))
+        .subscribe((appUser) => this.currentAppUser.set(appUser));
     });
   }
 }

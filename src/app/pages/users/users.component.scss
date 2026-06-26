@@ -78,6 +78,34 @@
     color: var(--lema-gray);
   }
 
+  &__actions {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  &__delete {
+    min-height: 2rem;
+    padding: 0.38rem 0.75rem;
+    border: 1px solid rgba(176, 32, 32, 0.18);
+    border-radius: 0.45rem;
+    background: rgba(176, 32, 32, 0.06);
+    color: #9d1f1f;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+
+    &:hover:not(:disabled) {
+      background: rgba(176, 32, 32, 0.1);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
   &__state {
     text-align: center;
     padding: 2.5rem;

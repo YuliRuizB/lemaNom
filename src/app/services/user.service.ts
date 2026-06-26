@@ -3,6 +3,7 @@ import {
   Firestore,
   Timestamp,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -88,6 +89,11 @@ export class UserService {
         } as User;
       })
     );
+  }
+
+  deleteUserDocument(uid: string) {
+    const userRef = doc(this.firestore, 'user', uid);
+    return from(deleteDoc(userRef));
   }
 
   uploadUserAvatar(uid: string, file: File) {

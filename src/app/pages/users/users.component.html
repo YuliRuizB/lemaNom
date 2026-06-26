@@ -21,12 +21,15 @@
           <th>Rol</th>
           <th>Activo</th>
           <th>Aprobado</th>
+          @if (canDeleteUsers()) {
+            <th></th>
+          }
         </tr>
       </thead>
       <tbody>
         @if (loading()) {
           <tr>
-            <td colspan="8" class="users-table__state">Cargando…</td>
+            <td [attr.colspan]="canDeleteUsers() ? 9 : 8" class="users-table__state">Cargando…</td>
           </tr>
         } @else {
           @for (user of pagedUsers(); track user.idDoc) {
@@ -47,10 +50,22 @@
                   {{ user.approved ? 'Sí' : 'No' }}
                 </span>
               </td>
+              @if (canDeleteUsers()) {
+                <td class="users-table__actions">
+                  <button
+                    class="users-table__delete"
+                    type="button"
+                    [disabled]="deletingUserId() === user.idDoc"
+                    (click)="deleteUser(user, $event)"
+                  >
+                    {{ deletingUserId() === user.idDoc ? 'Eliminando...' : 'Eliminar' }}
+                  </button>
+                </td>
+              }
             </tr>
           } @empty {
             <tr>
-              <td colspan="8" class="users-table__state">Sin resultados.</td>
+              <td [attr.colspan]="canDeleteUsers() ? 9 : 8" class="users-table__state">Sin resultados.</td>
             </tr>
           }
         }
