@@ -28,6 +28,7 @@ export class ClientService {
   addPlant(clientId: string, plant: Omit<ClientPlant, 'idDoc' | 'createdAt' | 'updatedAt'>): Observable<void> {
     const plantsRef = collection(this.firestore, 'client', clientId, 'plants');
     const newPlant: Record<string, any> = {
+      code: plant.code,
       name: plant.name,
       active: plant.active,
       createdAt: serverTimestamp(),
@@ -49,6 +50,17 @@ export class ClientService {
     if (plant.postalCode)       newPlant['postalCode']       = plant.postalCode;
 
     return from(addDoc(plantsRef, newPlant)).pipe(map(() => void 0));
+  }
+
+  updatePlant(clientId: string, plantId: string, plant: Partial<ClientPlant>): Observable<void> {
+    const plantRef = doc(this.firestore, 'client', clientId, 'plants', plantId);
+
+    return from(
+      updateDoc(plantRef, {
+        ...this.removeUndefinedFields(plant),
+        updatedAt: serverTimestamp(),
+      })
+    );
   }
 
   addWitness(
@@ -293,6 +305,7 @@ export class ClientService {
   private toPlant(id: string, p: Record<string, any>): ClientPlant {
     return {
       idDoc: id,
+      code: p['code'],
       name: p['name'],
       description: p['description'],
       contactName: p['contactName'],

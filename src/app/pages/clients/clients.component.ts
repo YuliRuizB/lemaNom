@@ -36,6 +36,7 @@ export class ClientsComponent {
   deleting = signal(false);
   showAddForm = signal(false);
   showPlantModal = signal(false);
+  editingPlant = signal<ClientPlant | null>(null);
   showWitnessForm = signal(false);
   selectedClient = signal<ClientView | null>(null);
   editingClientId = signal<string | null>(null);
@@ -283,7 +284,10 @@ export class ClientsComponent {
     this.selectedWitnessId.set(null);
   }
 
-  openPlantModal(): void { this.showPlantModal.set(true); }
+  openPlantModal(plant: ClientPlant | null = null): void {
+    this.editingPlant.set(plant);
+    this.showPlantModal.set(true);
+  }
 
   openWitnessForm(): void {
     this.witnessForm.reset({ active: true });
@@ -300,6 +304,7 @@ export class ClientsComponent {
 
   onPlantModalClosed(saved: boolean): void {
     this.showPlantModal.set(false);
+    this.editingPlant.set(null);
     if (saved) this.loadClients();
   }
 

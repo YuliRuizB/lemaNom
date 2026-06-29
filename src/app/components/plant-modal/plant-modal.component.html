@@ -3,8 +3,8 @@
 <div class="modal">
   <header class="modal__header">
     <div>
-      <p class="modal__eyebrow">Nueva planta</p>
-      <h2 class="modal__title">Agregar planta</h2>
+      <p class="modal__eyebrow">{{ plant ? 'Editar planta' : 'Nueva planta' }}</p>
+      <h2 class="modal__title">{{ plant ? 'Actualizar planta' : 'Agregar planta' }}</h2>
     </div>
     <button class="modal__close" type="button" (click)="cancel()">&#x2715;</button>
   </header>
@@ -16,6 +16,10 @@
       <div class="section">
         <p class="section__title">General</p>
         <div class="form-row form-row--general">
+          <div class="field">
+            <label class="field__label">Código</label>
+            <input class="field__input" type="text" formControlName="code" autocomplete="off" />
+          </div>
           <div class="field">
             <label class="field__label">Nombre <span class="field__req">*</span></label>
             <input class="field__input" type="text" formControlName="name" autocomplete="off" />
@@ -122,7 +126,7 @@
     <footer class="modal__footer">
       <button class="btn btn--ghost" type="button" (click)="cancel()">Cancelar</button>
       <button class="btn btn--primary" type="submit" [disabled]="saving()">
-        {{ saving() ? 'Guardando…' : 'Guardar' }}
+        {{ saving() ? 'Guardando…' : (plant ? 'Guardar cambios' : 'Guardar') }}
       </button>
     </footer>
   </form>

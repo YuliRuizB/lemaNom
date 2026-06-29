@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { ClientService } from '../../services/client.service';
 import { ToastService } from '../../services/toast.service';
+import { ClientPlant } from '../../interfaces/client.interface';
 
 @Component({
   selector: 'app-plant-modal',
@@ -12,8 +13,9 @@ import { ToastService } from '../../services/toast.service';
   templateUrl: './plant-modal.component.html',
   styleUrl: './plant-modal.component.scss',
 })
-export class PlantModalComponent {
+export class PlantModalComponent implements OnInit {
   @Input({ required: true }) clientId!: string;
+  @Input() plant: ClientPlant | null = null;
   @Output() closed = new EventEmitter<boolean>();
 
   private fb = inject(FormBuilder);
@@ -23,6 +25,7 @@ export class PlantModalComponent {
   saving = signal(false);
 
   form = this.fb.group({
+    code:             [''],
     name:             ['', [Validators.required, Validators.minLength(2)]],
     description:      [''],
     shiftDiurnal:     [false],
@@ -42,6 +45,33 @@ export class PlantModalComponent {
     active:           [true],
   });
 
+  ngOnInit(): void {
+    if (!this.plant) {
+      return;
+    }
+
+    this.form.reset({
+      code: this.plant.code || '',
+      name: this.plant.name || '',
+      description: this.plant.description || '',
+      shiftDiurnal: !!this.plant.shifts?.some((shift) => shift.type === 'diurnal'),
+      shiftNocturnal: !!this.plant.shifts?.some((shift) => shift.type === 'nocturnal'),
+      contactName: this.plant.contactName || '',
+      contactPosition: this.plant.contactPosition || '',
+      contactEmail: this.plant.contactEmail || '',
+      contactPhone: this.plant.contactPhone || '',
+      street: this.plant.street || '',
+      exteriorNumber: this.plant.exteriorNumber || '',
+      interiorNumber: this.plant.interiorNumber || '',
+      colony: this.plant.colony || '',
+      municipality: this.plant.municipality || '',
+      state: this.plant.state || '',
+      country: this.plant.country || '',
+      postalCode: this.plant.postalCode || '',
+      active: this.plant.active,
+    });
+  }
+
   isFieldInvalid(field: string): boolean {
     const c = this.form.get(field);
     return !!(c?.invalid && (c.dirty || c.touched));
@@ -57,7 +87,8 @@ export class PlantModalComponent {
     if (v.shiftDiurnal)   shifts.push({ idDoc: crypto.randomUUID(), name: 'Turno Diurno',   type: 'diurnal'   as const, startTime: '', endTime: '', active: true });
     if (v.shiftNocturnal) shifts.push({ idDoc: crypto.randomUUID(), name: 'Turno Nocturno', type: 'nocturnal' as const, startTime: '', endTime: '', active: true });
 
-    this.clientService.addPlant(this.clientId, {
+    const payload = {
+      code:            v.code?.trim()            || undefined,
       name:            v.name!.trim(),
       description:     v.description?.trim()     || undefined,
       contactName:     v.contactName?.trim()     || undefined,
@@ -74,13 +105,19 @@ export class PlantModalComponent {
       postalCode:      v.postalCode?.trim()      || undefined,
       active:          v.active!,
       shifts,
-    }).subscribe({
+    };
+
+    const request$ = this.plant?.idDoc
+      ? this.clientService.updatePlant(this.clientId, this.plant.idDoc, payload)
+      : this.clientService.addPlant(this.clientId, payload);
+
+    request$.subscribe({
       next: () => {
-        this.toastService.success('Planta agregada correctamente.');
+        this.toastService.success(this.plant ? 'Planta actualizada correctamente.' : 'Planta agregada correctamente.');
         this.closed.emit(true);
       },
       error: () => {
-        this.toastService.error('Error al agregar la planta.');
+        this.toastService.error(this.plant ? 'Error al actualizar la planta.' : 'Error al agregar la planta.');
         this.saving.set(false);
       },
     });

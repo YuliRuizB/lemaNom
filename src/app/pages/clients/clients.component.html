@@ -210,6 +210,9 @@
               <button class="plant-card__header" type="button" (click)="togglePlant(plant.idDoc)">
                 <div class="plant-card__header-info">
                   <span class="plant-card__name">{{ plant.name }}</span>
+                  @if (plant.code) {
+                    <span class="plant-card__code">Código: {{ plant.code }}</span>
+                  }
                   @if (plant.description) {
                     <span class="plant-card__desc">{{ plant.description }}</span>
                   }
@@ -218,6 +221,13 @@
                   <span class="badge" [class.badge--active]="plant.active" [class.badge--inactive]="!plant.active">
                     {{ plant.active ? 'Activa' : 'Inactiva' }}
                   </span>
+                  <button
+                    type="button"
+                    class="mini-edit"
+                    (click)="$event.stopPropagation(); openPlantModal(plant)"
+                  >
+                    Editar
+                  </button>
                   <button
                     type="button"
                     class="mini-delete"
@@ -232,6 +242,18 @@
 
               @if (expandedPlantId() === plant.idDoc) {
                 <div class="plant-card__body">
+
+                  @if (plant.code) {
+                    <div class="plant-section">
+                      <p class="plant-section__title">General</p>
+                      <div class="plant-grid">
+                        <div class="info-item">
+                          <span class="info-item__label">Código</span>
+                          <span class="info-item__value">{{ plant.code }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
 
                   <!-- Contacto -->
                   @if (plant.contactName || plant.contactEmail || plant.contactPhone) {
@@ -536,6 +558,7 @@
 @if (showPlantModal() && selectedClient()) {
   <app-plant-modal
     [clientId]="selectedClient()!.idDoc"
+    [plant]="editingPlant()"
     (closed)="onPlantModalClosed($event)"
   />
 }

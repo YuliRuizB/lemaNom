@@ -20,7 +20,7 @@ export interface Client {
 
 export interface ClientPlant {
   idDoc: string;
-  code:string;
+  code?:string;
   name: string; // Planta Norte, Planta Monterrey, Planta 1
   description?: string;
   // Contacto principal de la planta

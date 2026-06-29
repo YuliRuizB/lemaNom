@@ -810,6 +810,15 @@
   }
 }
 
+.mini-edit,
+.mini-delete {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d7dbe2;
+  border-radius: 0.4rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 /* Sección dentro de planta */
 .plant-section {
   &__title {
