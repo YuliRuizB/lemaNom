@@ -76,6 +76,7 @@ export class WorkOrderComponent {
   normFilter = signal('');
   serviceFilter = signal('');
   stepFilter = signal('');
+  assignedFilter = signal('');
   currentPage = signal(1);
   showCreateModal = signal(false);
   isSaving = signal(false);
@@ -223,6 +224,12 @@ export class WorkOrderComponent {
     return [...names].sort((a, b) => a.localeCompare(b));
   });
 
+  readonly availableAssignees = computed(() => {
+    const names = new Set<string>();
+    this.workOrders().forEach((o) => { if (o.signatoryName) names.add(o.signatoryName); });
+    return [...names].sort((a, b) => a.localeCompare(b));
+  });
+
   readonly availableEquipmentsForSelectedOrder = computed(() => {
     const selectedIds = new Set(this.selectedOrderEquipments().map((item) => item.equipmentId));
     return this.activeEquipments().filter((item) => !selectedIds.has(item.idDoc));
@@ -315,6 +322,7 @@ export class WorkOrderComponent {
     const selectedCategoryId = this.normFilter().trim();
     const selectedService = this.serviceFilter().trim();
     const selectedStep = this.stepFilter().trim();
+    const selectedAssigned = this.assignedFilter().trim();
 
     return this.workOrders().filter((order) => {
       const matchesSearch =
@@ -335,8 +343,9 @@ export class WorkOrderComponent {
         order.nomCategoryServiceName === selectedService ||
         order.serviceName === selectedService;
       const matchesStep = !selectedStep || order.flowStepName === selectedStep;
+      const matchesAssigned = !selectedAssigned || order.signatoryName === selectedAssigned;
 
-      return matchesSearch && matchesDate && matchesCategory && matchesService && matchesStep;
+      return matchesSearch && matchesDate && matchesCategory && matchesService && matchesStep && matchesAssigned;
     });
   });
 
@@ -384,6 +393,11 @@ export class WorkOrderComponent {
 
   onStepFilterChange(value: string): void {
     this.stepFilter.set(value);
+    this.currentPage.set(1);
+  }
+
+  onAssignedFilterChange(value: string): void {
+    this.assignedFilter.set(value);
     this.currentPage.set(1);
   }
 

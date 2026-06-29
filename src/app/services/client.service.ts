@@ -25,7 +25,7 @@ export class ClientService {
   private firestore = inject(Firestore);
   private storage = inject(Storage);
 
-  addPlant(clientId: string, plant: Omit<ClientPlant, 'idDoc' | 'createdAt' | 'updatedAt'>): Observable<void> {
+  addPlant(clientId: string, plant: Omit<ClientPlant, 'idDoc' | 'createdAt' | 'updatedAt'>): Observable<string> {
     const plantsRef = collection(this.firestore, 'client', clientId, 'plants');
     const newPlant: Record<string, any> = {
       code: plant.code,
@@ -49,7 +49,7 @@ export class ClientService {
     if (plant.country)          newPlant['country']          = plant.country;
     if (plant.postalCode)       newPlant['postalCode']       = plant.postalCode;
 
-    return from(addDoc(plantsRef, newPlant)).pipe(map(() => void 0));
+    return from(addDoc(plantsRef, newPlant)).pipe(map((docRef) => docRef.id));
   }
 
   updatePlant(clientId: string, plantId: string, plant: Partial<ClientPlant>): Observable<void> {
@@ -102,6 +102,50 @@ export class ClientService {
           .sort((a, b) => a.name.localeCompare(b.name))
       )
     );
+  }
+
+  getPlantWitnesses(clientId: string, plantId: string): Observable<Witness[]> {
+    const ref = collection(this.firestore, 'client', clientId, 'plants', plantId, 'witnesses');
+    return from(getDocs(query(ref, limit(500)))).pipe(
+      map((snapshot) =>
+        snapshot.docs
+          .map((d) => this.toWitness(d.id, d.data()))
+          .sort((a, b) => `${a.name} ${a.lastName}`.localeCompare(`${b.name} ${b.lastName}`))
+      )
+    );
+  }
+
+  addPlantWitness(
+    clientId: string,
+    plantId: string,
+    witness: Omit<Witness, 'idDoc' | 'createdAt' | 'updatedAt'>
+  ): Observable<void> {
+    const ref = collection(this.firestore, 'client', clientId, 'plants', plantId, 'witnesses');
+    const payload: Record<string, any> = {
+      name: witness.name,
+      lastName: witness.lastName,
+      email: witness.email,
+      active: witness.active,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    if (witness.phone) payload['phone'] = witness.phone;
+    return from(addDoc(ref, payload)).pipe(map(() => void 0));
+  }
+
+  updatePlantWitness(
+    clientId: string,
+    plantId: string,
+    witnessId: string,
+    data: Omit<Witness, 'idDoc' | 'createdAt' | 'updatedAt'>
+  ): Observable<void> {
+    const ref = doc(this.firestore, 'client', clientId, 'plants', plantId, 'witnesses', witnessId);
+    return from(updateDoc(ref, { ...data, updatedAt: serverTimestamp() }));
+  }
+
+  deletePlantWitness(clientId: string, plantId: string, witnessId: string): Observable<void> {
+    const ref = doc(this.firestore, 'client', clientId, 'plants', plantId, 'witnesses', witnessId);
+    return from(deleteDoc(ref));
   }
 
   deletePlant(clientId: string, plantId: string): Observable<void> {
@@ -262,7 +306,7 @@ export class ClientService {
 
     if (legacyPlants.length || legacyWitnesses.length) {
       const clientRef = doc(this.firestore, 'client', clientId);
-      const cleanup: Record<string, unknown> = {};
+      const cleanup: Record<string, ReturnType<typeof deleteField>> = {};
 
       if (legacyPlants.length) {
         cleanup['plants'] = deleteField();

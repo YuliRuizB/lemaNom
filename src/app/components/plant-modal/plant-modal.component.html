@@ -121,6 +121,95 @@
         </div>
       </div>
 
+      <!-- Testigos -->
+      <div class="section">
+        <div class="witnesses-header">
+          <p class="section__title">Testigos</p>
+          @if (!showWitnessForm()) {
+            <button class="btn btn--ghost btn--sm" type="button" (click)="openWitnessForm()">+ Agregar testigo</button>
+          }
+        </div>
+
+        @if (showWitnessForm()) {
+          <div class="witness-form">
+            <p class="witness-form__title">
+              {{ editingWitness() ? 'Editar testigo' : 'Nuevo testigo' }}
+            </p>
+            <div class="form-row form-row--2">
+              <div class="field">
+                <label class="field__label">Nombre <span class="field__req">*</span></label>
+                <input class="field__input" type="text" [formControl]="$any(witnessForm.get('name'))" autocomplete="off" />
+                @if (isWitnessFieldInvalid('name')) { <p class="field__error">Obligatorio.</p> }
+              </div>
+              <div class="field">
+                <label class="field__label">Apellidos <span class="field__req">*</span></label>
+                <input class="field__input" type="text" [formControl]="$any(witnessForm.get('lastName'))" autocomplete="off" />
+                @if (isWitnessFieldInvalid('lastName')) { <p class="field__error">Obligatorio.</p> }
+              </div>
+              <div class="field">
+                <label class="field__label">Correo <span class="field__req">*</span></label>
+                <input class="field__input" type="email" [formControl]="$any(witnessForm.get('email'))" autocomplete="off" />
+                @if (isWitnessFieldInvalid('email')) { <p class="field__error">Correo no válido.</p> }
+              </div>
+              <div class="field">
+                <label class="field__label">Teléfono</label>
+                <input class="field__input" type="text" [formControl]="$any(witnessForm.get('phone'))" autocomplete="off" />
+              </div>
+            </div>
+            <div class="witness-form__actions">
+              <label class="field field--inline">
+                <span class="field__label">Activo</span>
+                <label class="toggle">
+                  <input type="checkbox" [formControl]="$any(witnessForm.get('active'))" />
+                  <span class="toggle__track"></span>
+                </label>
+              </label>
+              <button class="btn btn--ghost" type="button" (click)="cancelWitnessForm()">Cancelar</button>
+              <button class="btn btn--primary" type="button" [disabled]="savingWitness()" (click)="saveWitness()">
+                {{ savingWitness() ? 'Guardando…' : (editingWitness() ? 'Actualizar' : 'Guardar testigo') }}
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (loadingWitnesses()) {
+          <p class="witnesses-empty">Cargando…</p>
+        } @else if (!witnesses().length && !showWitnessForm()) {
+          <p class="witnesses-empty">Sin testigos registrados.</p>
+        }
+
+        @for (w of witnesses(); track w.idDoc) {
+          <div class="witness-row" [class.witness-row--editing]="editingWitness()?.idDoc === w.idDoc">
+            <div class="witness-row__info">
+              <span class="witness-row__name">{{ w.name }} {{ w.lastName }}</span>
+              <span class="witness-row__meta">{{ w.email }}</span>
+              @if (w.phone) { <span class="witness-row__meta">{{ w.phone }}</span> }
+            </div>
+            <div class="witness-row__right">
+              <span class="witness-row__badge" [class.witness-row__badge--active]="w.active">
+                {{ w.active ? 'Activo' : 'Inactivo' }}
+              </span>
+              <button
+                class="btn btn--ghost btn--sm"
+                type="button"
+                [disabled]="showWitnessForm()"
+                (click)="openWitnessForm(w)"
+              >
+                Editar
+              </button>
+              <button
+                class="btn btn--ghost btn--sm"
+                type="button"
+                [disabled]="deletingWitnessId() === w.idDoc || showWitnessForm()"
+                (click)="removeWitness(w)"
+              >
+                {{ deletingWitnessId() === w.idDoc ? '…' : 'Eliminar' }}
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+
     </div>
 
     <footer class="modal__footer">

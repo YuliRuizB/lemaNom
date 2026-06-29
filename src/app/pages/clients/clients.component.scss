@@ -831,6 +831,15 @@
   }
 }
 
+.plant-witnesses__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+
+  .plant-section__title { margin: 0; }
+}
+
 .plant-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

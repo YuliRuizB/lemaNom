@@ -17,6 +17,7 @@ import { UserService } from '../../services/user.service';
 })
 export class UsersComponent {
   private readonly superAdminRoleId = 'NPsdyKHT4qpRnRULhC7R';
+  private readonly adminRoleId = 'eu2exXbWiN5RuD2XcXuU';
   private authService = inject(AuthService);
   private userService = inject(UserService);
 
@@ -50,6 +51,10 @@ export class UsersComponent {
   });
 
   canDeleteUsers = computed(() => this.currentAppUser()?.roleId === this.superAdminRoleId);
+  canManageUsers = computed(() => {
+    const roleId = this.currentAppUser()?.roleId ?? '';
+    return roleId === this.superAdminRoleId || roleId === this.adminRoleId;
+  });
 
   constructor() {
     this.loadCurrentUser();

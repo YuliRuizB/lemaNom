@@ -309,9 +309,7 @@ export class ClientsComponent {
   }
 
   togglePlant(plantId: string): void {
-    this.expandedPlantId.set(
-      this.expandedPlantId() === plantId ? null : plantId
-    );
+    this.expandedPlantId.set(this.expandedPlantId() === plantId ? null : plantId);
   }
 
   openImagePreview(client: Client): void {

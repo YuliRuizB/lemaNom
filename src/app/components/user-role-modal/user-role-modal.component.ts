@@ -1,9 +1,10 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 
 import { Role } from '../../interfaces/role.interface';
-import { User } from '../../interfaces/user.interface';
+import { User, UserAccreditation, UserQualification } from '../../interfaces/user.interface';
 import { RoleService } from '../../services/role.service';
 import { ToastService } from '../../services/toast.service';
 import { UserService } from '../../services/user.service';
@@ -17,6 +18,7 @@ import { UserService } from '../../services/user.service';
 })
 export class UserRoleModalComponent implements OnInit {
   @Input({ required: true }) user!: User;
+  @Input() canManage = false;
   @Output() closed = new EventEmitter<boolean>();
 
   private roleService = inject(RoleService);
@@ -30,6 +32,9 @@ export class UserRoleModalComponent implements OnInit {
   selectedApproved = signal(false);
   saving = signal(false);
   loadingRoles = signal(true);
+  accreditations = signal<UserAccreditation[]>([]);
+  qualifications = signal<UserQualification[]>([]);
+  loadingExtras = signal(true);
 
   get isSuperAdmin(): boolean {
     return this.user.roleId === this.superAdminRoleId;
@@ -52,6 +57,18 @@ export class UserRoleModalComponent implements OnInit {
         this.loadingRoles.set(false);
       },
       error: () => this.loadingRoles.set(false),
+    });
+
+    forkJoin({
+      accreditations: this.userService.getUserAccreditations(this.user.idDoc),
+      qualifications: this.userService.getUserQualifications(this.user.idDoc),
+    }).subscribe({
+      next: ({ accreditations, qualifications }) => {
+        this.accreditations.set(accreditations);
+        this.qualifications.set(qualifications);
+        this.loadingExtras.set(false);
+      },
+      error: () => this.loadingExtras.set(false),
     });
   }
 

@@ -63,6 +63,19 @@
             </select>
           </div>
         }
+        <div class="filter-field">
+          <label class="filter-field__label">Asignado a</label>
+          <select
+            class="filter-field__input"
+            [ngModel]="assignedFilter()"
+            (ngModelChange)="onAssignedFilterChange($event)"
+          >
+            <option value="">Todos</option>
+            @for (name of availableAssignees(); track name) {
+              <option [value]="name">{{ name }}</option>
+            }
+          </select>
+        </div>
         <button class="btn-export" type="button" (click)="exportToCsv()" title="Exportar a CSV">
           ↓ Exportar
         </button>

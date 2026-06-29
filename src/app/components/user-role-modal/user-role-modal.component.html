@@ -4,7 +4,7 @@
   <header class="modal__header">
     <div>
       <p class="modal__eyebrow">Detalle de usuario</p>
-      <h2 class="modal__title">{{ user.firstName }} {{ user.lastName }}</h2>
+      <h2 class="modal__title">{{ user.prefix ? user.prefix + ' ' : '' }}{{ user.firstName }} {{ user.lastName }}</h2>
       <p class="modal__subtitle">{{ user.email }}</p>
     </div>
     <button class="modal__close" type="button" (click)="cancel()" aria-label="Cerrar">&#x2715;</button>
@@ -14,6 +14,12 @@
 
     <!-- Info de solo lectura -->
     <div class="info-grid">
+      @if (user.prefix) {
+        <div class="info-item">
+          <span class="info-item__label">Prefijo</span>
+          <span class="info-item__value">{{ user.prefix }}</span>
+        </div>
+      }
       <div class="info-item">
         <span class="info-item__label">Nombre visible</span>
         <span class="info-item__value">{{ user.displayName || '—' }}</span>
@@ -40,52 +46,106 @@
       </div>
     </div>
 
+    <!-- Acreditaciones -->
+    @if (!loadingExtras() && accreditations().length) {
+      <div class="modal__divider"></div>
+      <div class="extras-section">
+        <p class="extras-section__title">Acreditaciones</p>
+        @for (item of accreditations(); track item.idDoc) {
+          <div class="extras-item">
+            <div class="extras-item__info">
+              <span class="extras-item__name">{{ item.name }}</span>
+              @if (item.description) {
+                <span class="extras-item__desc">{{ item.description }}</span>
+              }
+            </div>
+            <div class="extras-item__right">
+              <span class="extras-badge" [class.extras-badge--active]="item.active">
+                {{ item.active ? 'Activo' : 'Inactivo' }}
+              </span>
+              @if (item.fileUrl) {
+                <a class="extras-item__link" [href]="item.fileUrl" target="_blank" rel="noopener">Ver archivo</a>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Capacitaciones -->
+    @if (!loadingExtras() && qualifications().length) {
+      <div class="modal__divider"></div>
+      <div class="extras-section">
+        <p class="extras-section__title">Capacitaciones</p>
+        @for (item of qualifications(); track item.idDoc) {
+          <div class="extras-item">
+            <div class="extras-item__info">
+              <span class="extras-item__name">{{ item.name }}</span>
+              @if (item.description) {
+                <span class="extras-item__desc">{{ item.description }}</span>
+              }
+            </div>
+            <div class="extras-item__right">
+              <span class="extras-badge" [class.extras-badge--active]="item.active">
+                {{ item.active ? 'Activo' : 'Inactivo' }}
+              </span>
+              @if (item.fileUrl) {
+                <a class="extras-item__link" [href]="item.fileUrl" target="_blank" rel="noopener">Ver archivo</a>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
     <div class="modal__divider"></div>
 
     <!-- Campos editables -->
-    @if (isSuperAdmin) {
-      <p class="modal__locked">
-        Este usuario tiene el rol <strong>Super Admin</strong> y no puede ser modificado.
-      </p>
-    } @else {
-      <div class="edit-grid">
-        <div class="field">
-          <label class="field__label" for="role-select">Rol</label>
-          @if (loadingRoles()) {
-            <p class="field__loading">Cargando roles…</p>
-          } @else {
-            <select
-              id="role-select"
-              class="field__select"
-              [ngModel]="selectedRoleId()"
-              (ngModelChange)="selectedRoleId.set($event)"
-            >
-              <option value="" disabled>Selecciona un rol</option>
-              @for (role of roles(); track role.idDoc) {
-                <option [value]="role.idDoc">{{ role.name }}</option>
-              }
-            </select>
-          }
-        </div>
+    @if (canManage) {
+      @if (isSuperAdmin) {
+        <p class="modal__locked">
+          Este usuario tiene el rol <strong>Super Admin</strong> y no puede ser modificado.
+        </p>
+      } @else {
+        <div class="edit-grid">
+          <div class="field">
+            <label class="field__label" for="role-select">Rol</label>
+            @if (loadingRoles()) {
+              <p class="field__loading">Cargando roles…</p>
+            } @else {
+              <select
+                id="role-select"
+                class="field__select"
+                [ngModel]="selectedRoleId()"
+                (ngModelChange)="selectedRoleId.set($event)"
+              >
+                <option value="" disabled>Selecciona un rol</option>
+                @for (role of roles(); track role.idDoc) {
+                  <option [value]="role.idDoc">{{ role.name }}</option>
+                }
+              </select>
+            }
+          </div>
 
-        <div class="field field--inline">
-          <span class="field__label">Aprobado</span>
-          <label class="toggle">
-            <input
-              type="checkbox"
-              [ngModel]="selectedApproved()"
-              (ngModelChange)="selectedApproved.set($event)"
-            />
-            <span class="toggle__track"></span>
-          </label>
+          <div class="field field--inline">
+            <span class="field__label">Aprobado</span>
+            <label class="toggle">
+              <input
+                type="checkbox"
+                [ngModel]="selectedApproved()"
+                (ngModelChange)="selectedApproved.set($event)"
+              />
+              <span class="toggle__track"></span>
+            </label>
+          </div>
         </div>
-      </div>
+      }
     }
   </div>
 
   <footer class="modal__footer">
     <button class="btn btn--ghost" type="button" (click)="cancel()">Cerrar</button>
-    @if (!isSuperAdmin) {
+    @if (canManage && !isSuperAdmin) {
       <button
         class="btn btn--primary"
         type="button"

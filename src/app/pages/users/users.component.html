@@ -88,6 +88,7 @@
 @if (selectedUser()) {
   <app-user-role-modal
     [user]="selectedUser()!"
+    [canManage]="canManageUsers()"
     (closed)="onModalClosed($event)"
   />
 }
