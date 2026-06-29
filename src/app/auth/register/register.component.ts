@@ -15,6 +15,7 @@ import { ToastService } from '../../services/toast.service';
 import { UserService } from '../../services/user.service';
 
 type RegisterFormDraft = {
+  prefix: string;
   firstName: string;
   lastName: string;
   displayName: string;
@@ -36,6 +37,7 @@ type RegisterFormDraft = {
 export class RegisterComponent implements OnInit {
   private readonly draftStorageKey = 'register-draft';
   private readonly defaultRegisterForm: RegisterFormDraft = {
+    prefix: '',
     firstName: '',
     lastName: '',
     displayName: '',
@@ -247,6 +249,7 @@ export class RegisterComponent implements OnInit {
   private buildUserDocument(): Omit<User, 'idDoc' | 'createdAt'> {
     const selectedRole = this.roles.find((role) => role.idDoc === this.registerForm.roleId);
     const userDoc: Omit<User, 'idDoc' | 'createdAt'> = {
+      prefix: this.registerForm.prefix || undefined,
       firstName: this.registerForm.firstName.trim(),
       lastName: this.registerForm.lastName.trim(),
       displayName: this.registerForm.displayName.trim(),
@@ -315,6 +318,10 @@ export class RegisterComponent implements OnInit {
   private validateRegisterForm(): string | null {
     if (!this.customerValidated || !this.customerFound) {
       return 'Primero valida la clave cliente antes de continuar.';
+    }
+
+    if (!this.registerForm.prefix) {
+      return 'Selecciona un prefijo.';
     }
 
     if (!this.registerForm.firstName.trim() || !this.registerForm.lastName.trim()) {

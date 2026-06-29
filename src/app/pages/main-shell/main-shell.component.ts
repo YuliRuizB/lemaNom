@@ -66,7 +66,10 @@ export class MainShellComponent {
       this.userService.getUserById(firebaseUser.uid).pipe(take(1)).subscribe((appUser) => {
         this.currentAppUser = appUser;
         this.displayName =
-          appUser?.displayName || firebaseUser.displayName || firebaseUser.email || 'Usuario';
+          this.buildHeaderDisplayName(appUser) ||
+          firebaseUser.displayName ||
+          firebaseUser.email ||
+          'Usuario';
         this.customerName = appUser?.customerName || '';
 
         if (appUser?.customerId) {
@@ -111,6 +114,17 @@ export class MainShellComponent {
     if (section === 'logistica') { this.isLogisticaOpen = !this.isLogisticaOpen; return; }
     if (section === 'admin') { this.isAdminOpen = !this.isAdminOpen; return; }
     this.isSettingsOpen = !this.isSettingsOpen;
+  }
+
+  private buildHeaderDisplayName(appUser: User | null): string {
+    if (!appUser) {
+      return '';
+    }
+
+    const prefix = appUser.prefix?.trim() || '';
+    const name = appUser.displayName?.trim() || appUser.firstName?.trim() || '';
+
+    return [prefix, name].filter(Boolean).join(' ').trim();
   }
 
   private updateHeaderContent(url: string): void {

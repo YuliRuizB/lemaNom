@@ -133,6 +133,16 @@
   grid-column: 1 / -1;
 }
 
+.field-row {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+
+  .field { flex: 1; }
+  .field--prefix { flex: 0 0 6.5rem; }
+}
+
 .field span {
   font-size: 0.92rem;
   font-weight: 600;

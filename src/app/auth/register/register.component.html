@@ -62,27 +62,44 @@
       </div>
 
       <div class="form-grid">
-        <label class="field">
-          <span>Nombre</span>
-          <input
-            type="text"
-            name="firstName"
-            [(ngModel)]="registerForm.firstName"
-            (ngModelChange)="saveDraft()"
-            placeholder="Nombre"
-          />
-        </label>
+        <div class="field-row">
+          <label class="field field--prefix">
+            <span>Prefijo</span>
+            <select
+              name="prefix"
+              [(ngModel)]="registerForm.prefix"
+              (ngModelChange)="saveDraft()"
+            >
+              <option value="">--</option>
+              <option value="Lic.">Lic</option>
+              <option value="Ing.">Ing</option>
+              <option value="Sr.">Sr</option>
+              <option value="Sra.">Sra</option>
+            </select>
+          </label>
 
-        <label class="field">
-          <span>Apellidos</span>
-          <input
-            type="text"
-            name="lastName"
-            [(ngModel)]="registerForm.lastName"
-            (ngModelChange)="saveDraft()"
-            placeholder="Apellidos"
-          />
-        </label>
+          <label class="field">
+            <span>Nombre</span>
+            <input
+              type="text"
+              name="firstName"
+              [(ngModel)]="registerForm.firstName"
+              (ngModelChange)="saveDraft()"
+              placeholder="Nombre"
+            />
+          </label>
+
+          <label class="field">
+            <span>Apellidos</span>
+            <input
+              type="text"
+              name="lastName"
+              [(ngModel)]="registerForm.lastName"
+              (ngModelChange)="saveDraft()"
+              placeholder="Apellidos"
+            />
+          </label>
+        </div>
 
         <label class="field field--full">
           <span>Nombre para mostrar</span>

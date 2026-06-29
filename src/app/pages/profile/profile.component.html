@@ -65,43 +65,254 @@
       <p>Información operativa y de referencia del usuario dentro de la plataforma.</p>
     </header>
 
-    <form class="profile-form-grid">
-      <label class="field">
-        <span>Teléfono</span>
-        <input type="text" name="phone" [(ngModel)]="profileForm.phone" />
-      </label>
+    <nav class="profile-tabs">
+      <button
+        type="button"
+        class="profile-tabs__tab"
+        [class.profile-tabs__tab--active]="activeExtraTab === 'datos'"
+        (click)="activeExtraTab = 'datos'"
+      >
+        Datos
+      </button>
+      <button
+        type="button"
+        class="profile-tabs__tab"
+        [class.profile-tabs__tab--active]="activeExtraTab === 'acreditaciones'"
+        (click)="activeExtraTab = 'acreditaciones'"
+      >
+        Acreditaciones
+      </button>
+      <button
+        type="button"
+        class="profile-tabs__tab"
+        [class.profile-tabs__tab--active]="activeExtraTab === 'cedula'"
+        (click)="activeExtraTab = 'cedula'"
+      >
+        Cedula Profesional
+      </button>
+    </nav>
 
-      <label class="field">
-        <span>Empresa</span>
-        <input type="text" [ngModel]="profileForm.customerName" name="customerName" readonly />
-      </label>
+    <div class="profile-tab-panel" *ngIf="activeExtraTab === 'datos'">
+      <form class="profile-form-grid">
+        <label class="field">
+          <span>Teléfono</span>
+          <input type="text" name="phone" [(ngModel)]="profileForm.phone" />
+        </label>
 
-      <label class="field">
-        <span>Rol</span>
-        <input type="text" [ngModel]="profileForm.roleName" name="roleName" readonly />
-      </label>
+        <label class="field">
+          <span>Empresa</span>
+          <input type="text" [ngModel]="profileForm.customerName" name="customerName" readonly />
+        </label>
 
-      <label class="field field--flag">
-        <span>Estatus</span>
-        <span class="flag-field">
-          <input type="checkbox" name="active" [(ngModel)]="profileForm.active" disabled />
-          <span>{{ profileForm.active ? 'Activo' : 'Inactivo' }}</span>
-        </span>
-      </label>
+        <label class="field">
+          <span>Rol</span>
+          <input type="text" [ngModel]="profileForm.roleName" name="roleName" readonly />
+        </label>
 
-      <label class="field field--flag">
-        <span>Términos aceptados</span>
-        <span class="flag-field">
-          <input
-            type="checkbox"
-            name="termsAccepted"
-            [(ngModel)]="profileForm.termsAccepted"
-            disabled
-          />
-          <span>{{ profileForm.termsAccepted ? 'Sí' : 'No' }}</span>
-        </span>
-      </label>
-    </form>
+        <label class="field field--flag">
+          <span>Estatus</span>
+          <span class="flag-field">
+            <input type="checkbox" name="active" [(ngModel)]="profileForm.active" disabled />
+            <span>{{ profileForm.active ? 'Activo' : 'Inactivo' }}</span>
+          </span>
+        </label>
+
+        <label class="field field--flag">
+          <span>Términos aceptados</span>
+          <span class="flag-field">
+            <input
+              type="checkbox"
+              name="termsAccepted"
+              [(ngModel)]="profileForm.termsAccepted"
+              disabled
+            />
+            <span>{{ profileForm.termsAccepted ? 'Sí' : 'No' }}</span>
+          </span>
+        </label>
+      </form>
+    </div>
+
+    <div class="profile-tab-panel" *ngIf="activeExtraTab === 'acreditaciones'">
+      <div class="profile-accreditation-form">
+        <div class="profile-accreditation-form__header">
+          <h3>{{ editingAccreditationId ? 'Editar acreditación' : 'Nueva acreditación' }}</h3>
+          <p>
+            {{ editingAccreditationId ? 'Actualiza los datos o reemplaza el archivo.' : 'Registra nombre, descripción y archivo.' }}
+          </p>
+        </div>
+
+        <label class="field">
+          <span>Nombre</span>
+          <input type="text" name="accreditationName" [(ngModel)]="accreditationForm.name" />
+        </label>
+
+        <label class="field field--full">
+          <span>Descripción</span>
+          <textarea
+            class="profile-textarea"
+            name="accreditationDescription"
+            rows="4"
+            [(ngModel)]="accreditationForm.description"
+          ></textarea>
+        </label>
+
+        <label class="field field--full">
+          <span>Archivo {{ editingAccreditationId ? '(opcional)' : '' }}</span>
+          <span class="profile-upload-button profile-upload-button--wide">
+            <input type="file" (change)="onAccreditationFileSelected($event)" />
+            {{ selectedAccreditationFileName || (editingAccreditationId ? 'Mantener archivo actual' : 'Seleccionar archivo') }}
+          </span>
+        </label>
+      </div>
+
+      <div class="profile-actions profile-actions--tab">
+        <button
+          type="button"
+          class="save-button"
+          [disabled]="isSavingAccreditation"
+          (click)="saveAccreditation()"
+        >
+          {{ isSavingAccreditation ? 'Guardando...' : (editingAccreditationId ? 'Actualizar acreditación' : 'Guardar acreditación') }}
+        </button>
+        <button
+          *ngIf="editingAccreditationId"
+          type="button"
+          class="secondary-button"
+          [disabled]="isSavingAccreditation"
+          (click)="cancelAccreditationEdit()"
+        >
+          Cancelar
+        </button>
+      </div>
+
+      <div class="profile-accreditation-list" *ngIf="accreditations.length; else emptyAccreditations">
+        <article class="profile-accreditation-card" *ngFor="let accreditation of accreditations">
+          <div class="profile-accreditation-card__top">
+            <h3>{{ accreditation.name }}</h3>
+            <div class="profile-accreditation-card__actions">
+              <a [href]="accreditation.fileUrl" target="_blank" rel="noopener noreferrer">Ver archivo</a>
+              <button
+                type="button"
+                class="profile-link-button"
+                (click)="editAccreditation(accreditation)"
+              >
+                {{ isEditingAccreditation(accreditation.idDoc) ? 'Editando' : 'Editar' }}
+              </button>
+              <button
+                type="button"
+                class="profile-link-button profile-link-button--danger"
+                [disabled]="deletingAccreditationId === accreditation.idDoc"
+                (click)="deleteAccreditation(accreditation)"
+              >
+                {{ deletingAccreditationId === accreditation.idDoc ? 'Borrando...' : 'Borrar' }}
+              </button>
+            </div>
+          </div>
+          <p>{{ accreditation.description || 'Sin descripción.' }}</p>
+          <span class="profile-accreditation-card__meta">
+            {{ accreditation.fileName || 'Archivo adjunto' }}
+          </span>
+        </article>
+      </div>
+
+      <ng-template #emptyAccreditations>
+        <div class="profile-tab-panel profile-tab-panel--placeholder">
+          <h3>Acreditaciones</h3>
+          <p>Aún no hay acreditaciones registradas para este usuario.</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <div class="profile-tab-panel" *ngIf="activeExtraTab === 'cedula'">
+      <div class="profile-accreditation-form">
+        <div class="profile-accreditation-form__header">
+          <h3>{{ editingQualificationId ? 'Editar cédula profesional' : 'Nueva cédula profesional' }}</h3>
+          <p>
+            {{ editingQualificationId ? 'Actualiza los datos o reemplaza el archivo.' : 'Registra nombre, descripción y archivo.' }}
+          </p>
+        </div>
+
+        <label class="field">
+          <span>Nombre</span>
+          <input type="text" name="qualificationName" [(ngModel)]="qualificationForm.name" />
+        </label>
+
+        <label class="field field--full">
+          <span>Descripción</span>
+          <textarea
+            class="profile-textarea"
+            name="qualificationDescription"
+            rows="4"
+            [(ngModel)]="qualificationForm.description"
+          ></textarea>
+        </label>
+
+        <label class="field field--full">
+          <span>Archivo {{ editingQualificationId ? '(opcional)' : '' }}</span>
+          <span class="profile-upload-button profile-upload-button--wide">
+            <input type="file" (change)="onQualificationFileSelected($event)" />
+            {{ selectedQualificationFileName || (editingQualificationId ? 'Mantener archivo actual' : 'Seleccionar archivo') }}
+          </span>
+        </label>
+      </div>
+
+      <div class="profile-actions profile-actions--tab">
+        <button
+          type="button"
+          class="save-button"
+          [disabled]="isSavingQualification"
+          (click)="saveQualification()"
+        >
+          {{ isSavingQualification ? 'Guardando...' : (editingQualificationId ? 'Actualizar cédula profesional' : 'Guardar cédula profesional') }}
+        </button>
+        <button
+          *ngIf="editingQualificationId"
+          type="button"
+          class="secondary-button"
+          [disabled]="isSavingQualification"
+          (click)="cancelQualificationEdit()"
+        >
+          Cancelar
+        </button>
+      </div>
+
+      <div class="profile-accreditation-list" *ngIf="qualifications.length; else emptyQualifications">
+        <article class="profile-accreditation-card" *ngFor="let qualification of qualifications">
+          <div class="profile-accreditation-card__top">
+            <h3>{{ qualification.name }}</h3>
+            <div class="profile-accreditation-card__actions">
+              <a [href]="qualification.fileUrl" target="_blank" rel="noopener noreferrer">Ver archivo</a>
+              <button
+                type="button"
+                class="profile-link-button"
+                (click)="editQualification(qualification)"
+              >
+                {{ isEditingQualification(qualification.idDoc) ? 'Editando' : 'Editar' }}
+              </button>
+              <button
+                type="button"
+                class="profile-link-button profile-link-button--danger"
+                [disabled]="deletingQualificationId === qualification.idDoc"
+                (click)="deleteQualification(qualification)"
+              >
+                {{ deletingQualificationId === qualification.idDoc ? 'Borrando...' : 'Borrar' }}
+              </button>
+            </div>
+          </div>
+          <p>{{ qualification.description || 'Sin descripción.' }}</p>
+          <span class="profile-accreditation-card__meta">
+            {{ qualification.fileName || 'Archivo adjunto' }}
+          </span>
+        </article>
+      </div>
+
+      <ng-template #emptyQualifications>
+        <div class="profile-tab-panel profile-tab-panel--placeholder">
+          <h3>Cédula Profesional</h3>
+          <p>Aún no hay cédulas profesionales registradas para este usuario.</p>
+        </div>
+      </ng-template>
+    </div>
 
     <div class="profile-actions">
       <button

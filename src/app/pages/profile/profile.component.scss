@@ -128,6 +128,188 @@
   gap: 0.75rem;
 }
 
+.profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.2rem;
+}
+
+.profile-tabs__tab {
+  min-height: 2.55rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(25, 48, 80, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #193050;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.profile-tabs__tab--active {
+  background: #193050;
+  border-color: #193050;
+  color: #ffffff;
+}
+
+.profile-tab-panel {
+  margin-top: 0.95rem;
+}
+
+.profile-accreditation-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.profile-accreditation-form__header {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.profile-accreditation-form__header h3,
+.profile-accreditation-form__header p {
+  margin: 0;
+}
+
+.profile-accreditation-form__header h3 {
+  color: #193050;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.profile-accreditation-form__header p {
+  color: #6f7a88;
+  line-height: 1.5;
+}
+
+.profile-textarea {
+  width: 100%;
+  min-height: 7.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(25, 48, 80, 0.12);
+  border-radius: 1rem;
+  background-color: #ffffff;
+  color: #193050;
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+}
+
+.profile-upload-button--wide {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.profile-actions--tab {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+.profile-accreditation-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.profile-accreditation-card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(25, 48, 80, 0.1);
+  border-radius: 1rem;
+  background: rgba(25, 48, 80, 0.02);
+}
+
+.profile-accreditation-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.profile-accreditation-card__top h3,
+.profile-accreditation-card p,
+.profile-accreditation-card__meta {
+  margin: 0;
+}
+
+.profile-accreditation-card__top h3 {
+  color: #193050;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.profile-accreditation-card__top a {
+  color: #2b61d8;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.profile-accreditation-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.profile-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #193050;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile-link-button--danger {
+  color: #b33a3a;
+}
+
+.profile-accreditation-card p,
+.profile-accreditation-card__meta {
+  color: #6f7a88;
+  line-height: 1.55;
+}
+
+.profile-accreditation-card__meta {
+  font-size: 0.88rem;
+}
+
+.profile-tab-panel--placeholder {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 10rem;
+  align-content: start;
+  padding: 1rem;
+  border: 1px dashed rgba(25, 48, 80, 0.16);
+  border-radius: 1rem;
+  background: rgba(25, 48, 80, 0.02);
+}
+
+.profile-tab-panel--placeholder h3 {
+  margin: 0;
+  color: #193050;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.profile-tab-panel--placeholder p {
+  margin: 0;
+  color: #6f7a88;
+  line-height: 1.6;
+}
+
 .field {
   display: grid;
   gap: 0.45rem;
@@ -213,7 +395,26 @@
   cursor: pointer;
 }
 
+.secondary-button {
+  min-width: 9.5rem;
+  min-height: 3.1rem;
+  padding: 0 1.2rem;
+  border: 1px solid rgba(25, 48, 80, 0.16);
+  border-radius: 0.95rem;
+  background-color: #ffffff;
+  color: #193050;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .save-button:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.secondary-button:disabled,
+.profile-link-button:disabled {
   opacity: 0.72;
   cursor: wait;
 }
