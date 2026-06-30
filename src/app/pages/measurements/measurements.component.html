@@ -5,9 +5,9 @@
     <p class="measurements-page__empty">Esta orden no tiene equipos de medición asociados.</p>
   } @else {
     <div class="measurements-equipment">
-      <h4 class="measurements-equipment__title">Equipos de medición</h4>
+      <h4 class="measurements-equipment__title">Equipo de medición</h4>
       <div class="measurements-equipment__list">
-        @for (item of equipments(); track item.idDoc) {
+        @for (item of displayedEquipments(); track item.idDoc) {
           <article class="m-equipment-card">
             <div class="m-equipment-card__fields">
               <div class="m-equipment-card__field">

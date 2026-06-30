@@ -91,7 +91,9 @@ export class WorkOrderComponent {
   activeEquipments = signal<equipment[]>([]);
   availableSignatories = signal<User[]>([]);
   selectedWorkOrderEquipments = signal<equipment[]>([]);
+  defaultEquipmentId = signal('');
   selectedEquipmentId = signal('');
+  isSavingDefaultEquipment = signal(false);
   selectedOrder = signal<WorkOrderView | null>(null);
   selectedOrderWorkflowSteps = signal<workOrderStep[]>([]);
   selectedOrderEquipments = signal<workOrderEquipment[]>([]);
@@ -110,6 +112,19 @@ export class WorkOrderComponent {
   selectedOrderObservationDate = signal('');
   isSavingObserver = signal(false);
   selectedOrderCableResistance = signal<number | null>(null);
+  isEditingOrder = signal(false);
+  isSavingOrderEdit = signal(false);
+  editOrderPlants = signal<ClientPlant[]>([]);
+  editOrderForm = {
+    purchaseOrderNumber: '',
+    quotationNumber: '',
+    clientId: '',
+    clientName: '',
+    plantId: '',
+    plantName: '',
+    signatoryId: '',
+    signatoryName: '',
+  };
 
   readonly observerOptions = [
     'Ing. Humberto Pichardo Mena',
@@ -283,7 +298,36 @@ export class WorkOrderComponent {
     return sortedSteps.find((step) => this.isWorkOrderStep(step)) || null;
   });
 
-  readonly isSelectedOrderDetailEditable = computed(() => this.workOrderTabStep()?.status === 'in-progress');
+  readonly isSelectedOrderDetailEditable = computed(() => {
+    const order = this.selectedOrder();
+    if (!order || order.status === 'completed' || order.status === 'cancelled') {
+      return false;
+    }
+    const step2 = this.detailWorkflowTabs()[0];
+    if (!step2) {
+      return this.workOrderTabStep()?.status === 'in-progress';
+    }
+    return step2.status === 'pending';
+  });
+
+  readonly editBlockReason = computed((): string | null => {
+    const order = this.selectedOrder();
+    if (!order) return null;
+    if (order.status === 'completed') return 'La orden de trabajo ya fue completada y no puede modificarse.';
+    if (order.status === 'cancelled') return 'La orden de trabajo fue cancelada y no puede modificarse.';
+    const step2 = this.detailWorkflowTabs()[0];
+    if (step2 && step2.status !== 'pending') {
+      return 'No se puede editar la orden de trabajo porque ya inició la medición.';
+    }
+    return null;
+  });
+
+  private guardEditable(): boolean {
+    if (this.isSelectedOrderDetailEditable()) return true;
+    const reason = this.editBlockReason();
+    if (reason) this.toastService.warning(reason);
+    return false;
+  }
 
   readonly selectedWorkflowNavIndex = computed(() =>
     this.workflowNavigationItems().findIndex((item) => item.tabId === this.selectedOrderTab())
@@ -481,6 +525,7 @@ export class WorkOrderComponent {
     this.createCategoryServices.set([]);
     this.selectedWorkOrderEquipments.set([]);
     this.selectedEquipmentId.set('');
+    this.defaultEquipmentId.set('');
     this.createWorkflowPreview.set([]);
     this.isLoadingCreateWorkflowPreview.set(false);
     this.createImpartiality = this.buildEmptyImpartiality();
@@ -524,30 +569,22 @@ export class WorkOrderComponent {
   }
 
   addEquipmentToWorkOrder(equipmentId: string): void {
-    if (!equipmentId) {
-      return;
-    }
-
-    if (this.selectedWorkOrderEquipments().length >= 3) {
-      return;
-    }
+    if (!equipmentId) return;
+    if (this.selectedWorkOrderEquipments().length >= 3) return;
 
     const equipmentItem = this.activeEquipments().find((item) => item.idDoc === equipmentId);
-    if (!equipmentItem) {
-      return;
-    }
+    if (!equipmentItem) return;
 
-    const alreadySelected = this.selectedWorkOrderEquipments().some(
-      (item) => item.idDoc === equipmentId
-    );
-
+    const alreadySelected = this.selectedWorkOrderEquipments().some((item) => item.idDoc === equipmentId);
     if (alreadySelected) {
       this.selectedEquipmentId.set('');
       return;
     }
 
     this.selectedWorkOrderEquipments.update((items) => [...items, equipmentItem]);
-    console.log('WorkOrder selected equipments', this.selectedWorkOrderEquipments());
+    if (!this.defaultEquipmentId()) {
+      this.defaultEquipmentId.set(equipmentId);
+    }
     this.selectedEquipmentId.set('');
   }
 
@@ -555,6 +592,35 @@ export class WorkOrderComponent {
     this.selectedWorkOrderEquipments.update((items) =>
       items.filter((item) => item.idDoc !== equipmentId)
     );
+    if (this.defaultEquipmentId() === equipmentId) {
+      const remaining = this.selectedWorkOrderEquipments();
+      this.defaultEquipmentId.set(remaining[0]?.idDoc ?? '');
+    }
+  }
+
+  setCreateDefaultEquipment(equipmentId: string): void {
+    this.defaultEquipmentId.set(equipmentId);
+  }
+
+  setDefaultEquipmentForSelectedOrder(equipmentId: string): void {
+    const order = this.selectedOrder();
+    if (!order || this.isSavingDefaultEquipment() || !this.guardEditable()) return;
+
+    const allIds = this.selectedOrderEquipments().map((e) => e.idDoc);
+    this.isSavingDefaultEquipment.set(true);
+    this.workOrderService.setDefaultEquipment(order.idDoc, equipmentId, allIds).subscribe({
+      next: () => {
+        this.selectedOrderEquipments.update((items) =>
+          items.map((e) => ({ ...e, isDefault: e.idDoc === equipmentId }))
+        );
+        this.isSavingDefaultEquipment.set(false);
+        this.toastService.success('Equipo principal actualizado.');
+      },
+      error: () => {
+        this.isSavingDefaultEquipment.set(false);
+        this.toastService.error('No fue posible cambiar el equipo principal.');
+      },
+    });
   }
 
   selectWorkOrder(order: WorkOrderView): void {
@@ -583,7 +649,7 @@ export class WorkOrderComponent {
 
   addEquipmentToSelectedOrder(equipmentId: string): void {
     const order = this.selectedOrder();
-    if (!order || !equipmentId || this.isAddingSelectedOrderEquipment() || !this.isSelectedOrderDetailEditable()) {
+    if (!order || !equipmentId || this.isAddingSelectedOrderEquipment() || !this.guardEditable()) {
       return;
     }
 
@@ -639,6 +705,122 @@ export class WorkOrderComponent {
     this.selectedOrderObserver.set('');
     this.selectedOrderObservationDate.set('');
     this.isSavingObserver.set(false);
+    this.isEditingOrder.set(false);
+    this.editOrderPlants.set([]);
+  }
+
+  startEditOrder(): void {
+    const order = this.selectedOrder();
+    if (!order || !this.isSelectedOrderDetailEditable()) return;
+    this.editOrderForm = {
+      purchaseOrderNumber: order.purchaseOrderNumber || '',
+      quotationNumber: order.quotationNumber || '',
+      clientId: order.clientId || '',
+      clientName: order.clientName || '',
+      plantId: order.plantId || '',
+      plantName: order.plantName || '',
+      signatoryId: order.signatoryId || '',
+      signatoryName: order.signatoryName || '',
+    };
+    this.editOrderPlants.set([]);
+    if (order.clientId) {
+      this.clientService.getClientPlants(order.clientId).pipe(take(1)).subscribe({
+        next: (plants) => this.editOrderPlants.set(plants),
+        error: () => {},
+      });
+    }
+    this.isEditingOrder.set(true);
+  }
+
+  cancelEditOrder(): void {
+    this.isEditingOrder.set(false);
+    this.editOrderPlants.set([]);
+  }
+
+  onEditOrderClientChange(clientId: string): void {
+    const client = this.activeClients().find((c) => c.idDoc === clientId);
+    this.editOrderForm.clientId = clientId;
+    this.editOrderForm.clientName = client?.name || '';
+    this.editOrderForm.plantId = '';
+    this.editOrderForm.plantName = '';
+    this.editOrderPlants.set([]);
+    if (clientId) {
+      this.clientService.getClientPlants(clientId).pipe(take(1)).subscribe({
+        next: (plants) => this.editOrderPlants.set(plants),
+        error: () => {},
+      });
+    }
+  }
+
+  onEditOrderPlantChange(plantId: string): void {
+    const plant = this.editOrderPlants().find((p) => p.idDoc === plantId);
+    this.editOrderForm.plantId = plantId;
+    this.editOrderForm.plantName = plant?.name || '';
+  }
+
+  onEditOrderSignatoryChange(signatoryId: string): void {
+    const user = this.availableSignatories().find((u) => u.idDoc === signatoryId);
+    this.editOrderForm.signatoryId = signatoryId;
+    this.editOrderForm.signatoryName = user ? this.getReadableUserName(user) : '';
+  }
+
+  saveEditOrder(): void {
+    const order = this.selectedOrder();
+    if (!order || this.isSavingOrderEdit() || !this.guardEditable()) return;
+
+    const f = this.editOrderForm;
+    if (!f.purchaseOrderNumber?.trim()) {
+      this.toastService.warning('El número de orden de compra es obligatorio.');
+      return;
+    }
+    if (!f.clientId) {
+      this.toastService.warning('Debes seleccionar un cliente.');
+      return;
+    }
+    if (!f.plantId) {
+      this.toastService.warning('Debes seleccionar una planta.');
+      return;
+    }
+    if (!f.signatoryId) {
+      this.toastService.warning('Debes seleccionar un signatario.');
+      return;
+    }
+
+    this.isSavingOrderEdit.set(true);
+    const updates: Partial<workOrder> = {
+      purchaseOrderNumber: this.editOrderForm.purchaseOrderNumber,
+      quotationNumber: this.editOrderForm.quotationNumber,
+      clientId: this.editOrderForm.clientId,
+      clientName: this.editOrderForm.clientName,
+      plantId: this.editOrderForm.plantId,
+      plantName: this.editOrderForm.plantName,
+      signatoryId: this.editOrderForm.signatoryId,
+      signatoryName: this.editOrderForm.signatoryName,
+    };
+
+    this.workOrderService.updateWorkOrder(order.idDoc, updates).subscribe({
+      next: () => {
+        const updated = { ...order, ...updates };
+        this.selectedOrder.set(updated);
+        this.workOrders.update((items) =>
+          items.map((item) => (item.idDoc === order.idDoc ? { ...item, ...updates } : item))
+        );
+        if (updates.clientId && updates.plantId) {
+          this.clientService
+            .getClientPlantById(updates.clientId, updates.plantId)
+            .pipe(take(1))
+            .subscribe({ next: (plant) => this.selectedOrderPlant.set(plant), error: () => {} });
+        }
+        this.isSavingOrderEdit.set(false);
+        this.isEditingOrder.set(false);
+        this.editOrderPlants.set([]);
+        this.toastService.success('La orden de trabajo se actualizó correctamente.');
+      },
+      error: () => {
+        this.isSavingOrderEdit.set(false);
+        this.toastService.error('No fue posible actualizar la orden de trabajo.');
+      },
+    });
   }
 
   selectWorkflowTab(tabId: string): void {
@@ -799,7 +981,7 @@ export class WorkOrderComponent {
 
   saveSelectedOrderImpartiality(): void {
     const order = this.selectedOrder();
-    if (!order || this.isSavingImpartiality() || !this.isSelectedOrderDetailEditable()) {
+    if (!order || this.isSavingImpartiality() || !this.guardEditable()) {
       return;
     }
 
@@ -1311,7 +1493,7 @@ export class WorkOrderComponent {
       return;
     }
 
-    this.workOrderService.createEquipments(workOrderId, equipments).subscribe({
+    this.workOrderService.createEquipments(workOrderId, equipments, this.defaultEquipmentId() || undefined).subscribe({
       next: () => {
         console.log('WorkOrder equipments subcollection created', {
           workOrderId,
@@ -1645,7 +1827,7 @@ export class WorkOrderComponent {
 
   saveSelectedOrderObserver(): void {
     const order = this.selectedOrder();
-    if (!order || this.isSavingObserver() || !this.isSelectedOrderDetailEditable()) return;
+    if (!order || this.isSavingObserver() || !this.guardEditable()) return;
 
     const observerName = this.selectedOrderObserver().trim() || undefined;
     const dateValue = this.selectedOrderObservationDate();
@@ -1671,7 +1853,7 @@ export class WorkOrderComponent {
 
   saveOrderChanges(): void {
     const order = this.selectedOrder();
-    if (!order || this.isSavingImpartiality() || this.isSavingObserver() || !this.isSelectedOrderDetailEditable()) return;
+    if (!order || this.isSavingImpartiality() || this.isSavingObserver() || !this.guardEditable()) return;
 
     const observerName = this.selectedOrderObserver().trim() || undefined;
     const dateValue = this.selectedOrderObservationDate();

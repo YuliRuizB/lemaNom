@@ -291,30 +291,6 @@
 }
 
 /* Botones */
-.btn {
-  padding: 0.5rem 1.25rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: opacity 0.15s;
-
-  &:disabled { opacity: 0.55; cursor: not-allowed; }
-
-  &--primary {
-    background-color: var(--lema-accent);
-    color: #fff;
-    &:not(:disabled):hover { opacity: 0.88; }
-  }
-
-  &--ghost {
-    background: transparent;
-    color: var(--lema-navy);
-    border: 1px solid #dfe1e6;
-    &:hover { background: var(--lema-surface); }
-  }
-}
 
 @keyframes slide-in {
   from { opacity: 0; transform: translateY(-12px); }

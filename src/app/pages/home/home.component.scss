@@ -211,6 +211,10 @@
     &--alt {
       background: linear-gradient(90deg, #16a34a 0%, #166534 100%);
     }
+
+    &--service {
+      background: linear-gradient(90deg, #7c3aed 0%, #4c1d95 100%);
+    }
   }
 
   &__value {

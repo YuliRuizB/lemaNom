@@ -116,32 +116,6 @@
   }
 }
 
-.btn {
-  padding: 0.5rem 1.25rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: opacity 0.15s;
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  &--primary {
-    background-color: var(--lema-accent);
-    color: #fff;
-  }
-
-  &--ghost {
-    background: transparent;
-    color: var(--lema-navy);
-    border: 1px solid #dfe1e6;
-  }
-}
-
 .wo-table-wrapper {
   background: var(--lema-white);
   border-radius: 0.75rem;
@@ -240,48 +214,6 @@
   }
 }
 
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.65rem 1rem;
-  border-top: 1px solid #f0f1f3;
-
-  &__info {
-    font-size: 0.78rem;
-    color: var(--lema-gray);
-  }
-
-  &__controls {
-    display: flex;
-    gap: 0.4rem;
-  }
-
-  &__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border: 1px solid #dfe1e6;
-    border-radius: 0.4rem;
-    background: var(--lema-white);
-    color: var(--lema-navy);
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background 0.15s;
-
-    &:hover:not(:disabled) {
-      background: var(--lema-surface);
-    }
-
-    &:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-  }
-}
-
 .wo-detail {
   margin-top: 0.35rem;
   padding: 0.7rem 0.85rem;
@@ -327,6 +259,21 @@
     color: var(--lema-gray);
     font-size: 1rem;
     cursor: pointer;
+  }
+
+  &__edit {
+    min-height: 1.85rem;
+    padding: 0.35rem 0.72rem;
+    border: 1px solid #c7d4e8;
+    border-radius: 0.5rem;
+    background: #eef4ff;
+    color: var(--lema-accent);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+
+    &:hover { opacity: 0.84; }
   }
 
   &__delete {
@@ -558,6 +505,27 @@
 
 }
 
+.wo-edit-panel {
+  margin-bottom: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #c7d4e8;
+  border-radius: 0.75rem;
+  background: #f5f8ff;
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+  }
+}
+
 .wo-step-list,
 .wo-equipment-list {
   display: grid;
@@ -705,6 +673,58 @@
   background: #fbfcfd;
   max-width: 100%;
   min-width: 0;
+  transition: border-color 0.15s, background 0.15s;
+
+  &--default {
+    border-color: #b3c9f0;
+    background: #f0f6ff;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    min-height: 1.6rem;
+  }
+
+  &__header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__default-badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: #0052cc;
+    color: #fff;
+  }
+
+  &__set-default {
+    padding: 0.2rem 0.6rem;
+    border: 1px solid #c7d4e8;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--lema-navy);
+    font-size: 0.65rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+
+    &:hover:not(:disabled) {
+      background: #eef4ff;
+      border-color: #0052cc;
+      color: #0052cc;
+    }
+
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
 }
 
 .wo-step-card {
@@ -903,78 +923,6 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0 0 0.6rem;
-  }
-}
-
-.btn--sm {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.72rem;
-  min-height: 1.9rem;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.22rem 0.7rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-
-  &--pending {
-    background-color: #fff4e5;
-    color: #9a5b00;
-  }
-
-  &--progress {
-    background-color: #e8f0fe;
-    color: #174ea6;
-  }
-
-  &--completed {
-    background-color: #e3fcef;
-    color: #006644;
-  }
-
-  &--cancelled {
-    background-color: #f4f5f7;
-    color: #8c8f96;
-  }
-}
-
-.flow-tag {
-  display: inline-flex;
-  align-items: center;
-  max-width: 100%;
-  padding: 0.22rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.62rem;
-  font-weight: 600;
-  line-height: 1.35;
-  white-space: normal;
-  border: 1px solid transparent;
-
-  &--pending {
-    background: #fff4e5;
-    border-color: #f5d6a1;
-    color: #9a5b00;
-  }
-
-  &--progress {
-    background: #e8f0fe;
-    border-color: #bfd1fb;
-    color: #174ea6;
-  }
-
-  &--completed {
-    background: #e3fcef;
-    border-color: #b8e8cc;
-    color: #006644;
-  }
-
-  &--cancelled {
-    background: #f4f5f7;
-    border-color: #d8dce3;
-    color: #6b7280;
   }
 }
 

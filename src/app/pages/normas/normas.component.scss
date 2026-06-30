@@ -471,30 +471,6 @@
   }
 }
 
-.btn {
-  padding: 0.5rem 1.25rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: opacity 0.15s;
-  &:disabled { opacity: 0.55; cursor: not-allowed; }
-
-  &--primary {
-    background-color: var(--lema-accent);
-    color: #fff;
-    &:not(:disabled):hover { opacity: 0.88; }
-  }
-
-  &--ghost {
-    background: transparent;
-    color: var(--lema-navy);
-    border: 1px solid #dfe1e6;
-    &:hover { background: var(--lema-surface); }
-  }
-}
-
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -524,45 +500,6 @@
     color: #9d1f1f;
     &:not(:disabled):hover { background: rgba(176, 32, 32, 0.12); }
   }
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.65rem 1rem;
-  border-top: 1px solid #f0f1f3;
-
-  &__info { font-size: 0.78rem; color: var(--lema-gray); }
-  &__controls { display: flex; gap: 0.4rem; }
-
-  &__btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border: 1px solid #dfe1e6;
-    border-radius: 0.4rem;
-    background: var(--lema-white);
-    color: var(--lema-navy);
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background 0.15s;
-    &:hover:not(:disabled) { background: var(--lema-surface); }
-    &:disabled { opacity: 0.35; cursor: not-allowed; }
-  }
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.2rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  &--active { background-color: #e3fcef; color: #006644; }
-  &--inactive { background-color: #f4f5f7; color: #97a0af; }
 }
 
 @media (max-width: 1024px) {

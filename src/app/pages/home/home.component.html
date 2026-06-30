@@ -45,10 +45,12 @@
               <span class="home-donut__dot" style="background:#16a34a"></span>
               <span>Concluidas</span><strong>{{ workOrderSummary().completed }}</strong>
             </li>
-            <li class="home-donut__legend-item">
-              <span class="home-donut__dot" style="background:#dc2626"></span>
-              <span>Canceladas</span><strong>{{ workOrderSummary().cancelled }}</strong>
-            </li>
+            @if (workOrderSummary().cancelled) {
+              <li class="home-donut__legend-item">
+                <span class="home-donut__dot" style="background:#dc2626"></span>
+                <span>Canceladas</span><strong>{{ workOrderSummary().cancelled }}</strong>
+              </li>
+            }
           </ul>
         </div>
       }
@@ -90,6 +92,32 @@
               <span class="home-hbars__label" [title]="entry.label">{{ entry.label }}</span>
               <div class="home-hbars__track">
                 <div class="home-hbars__fill" [style.width.%]="barWidth(entry.count, maxNorm())"></div>
+              </div>
+              <span class="home-hbars__value">{{ entry.count }}</span>
+            </div>
+          }
+        </div>
+      }
+    </article>
+
+    <!-- Barras horizontales: por servicio -->
+    <article class="home-card">
+      <p class="home-card__label">Por servicio {{ currentYear }}</p>
+      <h3>Órdenes por servicio</h3>
+      @if (summaryLoading()) {
+        <p class="home-loading">Cargando...</p>
+      } @else if (!byService().length) {
+        <p class="home-loading">Sin datos.</p>
+      } @else {
+        <div class="home-hbars">
+          @for (entry of byService(); track entry.label) {
+            <div class="home-hbars__row">
+              <span class="home-hbars__label" [title]="entry.label">{{ entry.label }}</span>
+              <div class="home-hbars__track">
+                <div
+                  class="home-hbars__fill home-hbars__fill--service"
+                  [style.width.%]="barWidth(entry.count, maxService())"
+                ></div>
               </div>
               <span class="home-hbars__value">{{ entry.count }}</span>
             </div>

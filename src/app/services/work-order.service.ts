@@ -135,7 +135,8 @@ export class WorkOrderService {
 
   createEquipments(
     workOrderId: string,
-    equipments: equipment[]
+    equipments: equipment[],
+    defaultEquipmentId?: string
   ): Observable<void> {
     console.log('WorkOrderService createEquipments payload', {
       workOrderId,
@@ -178,6 +179,7 @@ export class WorkOrderService {
         equipmentMeditionInterval: equipmentItem.range || undefined,
         equipmentPrecition: equipmentItem.precition || undefined,
         equipmentSpecifyEquipment: equipmentItem.especify_equipment || undefined,
+        isDefault: defaultEquipmentId ? equipmentItem.idDoc === defaultEquipmentId : undefined,
         active: true,
         createdAt: new Date(),
       };
@@ -615,6 +617,15 @@ export class WorkOrderService {
     };
   }
 
+  setDefaultEquipment(workOrderId: string, newDefaultId: string, allEquipmentIds: string[]): Observable<void> {
+    const batch = writeBatch(this.firestore);
+    allEquipmentIds.forEach((id) => {
+      const ref = doc(this.firestore, 'workOrder', workOrderId, 'equipments', id);
+      batch.update(ref, { isDefault: id === newDefaultId, updatedAt: serverTimestamp() });
+    });
+    return from(batch.commit()).pipe(map(() => void 0));
+  }
+
   updateEquipmentVoltage(workOrderId: string, equipmentId: string, voltage: string): Observable<void> {
     const equipmentRef = doc(this.firestore, 'workOrder', workOrderId, 'equipments', equipmentId);
     return from(
@@ -668,6 +679,7 @@ export class WorkOrderService {
           : undefined,
       equipmentVoltage: data['equipmentVoltage'] ? String(data['equipmentVoltage']) : undefined,
       promedioFC: data['promedioFC'] != null ? Number(data['promedioFC']) : undefined,
+      isDefault: data['isDefault'] === true,
       active: Boolean(data['active']),
       createdAt: this.toDate(data['createdAt']) ?? new Date(),
       updatedAt: this.toDate(data['updatedAt']),

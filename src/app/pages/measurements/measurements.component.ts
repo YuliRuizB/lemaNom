@@ -75,8 +75,15 @@ export class MeasurementsComponent implements OnInit, OnChanges {
     { value: 'lightning_rod', label: 'Pararrayo' },
     { value: 'no_equipment', label: 'Sin equipo' },
   ];
+  readonly displayedEquipments = computed(() => {
+    const all = this.equipments();
+    if (all.length <= 1) return all;
+    const principal = all.find((e) => e.isDefault);
+    return principal ? [principal] : [all[0]];
+  });
+
   readonly factorCorreccion = computed(() =>
-    this.equipments().find((e) => e.promedioFC != null)?.promedioFC ?? null
+    this.displayedEquipments().find((e) => e.promedioFC != null)?.promedioFC ?? null
   );
 
   readonly selectedPoint = computed(

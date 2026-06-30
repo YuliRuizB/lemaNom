@@ -118,6 +118,7 @@ export interface workOrderEquipment {
   equipmentSpecifyEquipment?: string;
   equipmentVoltage?: string;
   promedioFC?: number;
+  isDefault?: boolean;
   active: boolean;
   createdAt: Date;
   updatedAt?: Date;

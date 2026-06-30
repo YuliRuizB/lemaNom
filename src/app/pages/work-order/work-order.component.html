@@ -188,6 +188,15 @@
           <p class="wo-detail__subtitle">{{ order.clientName || 'Empresa no definida' }} · {{ order.plantName || 'Planta no definida' }}</p>
         </div>
         <div class="wo-detail__actions">
+          @if (isSelectedOrderDetailEditable() && !isEditingOrder()) {
+            <button
+              class="wo-detail__edit"
+              type="button"
+              (click)="startEditOrder()"
+            >
+              Editar orden
+            </button>
+          }
           <button
             class="wo-detail__delete"
             type="button"
@@ -327,6 +336,69 @@
           </div>
         }
 
+        @if (isEditingOrder()) {
+          <div class="wo-edit-panel">
+            <div class="wo-edit-panel__grid">
+              <div class="form-field">
+                <label class="form-field__label">Orden de compra</label>
+                <input class="form-field__input" type="text" [(ngModel)]="editOrderForm.purchaseOrderNumber" />
+              </div>
+              <div class="form-field">
+                <label class="form-field__label">Cotización</label>
+                <input class="form-field__input" type="text" [(ngModel)]="editOrderForm.quotationNumber" />
+              </div>
+              <div class="form-field">
+                <label class="form-field__label">Cliente</label>
+                <select
+                  class="form-field__input"
+                  [ngModel]="editOrderForm.clientId"
+                  (ngModelChange)="onEditOrderClientChange($event)"
+                >
+                  <option value="">Selecciona un cliente</option>
+                  @for (client of activeClients(); track client.idDoc) {
+                    <option [value]="client.idDoc">{{ client.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-field__label">Planta</label>
+                <select
+                  class="form-field__input"
+                  [ngModel]="editOrderForm.plantId"
+                  [disabled]="!editOrderForm.clientId"
+                  (ngModelChange)="onEditOrderPlantChange($event)"
+                >
+                  <option value="">Selecciona una planta</option>
+                  @for (plant of editOrderPlants(); track plant.idDoc) {
+                    <option [value]="plant.idDoc">{{ plant.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-field__label">Signatario</label>
+                <select
+                  class="form-field__input"
+                  [ngModel]="editOrderForm.signatoryId"
+                  (ngModelChange)="onEditOrderSignatoryChange($event)"
+                >
+                  <option value="">Selecciona un signatario</option>
+                  @for (user of assignableWorkflowUsers(); track user.idDoc) {
+                    <option [value]="user.idDoc">{{ user.displayName }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="wo-edit-panel__actions">
+              <button class="btn btn--ghost" type="button" [disabled]="isSavingOrderEdit()" (click)="cancelEditOrder()">
+                Cancelar
+              </button>
+              <button class="btn btn--primary" type="button" [disabled]="isSavingOrderEdit()" (click)="saveEditOrder()">
+                {{ isSavingOrderEdit() ? 'Guardando...' : 'Guardar cambios' }}
+              </button>
+            </div>
+          </div>
+        }
+
         <div class="wo-detail__row">
           <div class="wo-detail__item">
             <span class="wo-detail__label">No. de informe</span>
@@ -446,7 +518,24 @@
           } @else {
             <div class="wo-equipment-list">
               @for (equipmentItem of selectedOrderEquipments(); track equipmentItem.idDoc) {
-                <article class="wo-equipment-card">
+                <article class="wo-equipment-card" [class.wo-equipment-card--default]="equipmentItem.isDefault">
+                  <div class="wo-equipment-card__header">
+                    <div class="wo-equipment-card__header-left">
+                      @if (equipmentItem.isDefault) {
+                        <span class="wo-equipment-card__default-badge">Principal</span>
+                      }
+                      @if (isSelectedOrderDetailEditable() && selectedOrderEquipments().length > 1 && !equipmentItem.isDefault) {
+                        <button
+                          class="wo-equipment-card__set-default"
+                          type="button"
+                          [disabled]="isSavingDefaultEquipment()"
+                          (click)="setDefaultEquipmentForSelectedOrder(equipmentItem.idDoc)"
+                        >
+                          {{ isSavingDefaultEquipment() ? '…' : 'Marcar como principal' }}
+                        </button>
+                      }
+                    </div>
+                  </div>
                   <div class="wo-equipment-card__inline">
                     <span><strong>Equipo:</strong> {{ equipmentItem.equipmentType || '—' }}</span>
                     <span><strong>Marca:</strong> {{ equipmentItem.equipmentBrand || '—' }}</span>
@@ -866,21 +955,40 @@
         @if (!selectedWorkOrderEquipments().length) {
           <p class="equipment-section__empty">Aún no hay equipos asociados a esta orden.</p>
         } @else {
+          @if (selectedWorkOrderEquipments().length > 1) {
+            <p class="equipment-section__hint">Selecciona el equipo principal cuyos valores se utilizarán en los reportes.</p>
+          }
           <div class="equipment-list">
             @for (equipmentItem of selectedWorkOrderEquipments(); track equipmentItem.idDoc) {
-              <article class="equipment-card">
+              <article class="equipment-card" [class.equipment-card--default]="defaultEquipmentId() === equipmentItem.idDoc">
                 <div class="equipment-card__top">
-                  <div>
-                    <h4 class="equipment-card__title">{{ equipmentItem.name }}</h4>
-                    <p class="equipment-card__subtitle">{{ equipmentItem.identifier }}</p>
+                  <div class="equipment-card__title-row">
+                    <div>
+                      <h4 class="equipment-card__title">{{ equipmentItem.name }}</h4>
+                      <p class="equipment-card__subtitle">{{ equipmentItem.identifier }}</p>
+                    </div>
+                    @if (defaultEquipmentId() === equipmentItem.idDoc) {
+                      <span class="equipment-card__default-badge">Principal</span>
+                    }
                   </div>
-                  <button
-                    class="equipment-card__remove"
-                    type="button"
-                    (click)="removeEquipmentFromWorkOrder(equipmentItem.idDoc)"
-                  >
-                    Quitar
-                  </button>
+                  <div class="equipment-card__actions">
+                    @if (selectedWorkOrderEquipments().length > 1 && defaultEquipmentId() !== equipmentItem.idDoc) {
+                      <button
+                        class="equipment-card__set-default"
+                        type="button"
+                        (click)="setCreateDefaultEquipment(equipmentItem.idDoc)"
+                      >
+                        Marcar como principal
+                      </button>
+                    }
+                    <button
+                      class="equipment-card__remove"
+                      type="button"
+                      (click)="removeEquipmentFromWorkOrder(equipmentItem.idDoc)"
+                    >
+                      Quitar
+                    </button>
+                  </div>
                 </div>
 
                 <div class="equipment-card__grid">

@@ -36,6 +36,7 @@ export class HomeComponent {
 
   monthlyOrders  = signal<number[]>(Array(12).fill(0));
   byNorm         = signal<ChartEntry[]>([]);
+  byService      = signal<ChartEntry[]>([]);
   bySignatory    = signal<ChartEntry[]>([]);
 
   readonly monthLabels = MONTH_LABELS;
@@ -64,6 +65,7 @@ export class HomeComponent {
 
   readonly maxMonthly    = computed(() => Math.max(...this.monthlyOrders(), 1));
   readonly maxNorm       = computed(() => Math.max(...this.byNorm().map(e => e.count), 1));
+  readonly maxService    = computed(() => Math.max(...this.byService().map(e => e.count), 1));
   readonly maxSignatory  = computed(() => Math.max(...this.bySignatory().map(e => e.count), 1));
 
   constructor() { this.loadHomeContext(); }
@@ -108,6 +110,7 @@ export class HomeComponent {
       this.workOrderSummary.set(this.buildSummary(yearOrders));
       this.monthlyOrders.set(this.buildMonthly(yearOrders));
       this.byNorm.set(this.buildGrouped(yearOrders, (o) => o.nomCategoryName || 'Sin categoría'));
+      this.byService.set(this.buildGrouped(yearOrders, (o) => o.nomCategoryServiceName || 'Sin servicio'));
       this.bySignatory.set(this.buildGrouped(yearOrders, (o) => o.signatoryName || 'Sin asignar'));
       this.summaryLoading.set(false);
     });
