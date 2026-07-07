@@ -101,7 +101,13 @@
           [class.equipo-detail__tab--active]="activeTab() === 'calibration'"
           type="button"
           (click)="activeTab.set('calibration')"
-        >Datos de Calibración</button>
+        >Datos de Calibración Tierras</button>
+        <button
+          class="equipo-detail__tab"
+          [class.equipo-detail__tab--active]="activeTab() === 'calibration-illumination'"
+          type="button"
+          (click)="activeTab.set('calibration-illumination')"
+        >Datos de Calibración Iluminación</button>
         <button
           class="equipo-detail__tab"
           [class.equipo-detail__tab--active]="activeTab() === 'rrr'"
@@ -481,6 +487,188 @@
             </form>
           }
 
+        </div>
+      }
+
+      <!-- TAB: CALIBRACION ILUMINACION -->
+      @if (activeTab() === 'calibration-illumination') {
+        <div class="calib-tab">
+          <div class="calib-history-header">
+            <span class="detail-item__label">Historial de calibraciones de iluminación</span>
+            @if (!isNewLightingCalibration()) {
+              <button class="btn-detail btn-detail--edit" type="button" (click)="openNewLightingCalibration()">
+                + Nueva calibración
+              </button>
+            }
+          </div>
+
+          @if (loadingLightingCalibrations()) {
+            <p class="cert-empty">Cargando historial…</p>
+          } @else if (!lightingCalibrationRecords().length && !isNewLightingCalibration()) {
+            <p class="cert-empty">Sin calibraciones de iluminación registradas.</p>
+          } @else if (!isNewLightingCalibration() && !selectedLightingCalibrationRecord()) {
+            <ul class="calib-history-list">
+              @for (rec of lightingCalibrationRecords(); track rec.idDoc; let i = $index) {
+                <li
+                  class="calib-history-list__item"
+                  [class.calib-history-list__item--latest]="i === 0"
+                  (click)="viewLightingCalibrationRecord(rec)"
+                >
+                  <div class="calib-history-list__info">
+                    @if (i === 0) { <span class="cert-history__badge">Vigente</span> }
+                    <span class="calib-history-list__cert">Calibración: {{ rec.calibrationDate }}</span>
+                    @if (rec.verificationDate) {
+                      <span class="cert-history__date">Comprobación: {{ rec.verificationDate }}</span>
+                    }
+                    @if (rec.receptionDate) {
+                      <span class="cert-history__date">Recepción: {{ rec.receptionDate }}</span>
+                    }
+                    <span class="calib-history-list__voltage">FCP: {{ rec.fcp ?? '—' }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (isNewLightingCalibration() || selectedLightingCalibrationRecord()) {
+            <form class="equipo-detail__edit-form" [formGroup]="lightingCalibrationForm" (ngSubmit)="saveLightingCalibration()">
+              <div class="calib-form-back">
+                <button class="calib-back-btn" type="button" (click)="cancelLightingCalibrationForm()">
+                  ← Volver al historial
+                </button>
+                @if (selectedLightingCalibrationRecord() && !isEditingLightingCalibration()) {
+                  <span class="calib-readonly-badge">Solo lectura</span>
+                  <button class="btn-detail btn-detail--edit" type="button" (click)="startEditLightingCalibration()">
+                    Editar
+                  </button>
+                }
+              </div>
+
+              <div class="calib-header-grid">
+                <div class="edit-field">
+                  <label class="edit-field__label">Fecha de calibración <span class="edit-field__req">*</span></label>
+                  <input class="edit-field__input" type="date" formControlName="calibrationDate"
+                    [readonly]="!!selectedLightingCalibrationRecord() && !isEditingLightingCalibration()" />
+                </div>
+                <div class="edit-field">
+                  <label class="edit-field__label">Fecha de comprobación</label>
+                  <input class="edit-field__input" type="date" formControlName="verificationDate"
+                    [readonly]="!!selectedLightingCalibrationRecord() && !isEditingLightingCalibration()" />
+                </div>
+                <div class="edit-field">
+                  <label class="edit-field__label">Fecha de recepción de calibración</label>
+                  <input class="edit-field__input" type="date" formControlName="receptionDate"
+                    [readonly]="!!selectedLightingCalibrationRecord() && !isEditingLightingCalibration()" />
+                </div>
+              </div>
+
+              <div class="calib-table-block">
+                <div class="calib-table-block__title">Valores de recepción del laboratorio</div>
+                <div class="calib-table-wrap">
+                  <table class="calib-table">
+                    <thead><tr><th>Distancia (cm)</th><th>Mediciones (Lux)</th></tr></thead>
+                    <tbody>
+                      @for (row of lightingReceptionRows(); track $index; let i = $index) {
+                        <tr>
+                          <td>{{ row.distanceCm }}</td>
+                          <td>
+                            <input class="calib-input" type="text" inputmode="decimal"
+                              [value]="row.lux ?? ''"
+                              [readonly]="!!selectedLightingCalibrationRecord() && !isEditingLightingCalibration()"
+                              (change)="updateLightingMeasurementRow('reception', i, $any($event.target).value)" />
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="calib-table-block">
+                <div class="calib-table-block__title">Resultados de comprobación</div>
+                <div class="calib-table-wrap">
+                  <table class="calib-table">
+                    <thead><tr><th>Distancia (cm)</th><th>Mediciones (Lux)</th></tr></thead>
+                    <tbody>
+                      @for (row of lightingVerificationRows(); track $index; let i = $index) {
+                        <tr>
+                          <td>{{ row.distanceCm }}</td>
+                          <td>
+                            <input class="calib-input" type="text" inputmode="decimal"
+                              [value]="row.lux ?? ''"
+                              [readonly]="!!selectedLightingCalibrationRecord() && !isEditingLightingCalibration()"
+                              (change)="updateLightingMeasurementRow('verification', i, $any($event.target).value)" />
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="calib-table-block">
+                <div class="calib-table-block__title">Datos del certificado de calibración</div>
+                <div class="calib-table-wrap">
+                  <table class="calib-table">
+                    <thead>
+                      <tr>
+                        <th>Iluminación</th>
+                        @for (row of lightingCertificateRows(); track $index) {
+                          <th>{{ row.illumination }}</th>
+                        }
+                        <th>FCP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>FC</td>
+                        @for (row of lightingCertificateRows(); track $index; let i = $index) {
+                          <td>
+                            <input class="calib-input" type="text" inputmode="decimal"
+                              [value]="row.fc ?? ''"
+                              [readonly]="!!selectedLightingCalibrationRecord() && !isEditingLightingCalibration()"
+                              (change)="updateLightingCertificateRow(i, 'fc', $any($event.target).value)" />
+                          </td>
+                        }
+                        <td class="calib-fc">{{ lightingFcp() !== null ? (lightingFcp() | number:'1.4-4') : '—' }}</td>
+                      </tr>
+                      <tr>
+                        <td>Inc. Relativa (%)</td>
+                        @for (row of lightingCertificateRows(); track $index; let i = $index) {
+                          <td>
+                            <input class="calib-input" type="text" inputmode="decimal"
+                              [value]="row.relativeUncertainty ?? ''"
+                              [readonly]="!!selectedLightingCalibrationRecord() && !isEditingLightingCalibration()"
+                              (change)="updateLightingCertificateRow(i, 'relativeUncertainty', $any($event.target).value)" />
+                          </td>
+                        }
+                        <td></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="edit-actions">
+                <button class="btn-detail btn-detail--cancel" type="button" (click)="cancelLightingCalibrationForm()">Cancelar</button>
+                @if (isNewLightingCalibration()) {
+                  <button class="btn-detail btn-detail--save" type="submit" [disabled]="savingLightingCalibration()">
+                    {{ savingLightingCalibration() ? 'Guardando…' : 'Guardar calibración' }}
+                  </button>
+                }
+                @if (isEditingLightingCalibration()) {
+                  <button class="btn-detail btn-detail--save" type="button" [disabled]="savingLightingCalibration()" (click)="saveLightingCalibrationEdit()">
+                    {{ savingLightingCalibration() ? 'Guardando…' : 'Guardar cambios' }}
+                  </button>
+                }
+                @if (!isNewLightingCalibration() && !isEditingLightingCalibration()) {
+                  <button class="btn-detail btn-detail--save" type="button" disabled>
+                    Solo lectura
+                  </button>
+                }
+              </div>
+            </form>
+          }
         </div>
       }
 

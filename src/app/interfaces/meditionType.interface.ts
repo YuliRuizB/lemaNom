@@ -27,6 +27,17 @@ export interface CalibrationRow {
   incertidumbrePct: number | null;
 }
 
+export interface LightingMeasurementRow {
+  distanceCm: number;
+  lux: number | null;
+}
+
+export interface LightingCertificateRow {
+  illumination: number;
+  fc: number | null;
+  relativeUncertainty: number | null;
+}
+
 export interface CalibrationRecord {
   idDoc: string;
   certNumber: string;
@@ -35,6 +46,19 @@ export interface CalibrationRecord {
   voltage: '25V' | '50V' | 'Ambos';
   calibrationRows25v: CalibrationRow[];
   calibrationRows50v: CalibrationRow[];
+  createdAt: Date;
+  createdBy?: string;
+}
+
+export interface LightingCalibrationRecord {
+  idDoc: string;
+  calibrationDate: string;
+  verificationDate?: string;
+  receptionDate?: string;
+  laboratoryReceptionRows: LightingMeasurementRow[];
+  verificationRows: LightingMeasurementRow[];
+  certificateRows: LightingCertificateRow[];
+  fcp?: number | null;
   createdAt: Date;
   createdBy?: string;
 }

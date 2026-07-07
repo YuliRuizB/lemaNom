@@ -16,7 +16,17 @@ import {
 import { Storage, getDownloadURL, ref, uploadBytes } from '@angular/fire/storage';
 import { Observable, from, map, switchMap } from 'rxjs';
 
-import { CalibrationRecord, CalibrationRow, EquipmentCertificate, RepeatabilityRecord, UserReading, equipment } from '../interfaces/meditionType.interface';
+import {
+  CalibrationRecord,
+  CalibrationRow,
+  EquipmentCertificate,
+  LightingCalibrationRecord,
+  LightingCertificateRow,
+  LightingMeasurementRow,
+  RepeatabilityRecord,
+  UserReading,
+  equipment,
+} from '../interfaces/meditionType.interface';
 
 @Injectable({ providedIn: 'root' })
 export class EquipmentService {
@@ -172,6 +182,58 @@ export class EquipmentService {
     );
   }
 
+  // ── Lighting calibrations ────────────────────────────────────────────────
+
+  addLightingCalibrationRecord(
+    equipmentId: string,
+    data: Omit<LightingCalibrationRecord, 'idDoc' | 'createdAt'>
+  ): Observable<string> {
+    const colRef = collection(this.firestore, 'equipment', equipmentId, 'calibrationLighting');
+    const payload: Record<string, any> = {
+      calibrationDate: data.calibrationDate,
+      verificationDate: data.verificationDate ?? null,
+      receptionDate: data.receptionDate ?? null,
+      laboratoryReceptionRows: data.laboratoryReceptionRows,
+      verificationRows: data.verificationRows,
+      certificateRows: data.certificateRows,
+      fcp: data.fcp ?? null,
+      createdAt: serverTimestamp(),
+    };
+    if (data.createdBy) payload['createdBy'] = data.createdBy;
+    return from(addDoc(colRef, payload)).pipe(map((d) => d.id));
+  }
+
+  getLightingCalibrationRecords(equipmentId: string): Observable<LightingCalibrationRecord[]> {
+    const colRef = collection(this.firestore, 'equipment', equipmentId, 'calibrationLighting');
+    const q = query(colRef, orderBy('createdAt', 'desc'));
+    return from(getDocs(q)).pipe(
+      map((snapshot) => snapshot.docs.map((d) => this.toLightingCalibrationRecord(d.id, d.data())))
+    );
+  }
+
+  updateLightingCalibrationRecord(
+    equipmentId: string,
+    recordId: string,
+    data: Omit<LightingCalibrationRecord, 'idDoc' | 'createdAt' | 'createdBy'>
+  ): Observable<void> {
+    const docRef = doc(this.firestore, 'equipment', equipmentId, 'calibrationLighting', recordId);
+    return from(
+      setDoc(
+        docRef,
+        {
+          calibrationDate: data.calibrationDate,
+          verificationDate: data.verificationDate ?? null,
+          receptionDate: data.receptionDate ?? null,
+          laboratoryReceptionRows: data.laboratoryReceptionRows,
+          verificationRows: data.verificationRows,
+          certificateRows: data.certificateRows,
+          fcp: data.fcp ?? null,
+        },
+        { merge: true }
+      )
+    );
+  }
+
   // ── Repeatability & Reproducibility ─────────────────────────────────────
 
   addRepeatabilityRecord(
@@ -257,6 +319,21 @@ export class EquipmentService {
       calibrationRows25v: (data['calibrationRows25v'] as CalibrationRow[]) || [],
       calibrationRows50v: (data['calibrationRows50v'] as CalibrationRow[]) || [],
       createdBy:          data['createdBy'],
+      createdAt: data['createdAt'] instanceof Timestamp ? data['createdAt'].toDate() : data['createdAt'],
+    };
+  }
+
+  private toLightingCalibrationRecord(id: string, data: Record<string, any>): LightingCalibrationRecord {
+    return {
+      idDoc: id,
+      calibrationDate: data['calibrationDate'] ?? '',
+      verificationDate: data['verificationDate'] ?? undefined,
+      receptionDate: data['receptionDate'] ?? undefined,
+      laboratoryReceptionRows: (data['laboratoryReceptionRows'] as LightingMeasurementRow[]) || [],
+      verificationRows: (data['verificationRows'] as LightingMeasurementRow[]) || [],
+      certificateRows: (data['certificateRows'] as LightingCertificateRow[]) || [],
+      fcp: data['fcp'] ?? null,
+      createdBy: data['createdBy'],
       createdAt: data['createdAt'] instanceof Timestamp ? data['createdAt'].toDate() : data['createdAt'],
     };
   }

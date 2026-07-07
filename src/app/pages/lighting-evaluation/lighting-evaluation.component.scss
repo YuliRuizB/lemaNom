@@ -1,0 +1,41 @@
+:host {
+  display: block;
+}
+
+.lighting-placeholder {
+  padding: 0.25rem 0 0;
+}
+
+.lighting-placeholder__card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border: 1px dashed rgba(25, 48, 80, 0.18);
+  border-radius: 1rem;
+  background: rgba(25, 48, 80, 0.02);
+}
+
+.lighting-placeholder__eyebrow,
+.lighting-placeholder__title,
+.lighting-placeholder__text {
+  margin: 0;
+}
+
+.lighting-placeholder__eyebrow {
+  color: #2b61d8;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lighting-placeholder__title {
+  color: #193050;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.lighting-placeholder__text {
+  color: #6f7a88;
+  line-height: 1.55;
+}

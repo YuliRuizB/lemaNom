@@ -926,6 +926,76 @@
   }
 }
 
+.service-schedule {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__title {
+    margin: 0;
+    color: var(--lema-navy);
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+    border: 1px solid #d8e0ec;
+    border-radius: 0.95rem;
+    background: #fff;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+      padding: 0.55rem 0.7rem;
+      border-bottom: 1px solid #e8edf5;
+      text-align: left;
+      vertical-align: middle;
+      font-size: 0.8rem;
+      color: var(--lema-navy);
+    }
+
+    th {
+      color: var(--lema-navy);
+      font-size: 0.76rem;
+      font-weight: 700;
+      background: #f7f9fc;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+  }
+
+  &__input {
+    width: 100%;
+    min-height: 2rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid #d0d5dd;
+    border-radius: 0.6rem;
+    color: var(--lema-navy);
+    font: inherit;
+    font-size: 0.78rem;
+    background: #fff;
+    outline: none;
+
+    &:focus {
+      border-color: var(--lema-blue, #174ea6);
+      box-shadow: 0 0 0 2px rgba(23, 78, 166, 0.1);
+    }
+  }
+}
+
 @media (max-width: 1024px) {
   .wo-page {
     padding: 0.25rem;

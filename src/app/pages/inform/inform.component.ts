@@ -6,9 +6,17 @@ import { catchError, firstValueFrom, forkJoin, of, switchMap, take } from 'rxjs'
 
 import { ClientPlant } from '../../interfaces/client.interface';
 import { InformNom22Data } from '../../interfaces/documents/informNom22.interface';
+import { WorkOrderBaseDocumentData } from '../../interfaces/documents/workOrderBase.interface';
 import { equipment } from '../../interfaces/meditionType.interface';
 import { Point } from '../../interfaces/measurements.interface';
-import { workOrder, workOrderEquipment, workOrderStep } from '../../interfaces/workOrder.interface';
+import {
+  WorkOrderImpartiality,
+  WorkOrderServiceScheduleActivity,
+  WorkOrderServiceScheduleItem,
+  workOrder,
+  workOrderEquipment,
+  workOrderStep,
+} from '../../interfaces/workOrder.interface';
 import { ClientService } from '../../services/client.service';
 import { EquipmentService } from '../../services/equipment.service';
 import { ToastService } from '../../services/toast.service';
@@ -47,6 +55,7 @@ export class InformComponent implements OnInit, OnChanges {
   ];
   private readonly measurementWorkflowId = 'ZHvnk9BPyKO6c4mJot5A';
   private readonly templatePath = '/base22.docx';
+  private readonly workOrderTemplatePath = '/assets/documents/OT_Base.docx';
   private workOrderService = inject(WorkOrderService);
   private clientService = inject(ClientService);
   private equipmentService = inject(EquipmentService);
@@ -59,6 +68,7 @@ export class InformComponent implements OnInit, OnChanges {
   isLoading = signal(false);
   isGenerating = signal(false);
   showProgressModal = signal(false);
+  generationTitle = signal('Generando informe');
   generationProgress = signal(0);
   generationStep = signal('');
   showHumidityQuestion = false;
@@ -66,6 +76,7 @@ export class InformComponent implements OnInit, OnChanges {
   points = signal<Point[]>([]);
   measurementStep = signal<workOrderStep | null>(null);
   stepEquipments = signal<workOrderEquipment[]>([]);
+  workOrderBaseData = signal<WorkOrderBaseDocumentData | null>(null);
   private humidityQuestionResolver: ((value: boolean | null) => void) | null = null;
   readonly factorCorreccion = computed(
     () => this.stepEquipments().find((equipment) => equipment.promedioFC != null)?.promedioFC ?? null
@@ -86,11 +97,13 @@ export class InformComponent implements OnInit, OnChanges {
       this.points.set([]);
       this.measurementStep.set(null);
       this.stepEquipments.set([]);
+      this.workOrderBaseData.set(null);
       this.isLoading.set(false);
       return;
     }
 
     this.isLoading.set(true);
+    this.loadWorkOrderBasePreview();
 
     this.workOrderService
       .getWorkflowSteps(this.workOrderId)
@@ -130,6 +143,38 @@ export class InformComponent implements OnInit, OnChanges {
         this.stepEquipments.set(equipments);
         this.isLoading.set(false);
       });
+  }
+
+  private async loadWorkOrderBasePreview(): Promise<void> {
+    try {
+      const order = await firstValueFrom(this.workOrderService.getWorkOrderById(this.workOrderId));
+
+      if (!order) {
+        this.workOrderBaseData.set(null);
+        return;
+      }
+
+      const [plant, equipments, serviceSchedule] = await Promise.all([
+        order.clientId && order.plantId
+          ? firstValueFrom(this.clientService.getClientPlantById(order.clientId, order.plantId))
+          : Promise.resolve(null),
+        firstValueFrom(this.workOrderService.getEquipments(this.workOrderId)),
+        firstValueFrom(this.workOrderService.getServiceSchedule(this.workOrderId)),
+      ]);
+
+      const mainEquipment = equipments.find((equipment) => equipment.active) ?? equipments[0] ?? null;
+      const masterEquipment =
+        mainEquipment?.equipmentId
+          ? await firstValueFrom(this.equipmentService.getEquipmentById(mainEquipment.equipmentId))
+          : null;
+      const resolvedEquipment = this.mergeWorkOrderEquipmentWithMaster(mainEquipment, masterEquipment);
+
+      this.workOrderBaseData.set(
+        this.buildWorkOrderBaseData(order, plant, resolvedEquipment, serviceSchedule)
+      );
+    } catch {
+      this.workOrderBaseData.set(null);
+    }
   }
 
   labelGeneratorSource(point: Point): string {
@@ -319,6 +364,7 @@ export class InformComponent implements OnInit, OnChanges {
       }
 
       this.generationProgress.set(0);
+      this.generationTitle.set('Generando informe');
       this.generationStep.set('Cargando datos de la orden...');
       this.showProgressModal.set(true);
 
@@ -388,6 +434,77 @@ export class InformComponent implements OnInit, OnChanges {
     }
   }
 
+  async generateWorkOrderDocument(): Promise<void> {
+    if (!this.workOrderId || this.isGenerating()) {
+      return;
+    }
+
+    this.isGenerating.set(true);
+
+    try {
+      this.generationTitle.set('Generando orden de trabajo');
+      this.generationProgress.set(0);
+      this.generationStep.set('Cargando datos de la orden...');
+      this.showProgressModal.set(true);
+
+      let workOrderData = this.workOrderBaseData();
+      if (!workOrderData) {
+        await this.loadWorkOrderBasePreview();
+        workOrderData = this.workOrderBaseData();
+      }
+
+      if (!workOrderData) {
+        throw new Error('No fue posible construir los datos de la orden de trabajo.');
+      }
+
+      this.generationProgress.set(20);
+      this.generationStep.set('Descargando plantilla...');
+      const response = await fetch(this.workOrderTemplatePath);
+
+      if (!response.ok) {
+        throw new Error('No fue posible leer la plantilla base de la orden de trabajo.');
+      }
+
+      const templateBuffer = await response.arrayBuffer();
+      this.generationProgress.set(45);
+
+      this.generationStep.set('Procesando documento...');
+      const zip = await JSZip.loadAsync(templateBuffer);
+      const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
+
+      if (!xmlEntries.length) {
+        throw new Error('La plantilla no contiene archivos XML de Word para reemplazar.');
+      }
+
+      for (const xmlEntry of xmlEntries) {
+        const currentXml = await xmlEntry.async('string');
+        const updatedXml = this.replaceWorkOrderTemplateValues(currentXml, workOrderData);
+        zip.file(xmlEntry.name, updatedXml);
+      }
+
+      this.generationProgress.set(80);
+      this.generationStep.set('Generando archivo...');
+      const generatedDoc = await zip.generateAsync({
+        type: 'uint8array',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+      this.generationProgress.set(95);
+      this.generationStep.set('Descargando...');
+      const fileName = `${(workOrderData.ot_number || 'orden_trabajo').replace(/[^\w.-]+/g, '_')}.docx`;
+      this.downloadGeneratedDocument(generatedDoc, fileName);
+      this.generationProgress.set(100);
+      this.generationStep.set('¡Orden de trabajo generada!');
+    } catch (error) {
+      console.error(error);
+      this.toastService.error('No fue posible generar la orden de trabajo.');
+      this.showProgressModal.set(false);
+    } finally {
+      this.isGenerating.set(false);
+      setTimeout(() => this.showProgressModal.set(false), 900);
+    }
+  }
+
   private async buildInformData(includeHumidityControl: boolean): Promise<InformNom22Data> {
     const order = await firstValueFrom(this.workOrderService.getWorkOrderById(this.workOrderId));
 
@@ -412,6 +529,13 @@ export class InformComponent implements OnInit, OnChanges {
         : null;
     const resolvedEquipment = this.mergeWorkOrderEquipmentWithMaster(mainEquipment, masterEquipment);
     const today = new Date();
+    const serviceSchedule = await firstValueFrom(
+      this.workOrderService.getServiceSchedule(this.workOrderId).pipe(take(1))
+    );
+
+    this.workOrderBaseData.set(
+      this.buildWorkOrderBaseData(order, plant, resolvedEquipment, serviceSchedule)
+    );
 
     return {
       client_image: client?.urlLogo?.trim() || '',
@@ -442,6 +566,62 @@ export class InformComponent implements OnInit, OnChanges {
       tabla_5_2_id: includeHumidityControl ? this.table52Id : '',
       tabla_5_3_id: this.table53Id,
       charts: '',
+    };
+  }
+
+  private buildWorkOrderBaseData(
+    order: workOrder,
+    plant: ClientPlant | null,
+    equipment: workOrderEquipment | null,
+    serviceSchedule: WorkOrderServiceScheduleItem[]
+  ): WorkOrderBaseDocumentData {
+    const scheduleByKey = new Map(
+      serviceSchedule.map((item) => [item.activityKey, item] as const)
+    );
+    const impartiality = order.impartiality ?? this.buildEmptyImpartialityForInform();
+
+    return {
+      order_num: order.purchaseOrderNumber?.trim() || '',
+      quote_num: order.quotationNumber?.trim() || '',
+      ot_number: order.workOrderNumber?.trim() || '',
+      inform_num: order.informNumber?.trim() || '',
+
+      client_name: order.clientName?.trim() || '',
+      plant_name: order.plantName?.trim() || plant?.name?.trim() || '',
+      plant_adress: this.buildClientAddress(plant),
+      plant_city: plant?.municipality?.trim() || '',
+      plant_cp: plant?.postalCode?.trim() || '',
+      contact_name: plant?.contactName?.trim() || '',
+      contact_num: plant?.contactPhone?.trim() || '',
+
+      service_name: order.nomCategoryServiceName?.trim() || order.nomName?.trim() || '',
+      signatario_name: order.signatoryName?.trim() || '',
+      equip_name: equipment?.equipmentType?.trim() || equipment?.equipmentName?.trim() || '',
+
+      q1: this.getImpartialityAnswerLabel(impartiality.familiarAffinity),
+      q2: this.getImpartialityAnswerLabel(impartiality.bloodRelationship),
+      q3: this.getImpartialityAnswerLabel(impartiality.friendshipRelationship),
+      q4: this.getImpartialityAnswerLabel(impartiality.commercialInterest),
+      q5: this.getImpartialityAnswerLabel(impartiality.economicInterest),
+      q6: this.getImpartialityAnswerLabel(impartiality.intimidation),
+      q7: this.getImpartialityAnswerLabel(impartiality.serviceImpartialityRisk),
+
+      responsable_1: this.getScheduleResponsible(scheduleByKey, 'reconocimiento'),
+      responsable_1_date: this.getScheduleDate(scheduleByKey, 'reconocimiento'),
+      responsable_2: this.getScheduleResponsible(scheduleByKey, 'medicion'),
+      responsable_2_date: this.getScheduleDate(scheduleByKey, 'medicion'),
+      responsable_3: this.getScheduleResponsible(scheduleByKey, 'plano'),
+      responsable_3_date: this.getScheduleDate(scheduleByKey, 'plano'),
+      responsable_4: this.getScheduleResponsible(scheduleByKey, 'generar_y_revisar_informe'),
+      responsable_4_date: this.getScheduleDate(scheduleByKey, 'generar_y_revisar_informe'),
+      responsable_5: this.getScheduleResponsible(scheduleByKey, 'revision_formato_campo'),
+      responsable_5_date: this.getScheduleDate(scheduleByKey, 'revision_formato_campo'),
+      responsable_6: this.getScheduleResponsible(scheduleByKey, 'impresion_informe'),
+      responsable_6_date: this.getScheduleDate(scheduleByKey, 'impresion_informe'),
+      responsable_7: this.getScheduleResponsible(scheduleByKey, 'entrega_y_facturacion'),
+      responsable_7_date: this.getScheduleDate(scheduleByKey, 'entrega_y_facturacion'),
+
+      comments: impartiality.observations?.trim() || '',
     };
   }
 
@@ -515,6 +695,40 @@ export class InformComponent implements OnInit, OnChanges {
     }).format(value);
   }
 
+  private getImpartialityAnswerLabel(value: boolean | null | undefined): string {
+    if (value === true) return 'Sí';
+    if (value === false) return 'No';
+    return '';
+  }
+
+  private getScheduleResponsible(
+    scheduleByKey: Map<WorkOrderServiceScheduleActivity, WorkOrderServiceScheduleItem>,
+    key: WorkOrderServiceScheduleActivity
+  ): string {
+    return scheduleByKey.get(key)?.responsibleUserName?.trim() || '';
+  }
+
+  private getScheduleDate(
+    scheduleByKey: Map<WorkOrderServiceScheduleActivity, WorkOrderServiceScheduleItem>,
+    key: WorkOrderServiceScheduleActivity
+  ): string {
+    const date = scheduleByKey.get(key)?.scheduledDate;
+    return date ? this.formatShortDate(date) : '';
+  }
+
+  private buildEmptyImpartialityForInform(): WorkOrderImpartiality {
+    return {
+      familiarAffinity: null,
+      bloodRelationship: null,
+      friendshipRelationship: null,
+      commercialInterest: null,
+      economicInterest: null,
+      intimidation: null,
+      serviceImpartialityRisk: null,
+      observations: '',
+    };
+  }
+
   private replaceTemplateValues(xml: string, data: InformNom22Data): string {
     const replacements = Object.entries(data).filter(([, value]) => typeof value === 'string') as Array<
       [keyof InformNom22Data, string]
@@ -540,6 +754,92 @@ export class InformComponent implements OnInit, OnChanges {
     );
 
     return output;
+  }
+
+  private replaceWorkOrderTemplateValues(xml: string, data: WorkOrderBaseDocumentData): string {
+    const parser = new DOMParser();
+    const xmlDocument = parser.parseFromString(xml, 'application/xml');
+    const parserError = xmlDocument.getElementsByTagName('parsererror')[0];
+
+    if (parserError) {
+      return xml;
+    }
+
+    const textNodes = Array.from(xmlDocument.getElementsByTagName('w:t'));
+    if (!textNodes.length) {
+      return xml;
+    }
+
+    const placeholders = Object.entries(data) as Array<[keyof WorkOrderBaseDocumentData, string]>;
+
+    for (const [key, rawValue] of placeholders) {
+      const placeholder = `{${String(key)}}`;
+
+      while (true) {
+        const occurrence = this.findWorkOrderPlaceholderOccurrence(textNodes, placeholder);
+        if (!occurrence) {
+          break;
+        }
+
+        const startText = textNodes[occurrence.startNodeIndex].textContent ?? '';
+        const endText = textNodes[occurrence.endNodeIndex].textContent ?? '';
+        const prefix = startText.slice(0, occurrence.startOffset);
+        const suffix = endText.slice(occurrence.endOffset + 1);
+
+        textNodes[occurrence.startNodeIndex].textContent = `${prefix}${rawValue || ''}${suffix}`;
+
+        for (
+          let nodeIndex = occurrence.startNodeIndex + 1;
+          nodeIndex <= occurrence.endNodeIndex;
+          nodeIndex += 1
+        ) {
+          textNodes[nodeIndex].textContent = '';
+        }
+      }
+    }
+
+    return new XMLSerializer().serializeToString(xmlDocument);
+  }
+
+  private findWorkOrderPlaceholderOccurrence(
+    textNodes: Element[],
+    placeholder: string
+  ): {
+    startNodeIndex: number;
+    startOffset: number;
+    endNodeIndex: number;
+    endOffset: number;
+  } | null {
+    let combined = '';
+    const charMap: Array<{ nodeIndex: number; offset: number }> = [];
+
+    textNodes.forEach((node, nodeIndex) => {
+      const value = node.textContent ?? '';
+      for (let offset = 0; offset < value.length; offset += 1) {
+        combined += value[offset];
+        charMap.push({ nodeIndex, offset });
+      }
+    });
+
+    const start = combined.indexOf(placeholder);
+    if (start === -1) {
+      return null;
+    }
+
+    const end = start + placeholder.length - 1;
+    const startPosition = charMap[start];
+    const endPosition = charMap[end];
+
+    if (!startPosition || !endPosition) {
+      return null;
+    }
+
+    return {
+      startNodeIndex: startPosition.nodeIndex,
+      startOffset: startPosition.offset,
+      endNodeIndex: endPosition.nodeIndex,
+      endOffset: endPosition.offset,
+    };
   }
 
   private escapeXml(value: string): string {

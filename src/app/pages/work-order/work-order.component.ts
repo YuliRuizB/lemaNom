@@ -11,6 +11,8 @@ import { nomCategory, nomCategoryServices } from '../../interfaces/nomCategory.i
 import { User } from '../../interfaces/user.interface';
 import {
   WorkOrderImpartiality,
+  WorkOrderServiceScheduleItem,
+  WorkOrderServiceScheduleActivity,
   workOrder,
   workOrderEquipment,
   workOrderStep,
@@ -27,6 +29,10 @@ import { UserService } from '../../services/user.service';
 import { WorkOrderService } from '../../services/work-order.service';
 import { EvaluationComponent } from '../evaluation/evaluation.component';
 import { InformComponent } from '../inform/inform.component';
+import { LightingEvaluationComponent } from '../lighting-evaluation/lighting-evaluation.component';
+import { LightingMeasurementsComponent } from '../lighting-measurements/lighting-measurements.component';
+import { LightingRecognitionComponent } from '../lighting-recognition/lighting-recognition.component';
+import { LightingReviewComponent } from '../lighting-review/lighting-review.component';
 import { MeasurementsComponent } from '../measurements/measurements.component';
 
 type WorkOrderView = workOrder & {
@@ -44,6 +50,16 @@ type WorkflowNavigationItem = {
   statusLabel: string;
 };
 
+type WorkOrderServiceScheduleRow = {
+  idDoc: string;
+  activityKey: WorkOrderServiceScheduleActivity;
+  activityLabel: string;
+  responsibleUserId: string;
+  responsibleUserName: string;
+  scheduledDateText: string;
+  order: number;
+};
+
 @Component({
   selector: 'app-work-order',
   standalone: true,
@@ -52,6 +68,10 @@ type WorkflowNavigationItem = {
     FormsModule,
     DatePipe,
     EvaluationComponent,
+    LightingEvaluationComponent,
+    LightingMeasurementsComponent,
+    LightingRecognitionComponent,
+    LightingReviewComponent,
     MeasurementsComponent,
     InformComponent,
   ],
@@ -110,8 +130,11 @@ export class WorkOrderComponent {
   selectedOrderPlant = signal<ClientPlant | null>(null);
   selectedOrderObserver = signal('');
   selectedOrderObservationDate = signal('');
+  selectedOrderStartTime = signal('');
+  selectedOrderEndTime = signal('');
   isSavingObserver = signal(false);
   selectedOrderCableResistance = signal<number | null>(null);
+  selectedOrderServiceSchedule = signal<WorkOrderServiceScheduleRow[]>([]);
   isEditingOrder = signal(false);
   isSavingOrderEdit = signal(false);
   editOrderPlants = signal<ClientPlant[]>([]);
@@ -130,6 +153,19 @@ export class WorkOrderComponent {
     'Ing. Humberto Pichardo Mena',
     'Lic. Fabiola Monserrat Gutiérrez Tavizon',
     'Ing. Baldomero Gutiérrez González',
+  ];
+  readonly serviceScheduleActivityTemplates: Array<{
+    key: WorkOrderServiceScheduleActivity;
+    label: string;
+    order: number;
+  }> = [
+    { key: 'reconocimiento', label: 'Reconocimiento', order: 1 },
+    { key: 'medicion', label: 'Medición', order: 2 },
+    { key: 'plano', label: 'Plano', order: 3 },
+    { key: 'generar_y_revisar_informe', label: 'Generar y revisar informe', order: 4 },
+    { key: 'revision_formato_campo', label: 'Revisión del formato de campo', order: 5 },
+    { key: 'impresion_informe', label: 'Impresión informe', order: 6 },
+    { key: 'entrega_y_facturacion', label: 'Entrega y Facturación', order: 7 },
   ];
   createWorkflowPreview = signal<NormWorkflowStep[]>([]);
   isLoadingCreateWorkflowPreview = signal(false);
@@ -352,6 +388,22 @@ export class WorkOrderComponent {
     () => this.selectedWorkflowTabStep()?.workflowId === 'nCAIWDf7VFdbVppNMdCt'
   );
 
+  readonly shouldRenderLightingRecognitionStep = computed(
+    () => this.selectedWorkflowTabStep()?.stepName.trim().toLowerCase() === 'reconocimiento iluminación'
+  );
+
+  readonly shouldRenderLightingEvaluationStep = computed(
+    () => this.selectedWorkflowTabStep()?.stepName.trim().toLowerCase() === 'evaluación iluminación'
+  );
+
+  readonly shouldRenderLightingMeasurementsStep = computed(
+    () => this.selectedWorkflowTabStep()?.stepName.trim().toLowerCase() === 'medición iluminación'
+  );
+
+  readonly shouldRenderLightingReviewStep = computed(
+    () => this.selectedWorkflowTabStep()?.stepName.trim().toLowerCase() === 'revisión iluminacion'
+  );
+
   readonly shouldRenderMeasurementsStep = computed(
     () => this.selectedWorkflowTabStep()?.workflowId === 'ZHvnk9BPyKO6c4mJot5A'
   );
@@ -359,6 +411,24 @@ export class WorkOrderComponent {
   readonly shouldRenderInformStep = computed(
     () => this.selectedWorkflowTabStep()?.workflowId === 'lB6BmPJ0QUeHdh6VAt1v'
   );
+
+  readonly shouldHideCableResistanceInDetail = computed(() => {
+    const order = this.selectedOrder();
+    if (!order) return false;
+
+    const category = this.normalizeText(order.nomCategoryName || '');
+    const service = this.normalizeText(order.serviceName || order.nomCategoryServiceName || '');
+
+    return category === 'laboratorio' && service === 'iluminacion';
+  });
+
+  readonly shouldHideOrderTimesInDetail = computed(() => {
+    const order = this.selectedOrder();
+    if (!order) return false;
+
+    const service = this.normalizeText(order.serviceName || order.nomCategoryServiceName || '');
+    return service === 'medicion de tierras';
+  });
 
   readonly filteredWorkOrders = computed(() => {
     const term = this.search().trim().toLowerCase();
@@ -637,7 +707,10 @@ export class WorkOrderComponent {
     this.selectedOrderPlant.set(null);
     this.selectedOrderObserver.set(order.observerName || '');
     this.selectedOrderObservationDate.set(order.observationDate ? this.toDateInputValue(order.observationDate) : '');
+    this.selectedOrderStartTime.set(order.startTime || '');
+    this.selectedOrderEndTime.set(order.endTime || '');
     this.selectedOrderCableResistance.set(order.cableResistance ?? null);
+    this.selectedOrderServiceSchedule.set(this.buildDefaultServiceScheduleRows());
     this.loadSelectedOrderDetail(order);
     if (order.clientId && order.plantId) {
       this.clientService.getClientPlantById(order.clientId, order.plantId).pipe(take(1)).subscribe({
@@ -704,6 +777,10 @@ export class WorkOrderComponent {
     this.selectedOrderPlant.set(null);
     this.selectedOrderObserver.set('');
     this.selectedOrderObservationDate.set('');
+    this.selectedOrderStartTime.set('');
+    this.selectedOrderEndTime.set('');
+    this.selectedOrderCableResistance.set(null);
+    this.selectedOrderServiceSchedule.set([]);
     this.isSavingObserver.set(false);
     this.isEditingOrder.set(false);
     this.editOrderPlants.set([]);
@@ -1032,7 +1109,7 @@ export class WorkOrderComponent {
     }
 
     const cable = this.selectedOrderCableResistance();
-    if (cable == null || isNaN(Number(cable))) {
+    if (!this.shouldHideCableResistanceInDetail() && (cable == null || isNaN(Number(cable)))) {
       this.toastService.warning('Debes registrar el valor de resistencia de los cables antes de completar la orden.');
       return;
     }
@@ -1832,16 +1909,28 @@ export class WorkOrderComponent {
     const observerName = this.selectedOrderObserver().trim() || undefined;
     const dateValue = this.selectedOrderObservationDate();
     const observationDate = dateValue ? new Date(dateValue) : undefined;
+    const startTime = this.selectedOrderStartTime().trim() || undefined;
+    const endTime = this.selectedOrderEndTime().trim() || undefined;
     const cableResistanceRaw = this.selectedOrderCableResistance();
-    const cableResistance = cableResistanceRaw != null && !isNaN(Number(cableResistanceRaw)) ? Number(cableResistanceRaw) : undefined;
+    const cableResistance = this.shouldHideCableResistanceInDetail()
+      ? undefined
+      : cableResistanceRaw != null && !isNaN(Number(cableResistanceRaw))
+        ? Number(cableResistanceRaw)
+        : undefined;
 
     this.isSavingObserver.set(true);
-    this.workOrderService.updateWorkOrder(order.idDoc, { observerName, observationDate, cableResistance }).subscribe({
+    this.workOrderService
+      .updateWorkOrder(order.idDoc, { observerName, observationDate, startTime, endTime, cableResistance })
+      .subscribe({
       next: () => {
-        const updated = { ...order, observerName, observationDate, cableResistance };
+        const updated = { ...order, observerName, observationDate, startTime, endTime, cableResistance };
         this.selectedOrder.set(updated);
         this.workOrders.update((items) =>
-          items.map((item) => (item.idDoc === order.idDoc ? { ...item, observerName, observationDate, cableResistance } : item))
+          items.map((item) =>
+            item.idDoc === order.idDoc
+              ? { ...item, observerName, observationDate, startTime, endTime, cableResistance }
+              : item
+          )
         );
         this.isSavingObserver.set(false);
       },
@@ -1858,27 +1947,53 @@ export class WorkOrderComponent {
     const observerName = this.selectedOrderObserver().trim() || undefined;
     const dateValue = this.selectedOrderObservationDate();
     const observationDate = dateValue ? new Date(dateValue) : undefined;
+    const startTime = this.selectedOrderStartTime().trim() || undefined;
+    const endTime = this.selectedOrderEndTime().trim() || undefined;
     const cableResistanceRaw = this.selectedOrderCableResistance();
-    const cableResistance = cableResistanceRaw != null && !isNaN(Number(cableResistanceRaw)) ? Number(cableResistanceRaw) : undefined;
+    const cableResistance = this.shouldHideCableResistanceInDetail()
+      ? undefined
+      : cableResistanceRaw != null && !isNaN(Number(cableResistanceRaw))
+        ? Number(cableResistanceRaw)
+        : undefined;
 
     const impartiality: WorkOrderImpartiality = {
       ...this.buildEmptyImpartiality(),
       ...(order.impartiality ?? {}),
       observations: order.impartiality?.observations?.trim() || '',
     };
+    const serviceSchedule = this.buildServiceSchedulePayload(order.idDoc);
 
     this.isSavingImpartiality.set(true);
     this.isSavingObserver.set(true);
 
     forkJoin([
       this.workOrderService.updateWorkOrder(order.idDoc, { impartiality }),
-      this.workOrderService.updateWorkOrder(order.idDoc, { observerName, observationDate, cableResistance }),
+      this.workOrderService.saveServiceSchedule(order.idDoc, serviceSchedule),
+      this.workOrderService.updateWorkOrder(order.idDoc, {
+        observerName,
+        observationDate,
+        startTime,
+        endTime,
+        cableResistance,
+      }),
     ]).subscribe({
       next: () => {
-        const updated = { ...order, impartiality, observerName, observationDate, cableResistance };
+        const updated = {
+          ...order,
+          impartiality,
+          observerName,
+          observationDate,
+          startTime,
+          endTime,
+          cableResistance,
+        };
         this.selectedOrder.set(updated);
         this.workOrders.update((items) =>
-          items.map((item) => (item.idDoc === order.idDoc ? { ...item, impartiality, observerName, observationDate, cableResistance } : item))
+          items.map((item) =>
+            item.idDoc === order.idDoc
+              ? { ...item, impartiality, observerName, observationDate, startTime, endTime, cableResistance }
+              : item
+          )
         );
         this.isSavingImpartiality.set(false);
         this.isSavingObserver.set(false);
@@ -1898,6 +2013,105 @@ export class WorkOrderComponent {
       .join(', ') || '—';
   }
 
+  private normalizeText(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+  }
+
+  updateServiceScheduleResponsible(rowId: string, userId: string): void {
+    if (userId === 'NA') {
+      this.selectedOrderServiceSchedule.update((rows) =>
+        rows.map((row) =>
+          row.idDoc === rowId
+            ? {
+                ...row,
+                responsibleUserId: 'NA',
+                responsibleUserName: 'NA',
+              }
+            : row
+        )
+      );
+      return;
+    }
+
+    const user = this.availableSignatories().find((item) => item.idDoc === userId);
+    this.selectedOrderServiceSchedule.update((rows) =>
+      rows.map((row) =>
+        row.idDoc === rowId
+          ? {
+              ...row,
+              responsibleUserId: user?.idDoc || '',
+              responsibleUserName: this.getFormalUserName(user || null),
+            }
+          : row
+      )
+    );
+  }
+
+  updateServiceScheduleDate(rowId: string, value: string): void {
+    this.selectedOrderServiceSchedule.update((rows) =>
+      rows.map((row) => (row.idDoc === rowId ? { ...row, scheduledDateText: value } : row))
+    );
+  }
+
+  getServiceScheduleResponsibleName(row: WorkOrderServiceScheduleRow): string {
+    if (row.responsibleUserId === 'NA') {
+      return 'NA';
+    }
+
+    return row.responsibleUserName || this.getFormalUserName(
+      this.availableSignatories().find((item) => item.idDoc === row.responsibleUserId) || null
+    );
+  }
+
+  private buildDefaultServiceScheduleRows(): WorkOrderServiceScheduleRow[] {
+    return this.serviceScheduleActivityTemplates.map((item) => ({
+      idDoc: `${String(item.order).padStart(2, '0')}-${item.key}`,
+      activityKey: item.key,
+      activityLabel: item.label,
+      responsibleUserId: '',
+      responsibleUserName: '',
+      scheduledDateText: '',
+      order: item.order,
+    }));
+  }
+
+  private toServiceScheduleRows(items: WorkOrderServiceScheduleItem[]): WorkOrderServiceScheduleRow[] {
+    if (!items.length) {
+      return this.buildDefaultServiceScheduleRows();
+    }
+
+    return items
+      .sort((a, b) => a.order - b.order)
+      .map((item) => ({
+        idDoc: item.idDoc,
+        activityKey: item.activityKey,
+        activityLabel: item.activityLabel,
+        responsibleUserId: item.responsibleUserId || '',
+        responsibleUserName: item.responsibleUserName || '',
+        scheduledDateText: item.scheduledDate ? this.toDateInputValue(item.scheduledDate) : '',
+        order: item.order,
+      }));
+  }
+
+  private buildServiceSchedulePayload(workOrderId: string): WorkOrderServiceScheduleItem[] {
+    return this.selectedOrderServiceSchedule().map((row) => ({
+      idDoc: row.idDoc,
+      workOrderId,
+      activityKey: row.activityKey,
+      activityLabel: row.activityLabel,
+      responsibleUserId: row.responsibleUserId || undefined,
+      responsibleUserName: row.responsibleUserName || undefined,
+      scheduledDate: row.scheduledDateText ? new Date(`${row.scheduledDateText}T00:00:00`) : undefined,
+      order: row.order,
+      active: true,
+      createdAt: new Date(),
+    }));
+  }
+
   private isWorkOrderStep(step: workOrderStep): boolean {
     const code = (step.stepCode || '').trim().toUpperCase();
     const name = step.stepName.trim().toLowerCase();
@@ -1911,6 +2125,17 @@ export class WorkOrderComponent {
 
     const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
     return user.displayName || fullName || user.email || 'Usuario';
+  }
+
+  getFormalUserName(user: User | null): string {
+    if (!user) {
+      return '';
+    }
+
+    return [user.prefix?.trim(), user.firstName?.trim(), user.lastName?.trim()]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
   }
 
   private getStatusLabel(status: workOrderStep['status'] | workOrder['status']): string {
@@ -1962,9 +2187,11 @@ export class WorkOrderComponent {
     forkJoin({
       workflowSteps: this.workOrderService.getWorkflowSteps(order.idDoc).pipe(take(1)),
       equipments: this.workOrderService.getEquipments(order.idDoc).pipe(take(1)),
+      serviceSchedule: this.workOrderService.getServiceSchedule(order.idDoc).pipe(take(1)),
     }).subscribe({
-      next: ({ workflowSteps, equipments }) => {
+      next: ({ workflowSteps, equipments, serviceSchedule }) => {
         this.selectedOrderWorkflowSteps.set(workflowSteps);
+        this.selectedOrderServiceSchedule.set(this.toServiceScheduleRows(serviceSchedule));
         const selectedTab = this.selectedOrderTab();
         const availableTabs = new Set(['work-order', ...workflowSteps.map((step) => `step:${step.idDoc}`)]);
         const defaultTab = this.getDefaultTabFromSteps(workflowSteps);

@@ -5,7 +5,17 @@ import { switchMap, take } from 'rxjs';
 
 import { EquipmentModalComponent } from '../../components/equipment-modal/equipment-modal.component';
 import { ToastService } from '../../services/toast.service';
-import { CalibrationRecord, CalibrationRow, EquipmentCertificate, RepeatabilityRecord, UserReading, equipment } from '../../interfaces/meditionType.interface';
+import {
+  CalibrationRecord,
+  CalibrationRow,
+  EquipmentCertificate,
+  LightingCalibrationRecord,
+  LightingCertificateRow,
+  LightingMeasurementRow,
+  RepeatabilityRecord,
+  UserReading,
+  equipment,
+} from '../../interfaces/meditionType.interface';
 import { EquipmentService } from '../../services/equipment.service';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
@@ -33,7 +43,7 @@ export class EquipoMedicionComponent {
   uploading = signal(false);
   editMode = signal(false);
   saving = signal(false);
-  activeTab = signal<'info' | 'certificates' | 'calibration' | 'rrr'>('info');
+  activeTab = signal<'info' | 'certificates' | 'calibration' | 'calibration-illumination' | 'rrr'>('info');
 
   // ── Certificates ──────────────────────────────────────────────────────────
   certificates = signal<EquipmentCertificate[]>([]);
@@ -46,6 +56,12 @@ export class EquipoMedicionComponent {
   selectedCalibrationRecord = signal<CalibrationRecord | null>(null);
   isNewCalibration = signal(false);
   isEditingCalibration = signal(false);
+  lightingCalibrationRecords = signal<LightingCalibrationRecord[]>([]);
+  loadingLightingCalibrations = signal(false);
+  savingLightingCalibration = signal(false);
+  isNewLightingCalibration = signal(false);
+  selectedLightingCalibrationRecord = signal<LightingCalibrationRecord | null>(null);
+  isEditingLightingCalibration = signal(false);
 
   calibrationForm = this.fb.group({
     certNumber:      ['', Validators.required],
@@ -56,6 +72,14 @@ export class EquipoMedicionComponent {
 
   rows25v = signal<CalibrationRow[]>(this.emptyRows());
   rows50v = signal<CalibrationRow[]>(this.emptyRows());
+  lightingCalibrationForm = this.fb.group({
+    calibrationDate: ['', Validators.required],
+    verificationDate: [''],
+    receptionDate: [''],
+  });
+  lightingReceptionRows = signal<LightingMeasurementRow[]>(this.emptyLightingMeasurementRows());
+  lightingVerificationRows = signal<LightingMeasurementRow[]>(this.emptyLightingMeasurementRows());
+  lightingCertificateRows = signal<LightingCertificateRow[]>(this.emptyLightingCertificateRows());
 
   fc25v = computed(() =>
     this.rows25v().map((r) =>
@@ -74,6 +98,12 @@ export class EquipoMedicionComponent {
   avg50v = computed(() => {
     const vals = this.fc50v().filter((v): v is number => v !== null);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  });
+  lightingFcp = computed(() => {
+    const values = this.lightingCertificateRows()
+      .map((row) => row.fc)
+      .filter((value): value is number => value !== null);
+    return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
   });
 
   // ── Repeatability & Reproducibility ──────────────────────────────────────
@@ -242,8 +272,19 @@ export class EquipoMedicionComponent {
   private loadRepeatabilityRecords(equipmentId: string): void {
     this.loadingRepeatability.set(true);
     this.equipmentService.getRepeatabilityRecords(equipmentId).pipe(take(1)).subscribe({
-      next: (items) => { this.repeatabilityRecords.set(items); this.loadingRepeatability.set(false); },
-      error: () => { this.loadingRepeatability.set(false); },
+      next: (items) => {
+        if (this.selectedEquipment()?.idDoc !== equipmentId) {
+          return;
+        }
+        this.repeatabilityRecords.set(items);
+        this.loadingRepeatability.set(false);
+      },
+      error: () => {
+        if (this.selectedEquipment()?.idDoc !== equipmentId) {
+          return;
+        }
+        this.loadingRepeatability.set(false);
+      },
     });
   }
 
@@ -306,19 +347,16 @@ export class EquipoMedicionComponent {
 
   selectEquipment(item: equipment): void {
     const isSame = this.selectedEquipment()?.idDoc === item.idDoc;
+    this.resetEquipmentDetailState();
+
     if (isSame) {
       this.selectedEquipment.set(null);
-      this.certificates.set([]);
-      this.calibrationRecords.set([]);
     } else {
       this.selectedEquipment.set(item);
       this.activeTab.set('info');
-      this.isNewCalibration.set(false);
-      this.selectedCalibrationRecord.set(null);
-      this.isNewRepeatability.set(false);
-      this.selectedRepeatabilityRecord.set(null);
       this.loadCertificates(item.idDoc);
       this.loadCalibrationRecords(item.idDoc);
+      this.loadLightingCalibrationRecords(item.idDoc);
       this.loadRepeatabilityRecords(item.idDoc);
     }
     this.editMode.set(false);
@@ -447,6 +485,155 @@ export class EquipoMedicionComponent {
     });
   }
 
+  openNewLightingCalibration(): void {
+    this.selectedLightingCalibrationRecord.set(null);
+    this.isEditingLightingCalibration.set(false);
+    this.lightingCalibrationForm.reset();
+    this.lightingReceptionRows.set(this.emptyLightingMeasurementRows());
+    this.lightingVerificationRows.set(this.emptyLightingMeasurementRows());
+    this.lightingCertificateRows.set(this.emptyLightingCertificateRows());
+    this.isNewLightingCalibration.set(true);
+  }
+
+  viewLightingCalibrationRecord(record: LightingCalibrationRecord): void {
+    this.selectedLightingCalibrationRecord.set(record);
+    this.isNewLightingCalibration.set(false);
+    this.isEditingLightingCalibration.set(false);
+    this.lightingCalibrationForm.patchValue({
+      calibrationDate: record.calibrationDate,
+      verificationDate: record.verificationDate ?? '',
+      receptionDate: record.receptionDate ?? '',
+    });
+    this.lightingReceptionRows.set(
+      record.laboratoryReceptionRows?.length ? record.laboratoryReceptionRows : this.emptyLightingMeasurementRows()
+    );
+    this.lightingVerificationRows.set(
+      record.verificationRows?.length ? record.verificationRows : this.emptyLightingMeasurementRows()
+    );
+    this.lightingCertificateRows.set(
+      record.certificateRows?.length ? record.certificateRows : this.emptyLightingCertificateRows()
+    );
+  }
+
+  cancelLightingCalibrationForm(): void {
+    this.isNewLightingCalibration.set(false);
+    this.isEditingLightingCalibration.set(false);
+    this.selectedLightingCalibrationRecord.set(null);
+  }
+
+  startEditLightingCalibration(): void {
+    this.isEditingLightingCalibration.set(true);
+  }
+
+  saveLightingCalibration(): void {
+    if (this.lightingCalibrationForm.invalid) {
+      this.lightingCalibrationForm.markAllAsTouched();
+      this.toastService.warning('Captura al menos la fecha de calibración para guardar.');
+      return;
+    }
+    const eq = this.selectedEquipment();
+    if (!eq) {
+      this.toastService.error('No se encontró un equipo válido para guardar la calibración.');
+      return;
+    }
+
+    this.savingLightingCalibration.set(true);
+    const v = this.lightingCalibrationForm.getRawValue();
+
+    this.authService.currentUser$.pipe(take(1)).subscribe((user) => {
+      const createdBy = user?.displayName || user?.email || user?.uid || '';
+
+      this.equipmentService.addLightingCalibrationRecord(eq.idDoc, {
+        calibrationDate: v.calibrationDate!,
+        verificationDate: v.verificationDate || undefined,
+        receptionDate: v.receptionDate || undefined,
+        laboratoryReceptionRows: this.lightingReceptionRows(),
+        verificationRows: this.lightingVerificationRows(),
+        certificateRows: this.lightingCertificateRows(),
+        fcp: this.lightingFcp(),
+        createdBy,
+      }).subscribe({
+        next: () => {
+          this.toastService.success('Calibración de iluminación registrada correctamente.');
+          this.savingLightingCalibration.set(false);
+          this.isNewLightingCalibration.set(false);
+          this.loadLightingCalibrationRecords(eq.idDoc);
+        },
+        error: () => {
+          this.toastService.error('Error al guardar la calibración de iluminación.');
+          this.savingLightingCalibration.set(false);
+        },
+      });
+    });
+  }
+
+  saveLightingCalibrationEdit(): void {
+    if (this.lightingCalibrationForm.invalid) {
+      this.lightingCalibrationForm.markAllAsTouched();
+      this.toastService.warning('Captura al menos la fecha de calibración para guardar.');
+      return;
+    }
+    const eq = this.selectedEquipment();
+    const record = this.selectedLightingCalibrationRecord();
+    if (!eq || !record) {
+      this.toastService.error('No se encontró una calibración de iluminación válida para actualizar.');
+      return;
+    }
+
+    this.savingLightingCalibration.set(true);
+    const v = this.lightingCalibrationForm.getRawValue();
+
+    this.equipmentService.updateLightingCalibrationRecord(eq.idDoc, record.idDoc, {
+      calibrationDate: v.calibrationDate!,
+      verificationDate: v.verificationDate || undefined,
+      receptionDate: v.receptionDate || undefined,
+      laboratoryReceptionRows: this.lightingReceptionRows(),
+      verificationRows: this.lightingVerificationRows(),
+      certificateRows: this.lightingCertificateRows(),
+      fcp: this.lightingFcp(),
+    }).subscribe({
+      next: () => {
+        this.toastService.success('Calibración de iluminación actualizada correctamente.');
+        this.savingLightingCalibration.set(false);
+        this.isEditingLightingCalibration.set(false);
+        this.loadLightingCalibrationRecords(eq.idDoc);
+        this.selectedLightingCalibrationRecord.set({
+          ...record,
+          calibrationDate: v.calibrationDate!,
+          verificationDate: v.verificationDate || undefined,
+          receptionDate: v.receptionDate || undefined,
+          laboratoryReceptionRows: this.lightingReceptionRows(),
+          verificationRows: this.lightingVerificationRows(),
+          certificateRows: this.lightingCertificateRows(),
+          fcp: this.lightingFcp(),
+        });
+      },
+      error: () => {
+        this.toastService.error('Error al actualizar la calibración de iluminación.');
+        this.savingLightingCalibration.set(false);
+      },
+    });
+  }
+
+  updateLightingMeasurementRow(table: 'reception' | 'verification', index: number, raw: string): void {
+    const value = this.parseLocalizedNumber(raw);
+    const sig = table === 'reception' ? this.lightingReceptionRows : this.lightingVerificationRows;
+    sig.update((rows) => {
+      const updated = [...rows];
+      updated[index] = { ...updated[index], lux: value };
+      return updated;
+    });
+  }
+
+  updateLightingCertificateRow(index: number, field: 'fc' | 'relativeUncertainty', raw: string): void {
+    const value = this.parseLocalizedNumber(raw);
+    this.lightingCertificateRows.update((rows) => {
+      const updated = [...rows];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  }
+
   // ── Equipment edit ────────────────────────────────────────────────────────
 
   startEdit(): void {
@@ -567,16 +754,57 @@ export class EquipoMedicionComponent {
   private loadCertificates(equipmentId: string): void {
     this.loadingCertificates.set(true);
     this.equipmentService.getCertificates(equipmentId).pipe(take(1)).subscribe({
-      next: (items) => { this.certificates.set(items); this.loadingCertificates.set(false); },
-      error: () => { this.loadingCertificates.set(false); },
+      next: (items) => {
+        if (this.selectedEquipment()?.idDoc !== equipmentId) {
+          return;
+        }
+        this.certificates.set(items);
+        this.loadingCertificates.set(false);
+      },
+      error: () => {
+        if (this.selectedEquipment()?.idDoc !== equipmentId) {
+          return;
+        }
+        this.loadingCertificates.set(false);
+      },
     });
   }
 
   private loadCalibrationRecords(equipmentId: string): void {
     this.loadingCalibrations.set(true);
     this.equipmentService.getCalibrationRecords(equipmentId).pipe(take(1)).subscribe({
-      next: (items) => { this.calibrationRecords.set(items); this.loadingCalibrations.set(false); },
-      error: () => { this.loadingCalibrations.set(false); },
+      next: (items) => {
+        if (this.selectedEquipment()?.idDoc !== equipmentId) {
+          return;
+        }
+        this.calibrationRecords.set(items);
+        this.loadingCalibrations.set(false);
+      },
+      error: () => {
+        if (this.selectedEquipment()?.idDoc !== equipmentId) {
+          return;
+        }
+        this.loadingCalibrations.set(false);
+      },
+    });
+  }
+
+  private loadLightingCalibrationRecords(equipmentId: string): void {
+    this.loadingLightingCalibrations.set(true);
+    this.equipmentService.getLightingCalibrationRecords(equipmentId).pipe(take(1)).subscribe({
+      next: (items) => {
+        if (this.selectedEquipment()?.idDoc !== equipmentId) {
+          return;
+        }
+        this.lightingCalibrationRecords.set(items);
+        this.loadingLightingCalibrations.set(false);
+      },
+      error: () => {
+        if (this.selectedEquipment()?.idDoc !== equipmentId) {
+          return;
+        }
+        this.loadingLightingCalibrations.set(false);
+      },
     });
   }
 
@@ -592,5 +820,63 @@ export class EquipoMedicionComponent {
     return Array.from({ length: 11 }, () => ({
       patron: null, valorMedido: null, incertidumbreOhm: null, incertidumbrePct: null,
     }));
+  }
+
+  private resetEquipmentDetailState(): void {
+    this.editMode.set(false);
+    this.activeTab.set('info');
+
+    this.certificates.set([]);
+    this.calibrationRecords.set([]);
+    this.lightingCalibrationRecords.set([]);
+    this.repeatabilityRecords.set([]);
+
+    this.loadingCertificates.set(false);
+    this.loadingCalibrations.set(false);
+    this.loadingLightingCalibrations.set(false);
+    this.loadingRepeatability.set(false);
+
+    this.isNewCalibration.set(false);
+    this.isEditingCalibration.set(false);
+    this.selectedCalibrationRecord.set(null);
+    this.calibrationForm.reset({ voltage: 'Ambos' });
+    this.rows25v.set(this.emptyRows());
+    this.rows50v.set(this.emptyRows());
+
+    this.isNewLightingCalibration.set(false);
+    this.isEditingLightingCalibration.set(false);
+    this.selectedLightingCalibrationRecord.set(null);
+    this.lightingCalibrationForm.reset();
+    this.lightingReceptionRows.set(this.emptyLightingMeasurementRows());
+    this.lightingVerificationRows.set(this.emptyLightingMeasurementRows());
+    this.lightingCertificateRows.set(this.emptyLightingCertificateRows());
+
+    this.isNewRepeatability.set(false);
+    this.isEditingRepeatability.set(false);
+    this.selectedRepeatabilityRecord.set(null);
+    this.selectedUserIds.set([]);
+    this.rrReadings.set({});
+  }
+
+  private emptyLightingMeasurementRows(): LightingMeasurementRow[] {
+    return [30, 40, 50, 60, 70].map((distanceCm) => ({ distanceCm, lux: null }));
+  }
+
+  private emptyLightingCertificateRows(): LightingCertificateRow[] {
+    return [4000, 2000, 1000, 700, 500, 300, 200, 100, 50, 20].map((illumination) => ({
+      illumination,
+      fc: null,
+      relativeUncertainty: null,
+    }));
+  }
+
+  private parseLocalizedNumber(raw: string): number | null {
+    const normalized = raw.trim().replace(',', '.');
+    if (!normalized) {
+      return null;
+    }
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 }

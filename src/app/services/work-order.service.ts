@@ -24,6 +24,7 @@ import { equipment } from '../interfaces/meditionType.interface';
 import {
   workOrder,
   workOrderEquipment,
+  WorkOrderServiceScheduleItem,
   workOrderStep,
   WorkOrderClientVisitSignature,
 } from '../interfaces/workOrder.interface';
@@ -211,6 +212,47 @@ export class WorkOrderService {
         snapshot.docs.map((docSnapshot) => this.toWorkOrderEquipment(docSnapshot.id, docSnapshot.data()))
       )
     );
+  }
+
+  getServiceSchedule(workOrderId: string): Observable<WorkOrderServiceScheduleItem[]> {
+    const scheduleRef = collection(this.firestore, 'workOrder', workOrderId, 'serviceSchedule');
+    const scheduleQuery = query(scheduleRef, orderBy('order'));
+
+    return from(getDocs(scheduleQuery)).pipe(
+      map((snapshot) =>
+        snapshot.docs.map((docSnapshot) =>
+          this.toWorkOrderServiceScheduleItem(docSnapshot.id, docSnapshot.data())
+        )
+      )
+    );
+  }
+
+  saveServiceSchedule(workOrderId: string, items: WorkOrderServiceScheduleItem[]): Observable<void> {
+    const batch = writeBatch(this.firestore);
+
+    items.forEach((item) => {
+      const itemRef = doc(this.firestore, 'workOrder', workOrderId, 'serviceSchedule', item.idDoc);
+      batch.set(
+        itemRef,
+        {
+          ...this.removeUndefinedFields({
+            workOrderId,
+            activityKey: item.activityKey,
+            activityLabel: item.activityLabel,
+            responsibleUserId: item.responsibleUserId || null,
+            responsibleUserName: item.responsibleUserName || null,
+            scheduledDate: item.scheduledDate ?? null,
+            order: item.order,
+            active: item.active,
+          }),
+          createdAt: item.createdAt ?? serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+
+    return from(batch.commit()).pipe(map(() => void 0));
   }
 
   getWorkflowStepEquipments(
@@ -524,6 +566,8 @@ export class WorkOrderService {
       signatoryName: data['signatoryName'] ? String(data['signatoryName']) : undefined,
       observerName: data['observerName'] ? String(data['observerName']) : undefined,
       observationDate: this.toDate(data['observationDate']),
+      startTime: data['startTime'] ? String(data['startTime']) : undefined,
+      endTime: data['endTime'] ? String(data['endTime']) : undefined,
       cableResistance: data['cableResistance'] != null ? Number(data['cableResistance']) : undefined,
       impartiality: (data['impartiality'] as workOrder['impartiality']) ?? undefined,
       createdUser: String(data['createdUser'] ?? ''),
@@ -539,12 +583,13 @@ export class WorkOrderService {
   private async deleteWorkOrderInternal(workOrderId: string): Promise<void> {
     await this.deleteSubcollectionDocs(workOrderId, 'workflowSteps');
     await this.deleteSubcollectionDocs(workOrderId, 'equipments');
+    await this.deleteSubcollectionDocs(workOrderId, 'serviceSchedule');
     await deleteDoc(doc(this.firestore, 'workOrder', workOrderId));
   }
 
   private async deleteSubcollectionDocs(
     workOrderId: string,
-    subcollectionName: 'workflowSteps' | 'equipments'
+    subcollectionName: 'workflowSteps' | 'equipments' | 'serviceSchedule'
   ): Promise<void> {
     const subcollectionRef = collection(this.firestore, 'workOrder', workOrderId, subcollectionName);
     const snapshot = await getDocs(subcollectionRef);
@@ -613,6 +658,25 @@ export class WorkOrderService {
       signatureDataUrl: String(data['signatureDataUrl'] ?? ''),
       updatedByUserId: data['updatedByUserId'] ? String(data['updatedByUserId']) : undefined,
       updatedByUserName: data['updatedByUserName'] ? String(data['updatedByUserName']) : undefined,
+      updatedAt: this.toDate(data['updatedAt']),
+    };
+  }
+
+  private toWorkOrderServiceScheduleItem(
+    id: string,
+    data: Record<string, unknown>
+  ): WorkOrderServiceScheduleItem {
+    return {
+      idDoc: id,
+      workOrderId: String(data['workOrderId'] ?? ''),
+      activityKey: String(data['activityKey'] ?? '') as WorkOrderServiceScheduleItem['activityKey'],
+      activityLabel: String(data['activityLabel'] ?? ''),
+      responsibleUserId: data['responsibleUserId'] ? String(data['responsibleUserId']) : undefined,
+      responsibleUserName: data['responsibleUserName'] ? String(data['responsibleUserName']) : undefined,
+      scheduledDate: this.toDate(data['scheduledDate']),
+      order: Number(data['order'] ?? 0),
+      active: Boolean(data['active']),
+      createdAt: this.toDate(data['createdAt']) ?? new Date(),
       updatedAt: this.toDate(data['updatedAt']),
     };
   }

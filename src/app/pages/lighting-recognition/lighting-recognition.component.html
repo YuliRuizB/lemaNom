@@ -1,0 +1,156 @@
+<section class="lighting-recognition">
+  <article class="lighting-recognition__card">
+    <div class="lighting-recognition__toolbar">
+      <button class="lighting-recognition__btn lighting-recognition__btn--primary" type="button" (click)="openNewArea()">
+        + Agregar área
+      </button>
+
+      @if (areas().length) {
+        <div class="lighting-recognition__areas">
+          @for (area of areas(); track area.id) {
+            <button
+              class="lighting-recognition__area-chip"
+              type="button"
+              [class.lighting-recognition__area-chip--active]="selectedAreaId() === area.id"
+              (click)="selectArea(area)"
+            >
+              {{ area.name }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    @if (showEditor()) {
+      <div class="lighting-recognition__editor">
+        <h4 class="lighting-recognition__editor-title">
+          {{ editingAreaId() ? 'Editar área' : 'Nueva área' }}
+        </h4>
+
+        <div class="lighting-recognition__form">
+          <div class="lighting-recognition__field">
+            <label class="lighting-recognition__label">Área</label>
+            <input
+              class="lighting-recognition__input"
+              type="text"
+              placeholder=""
+              [ngModel]="draftAreaName()"
+              (ngModelChange)="draftAreaName.set($event)"
+            />
+          </div>
+
+          <div class="lighting-recognition__field">
+            <label class="lighting-recognition__label">Descripción del Área</label>
+            <input
+              class="lighting-recognition__input"
+              type="text"
+              placeholder=""
+              [ngModel]="draftAreaDescription()"
+              (ngModelChange)="draftAreaDescription.set($event)"
+            />
+          </div>
+
+          <div class="lighting-recognition__field lighting-recognition__field--wide">
+            <label class="lighting-recognition__label">Nivel mínimo de iluminación</label>
+            <div class="lighting-recognition__levels">
+              <div class="lighting-recognition__levels-title">Nivel mínimo de iluminación</div>
+              <div class="lighting-recognition__levels-grid">
+                @for (level of minimumLightingLevelOptions; track level) {
+                  <label
+                    class="lighting-recognition__level-cell"
+                    [class.lighting-recognition__level-cell--active]="isMinimumLightingLevelSelected(level)"
+                  >
+                    <span class="lighting-recognition__level-value">{{ level }}</span>
+                    <input
+                      class="lighting-recognition__level-input"
+                      type="checkbox"
+                      [checked]="isMinimumLightingLevelSelected(level)"
+                      (change)="toggleMinimumLightingLevel(level)"
+                    />
+                  </label>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="lighting-recognition__field lighting-recognition__field--wide">
+            <label class="lighting-recognition__label">Descripción de área</label>
+            <div class="lighting-recognition__surface-table">
+              <div class="lighting-recognition__surface-header">Paredes</div>
+              <div class="lighting-recognition__surface-header">Pisos</div>
+              <div class="lighting-recognition__surface-header">Techos</div>
+
+              <div class="lighting-recognition__surface-subheader">Color</div>
+              <div class="lighting-recognition__surface-subheader">Acabado</div>
+              <div class="lighting-recognition__surface-subheader">Color</div>
+              <div class="lighting-recognition__surface-subheader">Acabado</div>
+              <div class="lighting-recognition__surface-subheader">Color</div>
+              <div class="lighting-recognition__surface-subheader">Acabado</div>
+
+              <input
+                class="lighting-recognition__surface-input"
+                type="text"
+                [ngModel]="draftWallsColor()"
+                (ngModelChange)="draftWallsColor.set($event)"
+              />
+              <input
+                class="lighting-recognition__surface-input"
+                type="text"
+                [ngModel]="draftWallsFinish()"
+                (ngModelChange)="draftWallsFinish.set($event)"
+              />
+              <input
+                class="lighting-recognition__surface-input"
+                type="text"
+                [ngModel]="draftFloorsColor()"
+                (ngModelChange)="draftFloorsColor.set($event)"
+              />
+              <input
+                class="lighting-recognition__surface-input"
+                type="text"
+                [ngModel]="draftFloorsFinish()"
+                (ngModelChange)="draftFloorsFinish.set($event)"
+              />
+              <input
+                class="lighting-recognition__surface-input"
+                type="text"
+                [ngModel]="draftCeilingsColor()"
+                (ngModelChange)="draftCeilingsColor.set($event)"
+              />
+              <input
+                class="lighting-recognition__surface-input"
+                type="text"
+                [ngModel]="draftCeilingsFinish()"
+                (ngModelChange)="draftCeilingsFinish.set($event)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="lighting-recognition__actions">
+          <button class="lighting-recognition__btn lighting-recognition__btn--primary" type="button" (click)="saveArea()">
+            {{ editingAreaId() ? 'Guardar cambios' : 'Guardar área' }}
+          </button>
+          <button class="lighting-recognition__btn" type="button" (click)="cancelEdit()">
+            Cancelar
+          </button>
+          @if (editingAreaId()) {
+            <button
+              class="lighting-recognition__btn lighting-recognition__btn--danger"
+              type="button"
+              (click)="deleteArea(editingAreaId())"
+            >
+              Eliminar
+            </button>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="lighting-recognition__empty-state">
+        <p class="lighting-recognition__empty">
+          Selecciona <strong>Agregar área</strong> para capturar la información.
+        </p>
+      </div>
+    }
+  </article>
+</section>

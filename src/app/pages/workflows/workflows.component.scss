@@ -100,6 +100,17 @@
   }
 }
 
+.wf-action {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid #dfe1e6;
+  border-radius: 0.45rem;
+  background: var(--lema-white);
+  color: var(--lema-navy);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 /* Modal */
 .modal-backdrop {
   position: fixed;

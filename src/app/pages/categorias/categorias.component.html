@@ -163,7 +163,7 @@
               <div class="service-form__actions">
                 <button class="btn btn--ghost" type="button" (click)="cancelAddService()">Cancelar</button>
                 <button class="btn btn--primary" type="submit" [disabled]="serviceSaving()">
-                  {{ serviceSaving() ? 'Guardando…' : 'Guardar servicio' }}
+                  {{ serviceSaving() ? 'Guardando…' : (editingServiceId() ? 'Guardar cambios' : 'Guardar servicio') }}
                 </button>
               </div>
             </form>
@@ -198,6 +198,12 @@
                       <span class="info-item__label">Creado</span>
                       <span class="info-item__value">{{ service.createdAt | date: 'dd/MM/yyyy' }}</span>
                     </div>
+                  </div>
+
+                  <div class="table-actions">
+                    <button class="table-action table-action--edit" type="button" (click)="openEditServiceForm(service)">
+                      Editar
+                    </button>
                   </div>
                 </article>
               }

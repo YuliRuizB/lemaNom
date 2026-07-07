@@ -38,6 +38,7 @@ export class CategoriasComponent {
   saving = signal(false);
   serviceSaving = signal(false);
   editingCategoryId = signal<string | null>(null);
+  editingServiceId = signal<string | null>(null);
   selectedCategory = signal<CategoryView | null>(null);
   activeTab = signal<CategoryTab>('info');
   customerContext = signal<Customer | null>(null);
@@ -90,6 +91,7 @@ export class CategoriasComponent {
     this.activeTab.set('info');
     this.showAddForm.set(false);
     this.showAddServiceForm.set(false);
+    this.editingServiceId.set(null);
 
     if (isSame) {
       this.categoryServices.set([]);
@@ -132,10 +134,25 @@ export class CategoriasComponent {
       year: this.currentYearCode(),
       active: true,
     });
+    this.editingServiceId.set(null);
+    this.showAddServiceForm.set(true);
+  }
+
+  openEditServiceForm(service: nomCategoryServices): void {
+    this.serviceForm.reset({
+      name: service.name,
+      prefix: service.prefix,
+      codeService: String(service.codeService).padStart(2, '0'),
+      codeCustomer: service.codeCustomer,
+      year: String(service.year).padStart(2, '0'),
+      active: service.active,
+    });
+    this.editingServiceId.set(service.idDoc);
     this.showAddServiceForm.set(true);
   }
 
   cancelAddService(): void {
+    this.editingServiceId.set(null);
     this.showAddServiceForm.set(false);
   }
 
@@ -213,6 +230,7 @@ export class CategoriasComponent {
     const normalizedCodeService = value.codeService!.trim();
     const normalizedName = value.name!.trim();
     const expectedYear = this.currentYearCode();
+    const editingServiceId = this.editingServiceId();
 
     if (!/^[A-Z0-9]{2,3}$/.test(normalizedPrefix)) {
       this.toastService.warning('El prefix del servicio debe tener 2 o 3 caracteres alfanuméricos.');
@@ -230,16 +248,25 @@ export class CategoriasComponent {
     }
 
     this.serviceSaving.set(true);
+    const request$ = editingServiceId
+      ? this.categoryService.updateCategoryService(selectedCategory.idDoc, editingServiceId, {
+          name: normalizedName,
+          prefix: normalizedPrefix,
+          codeService: Number(normalizedCodeService),
+          codeCustomer,
+          year: Number(expectedYear),
+          active: value.active ?? true,
+        })
+      : this.categoryService.createCategoryService(selectedCategory.idDoc, {
+          name: normalizedName,
+          prefix: normalizedPrefix,
+          codeService: Number(normalizedCodeService),
+          codeCustomer,
+          year: Number(expectedYear),
+          active: value.active ?? true,
+        }).pipe(map(() => void 0));
 
-    this.categoryService
-      .createCategoryService(selectedCategory.idDoc, {
-        name: normalizedName,
-        prefix: normalizedPrefix,
-        codeService: Number(normalizedCodeService),
-        codeCustomer,
-        year: Number(expectedYear),
-        active: value.active ?? true,
-      })
+    request$
       .pipe(
         finalize(() => {
           this.serviceSaving.set(false);
@@ -247,13 +274,16 @@ export class CategoriasComponent {
       )
       .subscribe({
         next: () => {
-          this.toastService.success('Servicio agregado correctamente.');
+          this.toastService.success(
+            editingServiceId ? 'Servicio actualizado correctamente.' : 'Servicio agregado correctamente.'
+          );
           this.showAddServiceForm.set(false);
+          this.editingServiceId.set(null);
           this.loadCategoryServices(selectedCategory.idDoc);
           this.loadCategories();
         },
         error: (error: unknown) => {
-          console.error('Error creating category service', error);
+          console.error('Error saving category service', error);
           this.toastService.error('No fue posible guardar el servicio.');
         },
       });

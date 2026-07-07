@@ -37,6 +37,8 @@ export interface workOrder{
   // observador y fecha de observación
   observerName?: string;
   observationDate?: Date;
+  startTime?: string;
+  endTime?: string;
   cableResistance?: number;
 
   // llenado de Gestion de la imparcialidad
@@ -76,6 +78,29 @@ export interface WorkOrderClientVisitSignature {
   signatureDataUrl: string;
   updatedByUserId?: string;
   updatedByUserName?: string;
+  updatedAt?: Date;
+}
+
+export type WorkOrderServiceScheduleActivity =
+  | 'reconocimiento'
+  | 'medicion'
+  | 'plano'
+  | 'generar_y_revisar_informe'
+  | 'revision_formato_campo'
+  | 'impresion_informe'
+  | 'entrega_y_facturacion';
+
+export interface WorkOrderServiceScheduleItem {
+  idDoc: string; // sugerido: 01-reconocimiento, 02-medicion, etc.
+  workOrderId: string;
+  activityKey: WorkOrderServiceScheduleActivity;
+  activityLabel: string;
+  responsibleUserId?: string;
+  responsibleUserName?: string;
+  scheduledDate?: Date;
+  order: number;
+  active: boolean;
+  createdAt: Date;
   updatedAt?: Date;
 }
 

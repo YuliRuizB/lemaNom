@@ -23,6 +23,7 @@ export class WorkflowsComponent {
   loading = signal(true);
   showModal = signal(false);
   saving = signal(false);
+  editingWorkflowUid = signal<string | null>(null);
 
   readonly pageSize = 10;
   currentPage = signal(1);
@@ -60,10 +61,25 @@ export class WorkflowsComponent {
 
   openModal(): void {
     this.form.reset({ active: true });
+    this.editingWorkflowUid.set(null);
     this.showModal.set(true);
   }
 
-  cancelModal(): void { this.showModal.set(false); }
+  openEditModal(workflow: WorkflowStepCatalog): void {
+    this.form.reset({
+      code: workflow.code,
+      name: workflow.name,
+      description: workflow.description || '',
+      active: workflow.active,
+    });
+    this.editingWorkflowUid.set(workflow.uid);
+    this.showModal.set(true);
+  }
+
+  cancelModal(): void {
+    this.showModal.set(false);
+    this.editingWorkflowUid.set(null);
+  }
 
   isFieldInvalid(field: string): boolean {
     const c = this.form.get(field);
@@ -74,21 +90,28 @@ export class WorkflowsComponent {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
     const v = this.form.getRawValue();
-
-    this.workflowService.createWorkflow({
+    const editingUid = this.editingWorkflowUid();
+    const payload = {
       code:        v.code!.trim(),
       name:        v.name!.trim(),
       description: v.description?.trim() || undefined,
       active:      v.active!,
-    } as Omit<WorkflowStepCatalog, 'uid'>).subscribe({
+    } as Omit<WorkflowStepCatalog, 'uid'>;
+
+    const request$ = editingUid
+      ? this.workflowService.updateWorkflow(editingUid, payload)
+      : this.workflowService.createWorkflow(payload);
+
+    request$.subscribe({
       next: () => {
-        this.toastService.success('Flujo creado correctamente.');
+        this.toastService.success(editingUid ? 'Flujo actualizado correctamente.' : 'Flujo creado correctamente.');
         this.showModal.set(false);
+        this.editingWorkflowUid.set(null);
         this.saving.set(false);
         this.load();
       },
       error: () => {
-        this.toastService.error('Error al crear el flujo.');
+        this.toastService.error(editingUid ? 'Error al actualizar el flujo.' : 'Error al crear el flujo.');
         this.saving.set(false);
       },
     });

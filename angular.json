@@ -29,6 +29,11 @@
                 "input": "public"
               },
               {
+                "glob": "OT_Base.docx",
+                "input": "src",
+                "output": "assets/documents"
+              },
+              {
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"

@@ -94,8 +94,9 @@
             <th>Fecha emisión</th>
             <th>Asignado a</th>
             <th>Categorías</th>
+            <th>Servicio</th>
             <th>Clave</th>
-          <th>Razón social</th>
+            <th>Razón social</th>
             <th>Flujo</th>
           </tr>
         </thead>
@@ -130,6 +131,7 @@
               <td>{{ order.createdAt | date: 'dd/MM/yyyy' }}</td>
               <td>{{ order.userAssignedName || '—' }}</td>
               <td class="wo-table__secondary">{{ order.nomCategoryName || '—' }}</td>
+              <td>{{ order.serviceName || order.nomCategoryServiceName || '—' }}</td>
               <td class="wo-table__code">{{ order.code }}</td>
               <td>{{ order.clientName || '—' }}</td>
               <td class="wo-table__flow-cell">
@@ -147,7 +149,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="8" class="wo-table__state">Sin órdenes de trabajo registradas.</td>
+              <td colspan="9" class="wo-table__state">Sin órdenes de trabajo registradas.</td>
             </tr>
           }
         </tbody>
@@ -477,6 +479,28 @@
               (ngModelChange)="selectedOrderObservationDate.set($event)"
             />
           </div>
+          @if (!shouldHideOrderTimesInDetail()) {
+            <div class="wo-client-card__item wo-client-card__item--observer">
+              <span class="wo-client-card__label">Hora inicial</span>
+              <input
+                class="wo-client-card__input"
+                type="time"
+                [ngModel]="selectedOrderStartTime()"
+                [disabled]="!isSelectedOrderDetailEditable()"
+                (ngModelChange)="selectedOrderStartTime.set($event)"
+              />
+            </div>
+            <div class="wo-client-card__item wo-client-card__item--observer">
+              <span class="wo-client-card__label">Hora final</span>
+              <input
+                class="wo-client-card__input"
+                type="time"
+                [ngModel]="selectedOrderEndTime()"
+                [disabled]="!isSelectedOrderDetailEditable()"
+                (ngModelChange)="selectedOrderEndTime.set($event)"
+              />
+            </div>
+          }
           <div class="wo-client-card__item wo-client-card__item--save">
             <button
               class="btn btn--primary btn--sm"
@@ -488,18 +512,20 @@
             </button>
           </div>
           <div class="wo-client-card__row-break"></div>
-          <div class="wo-client-card__item">
-            <span class="wo-client-card__label">Valor de resistencia de los cables</span>
-            <input
-              class="wo-client-card__input"
-              type="number"
-              step="any"
-              placeholder="—"
-              [ngModel]="selectedOrderCableResistance()"
-              [disabled]="!isSelectedOrderDetailEditable()"
-              (ngModelChange)="selectedOrderCableResistance.set($event)"
-            />
-          </div>
+          @if (!shouldHideCableResistanceInDetail()) {
+            <div class="wo-client-card__item">
+              <span class="wo-client-card__label">Valor de resistencia de los cables</span>
+              <input
+                class="wo-client-card__input"
+                type="number"
+                step="any"
+                placeholder="—"
+                [ngModel]="selectedOrderCableResistance()"
+                [disabled]="!isSelectedOrderDetailEditable()"
+                (ngModelChange)="selectedOrderCableResistance.set($event)"
+              />
+            </div>
+          }
         </div>
 
         <div class="wo-equipment-section">
@@ -598,6 +624,56 @@
                 </div>
               </div>
             }
+          </div>
+
+          <div class="service-schedule">
+            <div class="service-schedule__header">
+              <h3 class="service-schedule__title">Programación del Servicio</h3>
+            </div>
+
+            <div class="service-schedule__table-wrap">
+              <table class="service-schedule__table">
+                <thead>
+                  <tr>
+                    <th>Actividad</th>
+                    <th>Responsable</th>
+                    <th>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of selectedOrderServiceSchedule(); track row.idDoc) {
+                    <tr>
+                      <td>{{ row.activityLabel }}</td>
+                      <td>
+                        <select
+                          class="service-schedule__input"
+                          [ngModel]="row.responsibleUserId"
+                          [disabled]="!isSelectedOrderDetailEditable()"
+                          (ngModelChange)="updateServiceScheduleResponsible(row.idDoc, $event)"
+                        >
+                          <option value="">Selecciona responsable</option>
+                          <option value="NA">NA</option>
+                          @for (user of availableSignatories(); track user.idDoc) {
+                            <option [value]="user.idDoc">
+                              {{ getFormalUserName(user) }}
+                            </option>
+                          }
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          class="service-schedule__input"
+                          type="date"
+                          [ngModel]="row.scheduledDateText"
+                          [disabled]="!isSelectedOrderDetailEditable()"
+                          (ngModelChange)="updateServiceScheduleDate(row.idDoc, $event)"
+                        />
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div class="form-field impartiality-section__observations">
@@ -727,6 +803,30 @@
         @if (shouldRenderEvaluationStep()) {
           <section class="wo-step-page">
             <app-evaluation />
+          </section>
+        }
+
+        @if (shouldRenderLightingRecognitionStep()) {
+          <section class="wo-step-page">
+            <app-lighting-recognition [workOrder]="selectedOrder()!" />
+          </section>
+        }
+
+        @if (shouldRenderLightingEvaluationStep()) {
+          <section class="wo-step-page">
+            <app-lighting-evaluation />
+          </section>
+        }
+
+        @if (shouldRenderLightingMeasurementsStep()) {
+          <section class="wo-step-page">
+            <app-lighting-measurements />
+          </section>
+        }
+
+        @if (shouldRenderLightingReviewStep()) {
+          <section class="wo-step-page">
+            <app-lighting-review />
           </section>
         }
 

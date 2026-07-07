@@ -18,11 +18,12 @@
           <th>Nombre</th>
           <th>Descripción</th>
           <th>Activo</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         @if (loading()) {
-          <tr><td colspan="4" class="wf-table__state">Cargando…</td></tr>
+          <tr><td colspan="5" class="wf-table__state">Cargando…</td></tr>
         } @else {
           @for (wf of pagedWorkflows(); track wf.uid) {
             <tr>
@@ -34,9 +35,12 @@
                   {{ wf.active ? 'Activo' : 'Inactivo' }}
                 </span>
               </td>
+              <td>
+                <button class="wf-action" type="button" (click)="openEditModal(wf)">Editar</button>
+              </td>
             </tr>
           } @empty {
-            <tr><td colspan="4" class="wf-table__state">Sin flujos registrados.</td></tr>
+            <tr><td colspan="5" class="wf-table__state">Sin flujos registrados.</td></tr>
           }
         }
       </tbody>
@@ -55,14 +59,14 @@
   </div>
 </section>
 
-<!-- Modal agregar flujo -->
+<!-- Modal flujo -->
 @if (showModal()) {
   <div class="modal-backdrop" (click)="cancelModal()"></div>
   <div class="modal">
     <header class="modal__header">
       <div>
         <p class="modal__eyebrow">WorkFlows</p>
-        <h2 class="modal__title">Agregar flujo</h2>
+        <h2 class="modal__title">{{ editingWorkflowUid() ? 'Editar flujo' : 'Agregar flujo' }}</h2>
       </div>
       <button class="modal__close" type="button" (click)="cancelModal()">&#x2715;</button>
     </header>
@@ -96,7 +100,7 @@
       <footer class="modal__footer">
         <button class="btn btn--ghost" type="button" (click)="cancelModal()">Cancelar</button>
         <button class="btn btn--primary" type="submit" [disabled]="saving()">
-          {{ saving() ? 'Guardando…' : 'Guardar' }}
+          {{ saving() ? 'Guardando…' : (editingWorkflowUid() ? 'Guardar cambios' : 'Guardar') }}
         </button>
       </footer>
     </form>

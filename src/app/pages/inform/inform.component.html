@@ -3,7 +3,7 @@
     <div class="inform-progress-modal">
       <div class="inform-progress-modal__backdrop"></div>
       <div class="inform-progress-modal__dialog" role="dialog" aria-modal="true">
-        <p class="inform-progress-modal__title">Generando informe</p>
+        <p class="inform-progress-modal__title">{{ generationTitle() }}</p>
         <p class="inform-progress-modal__step">{{ generationStep() }}</p>
         <div class="inform-progress-modal__bar-track">
           <div
@@ -54,6 +54,21 @@
     @if (workOrderStatus !== 'completed') {
       <p class="inform-toolbar__notice">La orden debe estar completada para poder generar el informe.</p>
     }
+    <button
+      class="inform-toolbar__button"
+      type="button"
+      [disabled]="isGenerating()"
+      (click)="generateWorkOrderDocument()"
+    >
+      Generar Orden de Trabajo
+    </button>
+    <button
+      class="inform-toolbar__button"
+      type="button"
+      [disabled]="isGenerating() || workOrderStatus !== 'completed'"
+    >
+      Generar Registro de Mediciones
+    </button>
     <button
       class="inform-toolbar__button"
       type="button"
