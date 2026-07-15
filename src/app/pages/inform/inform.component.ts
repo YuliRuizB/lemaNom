@@ -6,6 +6,8 @@ import { catchError, firstValueFrom, forkJoin, of, switchMap, take } from 'rxjs'
 
 import { ClientPlant } from '../../interfaces/client.interface';
 import { InformNom22Data } from '../../interfaces/documents/informNom22.interface';
+import { MeditionBaseDocumentData } from '../../interfaces/documents/meditionBase.interface';
+import { MeditionTableRow } from '../../interfaces/documents/meditionTable.interface';
 import { WorkOrderBaseDocumentData } from '../../interfaces/documents/workOrderBase.interface';
 import { equipment } from '../../interfaces/meditionType.interface';
 import { Point } from '../../interfaces/measurements.interface';
@@ -56,6 +58,7 @@ export class InformComponent implements OnInit, OnChanges {
   private readonly measurementWorkflowId = 'ZHvnk9BPyKO6c4mJot5A';
   private readonly templatePath = '/base22.docx';
   private readonly workOrderTemplatePath = '/assets/documents/OT_Base.docx';
+  private readonly meditionTemplatePath = '/assets/documents/Medition_Base.docx';
   private workOrderService = inject(WorkOrderService);
   private clientService = inject(ClientService);
   private equipmentService = inject(EquipmentService);
@@ -71,13 +74,16 @@ export class InformComponent implements OnInit, OnChanges {
   generationTitle = signal('Generando informe');
   generationProgress = signal(0);
   generationStep = signal('');
+  canCancelGeneration = signal(false);
   showHumidityQuestion = false;
   activeTab = signal<'tables' | 'charts'>('tables');
   points = signal<Point[]>([]);
   measurementStep = signal<workOrderStep | null>(null);
   stepEquipments = signal<workOrderEquipment[]>([]);
   workOrderBaseData = signal<WorkOrderBaseDocumentData | null>(null);
+  meditionTableRows = computed(() => this.buildMeditionTableRows(this.points()));
   private humidityQuestionResolver: ((value: boolean | null) => void) | null = null;
+  private cancelGenerationRequested = false;
   readonly factorCorreccion = computed(
     () => this.stepEquipments().find((equipment) => equipment.promedioFC != null)?.promedioFC ?? null
   );
@@ -356,6 +362,8 @@ export class InformComponent implements OnInit, OnChanges {
     }
 
     this.isGenerating.set(true);
+    this.cancelGenerationRequested = false;
+    this.canCancelGeneration.set(true);
 
     try {
       const answer = await this.askHumidityControlQuestion();
@@ -369,6 +377,7 @@ export class InformComponent implements OnInit, OnChanges {
       this.showProgressModal.set(true);
 
       const includeHumidityControl = answer;
+      this.ensureGenerationNotCancelled();
       const informData = await this.buildInformData(includeHumidityControl);
       this.generationProgress.set(15);
 
@@ -383,6 +392,7 @@ export class InformComponent implements OnInit, OnChanges {
       this.generationProgress.set(30);
 
       this.generationStep.set('Procesando documento...');
+      this.ensureGenerationNotCancelled();
       const zip = await JSZip.loadAsync(templateBuffer);
       const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
 
@@ -391,6 +401,7 @@ export class InformComponent implements OnInit, OnChanges {
       }
 
       for (const xmlEntry of xmlEntries) {
+        this.ensureGenerationNotCancelled();
         const currentXml = await xmlEntry.async('string');
         const updatedXml = this.replaceTemplateValues(currentXml, informData);
         zip.file(xmlEntry.name, updatedXml);
@@ -398,21 +409,25 @@ export class InformComponent implements OnInit, OnChanges {
       this.generationProgress.set(50);
 
       this.generationStep.set('Capturando tablas...');
+      this.ensureGenerationNotCancelled();
       const tableImages = await this.captureReportTableImages(includeHumidityControl);
       this.generationProgress.set(65);
 
       this.generationStep.set('Capturando gráficas...');
+      this.ensureGenerationNotCancelled();
       const chartImages = await this.captureChartImages();
       const reportImages = [...tableImages, ...chartImages];
       this.generationProgress.set(78);
 
       if (reportImages.length) {
         this.generationStep.set('Integrando imágenes...');
+        this.ensureGenerationNotCancelled();
         await this.embedImagesIntoDocument(zip, reportImages);
         this.generationProgress.set(90);
       }
 
       this.generationStep.set('Generando archivo...');
+      this.ensureGenerationNotCancelled();
       const generatedDoc = await zip.generateAsync({
         type: 'uint8array',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -420,16 +435,22 @@ export class InformComponent implements OnInit, OnChanges {
       this.generationProgress.set(98);
 
       this.generationStep.set('Descargando...');
+      this.ensureGenerationNotCancelled();
       const fileName = `${(informData.inform_number || 'informe').replace(/[^\w.-]+/g, '_')}.docx`;
       this.downloadGeneratedDocument(generatedDoc, fileName);
       this.generationProgress.set(100);
       this.generationStep.set('¡Informe generado!');
     } catch (error) {
       console.error(error);
-      this.toastService.error('No fue posible generar el informe.');
-      this.showProgressModal.set(false);
+      if (this.cancelGenerationRequested) {
+        this.toastService.warning('Generación cancelada.');
+      } else {
+        this.toastService.error('No fue posible generar el informe.');
+        this.showProgressModal.set(false);
+      }
     } finally {
       this.isGenerating.set(false);
+      this.canCancelGeneration.set(false);
       setTimeout(() => this.showProgressModal.set(false), 900);
     }
   }
@@ -440,6 +461,8 @@ export class InformComponent implements OnInit, OnChanges {
     }
 
     this.isGenerating.set(true);
+    this.cancelGenerationRequested = false;
+    this.canCancelGeneration.set(true);
 
     try {
       this.generationTitle.set('Generando orden de trabajo');
@@ -469,6 +492,7 @@ export class InformComponent implements OnInit, OnChanges {
       this.generationProgress.set(45);
 
       this.generationStep.set('Procesando documento...');
+      this.ensureGenerationNotCancelled();
       const zip = await JSZip.loadAsync(templateBuffer);
       const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
 
@@ -477,6 +501,7 @@ export class InformComponent implements OnInit, OnChanges {
       }
 
       for (const xmlEntry of xmlEntries) {
+        this.ensureGenerationNotCancelled();
         const currentXml = await xmlEntry.async('string');
         const updatedXml = this.replaceWorkOrderTemplateValues(currentXml, workOrderData);
         zip.file(xmlEntry.name, updatedXml);
@@ -484,6 +509,7 @@ export class InformComponent implements OnInit, OnChanges {
 
       this.generationProgress.set(80);
       this.generationStep.set('Generando archivo...');
+      this.ensureGenerationNotCancelled();
       const generatedDoc = await zip.generateAsync({
         type: 'uint8array',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -491,16 +517,108 @@ export class InformComponent implements OnInit, OnChanges {
 
       this.generationProgress.set(95);
       this.generationStep.set('Descargando...');
+      this.ensureGenerationNotCancelled();
       const fileName = `${(workOrderData.ot_number || 'orden_trabajo').replace(/[^\w.-]+/g, '_')}.docx`;
       this.downloadGeneratedDocument(generatedDoc, fileName);
       this.generationProgress.set(100);
       this.generationStep.set('¡Orden de trabajo generada!');
     } catch (error) {
       console.error(error);
-      this.toastService.error('No fue posible generar la orden de trabajo.');
-      this.showProgressModal.set(false);
+      if (this.cancelGenerationRequested) {
+        this.toastService.warning('Generación cancelada.');
+      } else {
+        this.toastService.error('No fue posible generar la orden de trabajo.');
+        this.showProgressModal.set(false);
+      }
     } finally {
       this.isGenerating.set(false);
+      this.canCancelGeneration.set(false);
+      setTimeout(() => this.showProgressModal.set(false), 900);
+    }
+  }
+
+  async generateMeditionDocument(): Promise<void> {
+    if (!this.workOrderId || this.isGenerating()) {
+      return;
+    }
+
+    this.isGenerating.set(true);
+    this.cancelGenerationRequested = false;
+    this.canCancelGeneration.set(true);
+
+    try {
+      this.generationTitle.set('Generando registro de mediciones');
+      this.generationProgress.set(0);
+      this.generationStep.set('Cargando datos de la orden...');
+      this.showProgressModal.set(true);
+
+      const meditionData = await this.buildMeditionBaseData();
+      this.generationProgress.set(22);
+
+      this.generationStep.set('Descargando plantilla...');
+      const response = await fetch(this.meditionTemplatePath);
+
+      if (!response.ok) {
+        throw new Error('No fue posible leer la plantilla base del registro de mediciones.');
+      }
+
+      const templateBuffer = await response.arrayBuffer();
+      this.generationProgress.set(45);
+
+      this.generationStep.set('Procesando documento...');
+      this.ensureGenerationNotCancelled();
+      const zip = await JSZip.loadAsync(templateBuffer);
+      const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
+
+      if (!xmlEntries.length) {
+        throw new Error('La plantilla no contiene archivos XML de Word para reemplazar.');
+      }
+
+      for (const xmlEntry of xmlEntries) {
+        this.ensureGenerationNotCancelled();
+        const currentXml = await xmlEntry.async('string');
+        const updatedXml = this.replaceBraceTemplateValues(currentXml, meditionData);
+        zip.file(xmlEntry.name, updatedXml);
+      }
+
+      this.generationProgress.set(62);
+      this.generationStep.set('Capturando tabla de mediciones...');
+      this.ensureGenerationNotCancelled();
+      const meditionTableImage = await this.captureMeditionTableImage();
+
+      if (meditionTableImage) {
+        this.generationProgress.set(78);
+        this.generationStep.set('Integrando tabla al documento...');
+        this.ensureGenerationNotCancelled();
+        await this.embedImagesIntoDocument(zip, [meditionTableImage]);
+      }
+
+      this.generationProgress.set(82);
+      this.generationStep.set('Generando archivo...');
+      this.ensureGenerationNotCancelled();
+      const generatedDoc = await zip.generateAsync({
+        type: 'uint8array',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+      this.generationProgress.set(96);
+      this.generationStep.set('Descargando...');
+      this.ensureGenerationNotCancelled();
+      const fileName = `${(meditionData.inform_num || 'registro_mediciones').replace(/[^\w.-]+/g, '_')}.docx`;
+      this.downloadGeneratedDocument(generatedDoc, fileName);
+      this.generationProgress.set(100);
+      this.generationStep.set('¡Registro de mediciones generado!');
+    } catch (error) {
+      console.error(error);
+      if (this.cancelGenerationRequested) {
+        this.toastService.warning('Generación cancelada.');
+      } else {
+        this.toastService.error('No fue posible generar el registro de mediciones.');
+        this.showProgressModal.set(false);
+      }
+    } finally {
+      this.isGenerating.set(false);
+      this.canCancelGeneration.set(false);
       setTimeout(() => this.showProgressModal.set(false), 900);
     }
   }
@@ -625,6 +743,89 @@ export class InformComponent implements OnInit, OnChanges {
     };
   }
 
+  private async buildMeditionBaseData(): Promise<MeditionBaseDocumentData> {
+    const order = await firstValueFrom(this.workOrderService.getWorkOrderById(this.workOrderId));
+
+    if (!order) {
+      throw new Error('La orden de trabajo no fue encontrada.');
+    }
+
+    const [plant, equipments] = await Promise.all([
+      order.clientId && order.plantId
+        ? firstValueFrom(this.clientService.getClientPlantById(order.clientId, order.plantId))
+        : Promise.resolve(null),
+      firstValueFrom(this.workOrderService.getEquipments(this.workOrderId)),
+    ]);
+
+    const mainEquipment = equipments.find((equipment) => equipment.active) ?? equipments[0] ?? null;
+    const masterEquipment =
+      mainEquipment?.equipmentId
+        ? await firstValueFrom(this.equipmentService.getEquipmentById(mainEquipment.equipmentId))
+        : null;
+    const resolvedEquipment = this.mergeWorkOrderEquipmentWithMaster(mainEquipment, masterEquipment);
+    const measurementStep = this.measurementStep();
+
+    return {
+      inform_num: order.informNumber?.trim() || '',
+      client_name: order.clientName?.trim() || '',
+      plant_name: order.plantName?.trim() || plant?.name?.trim() || '',
+      plant_adress: this.buildClientAddress(plant),
+      plant_city: plant?.municipality?.trim() || '',
+      plant_cp: plant?.postalCode?.trim() || '',
+      contact_name: plant?.contactName?.trim() || '',
+      contact_num: plant?.contactPhone?.trim() || '',
+      medition_date: this.getMeditionDocumentDate(order, measurementStep),
+      equip_name: resolvedEquipment?.equipmentName?.trim() || '',
+      equip_identifier: resolvedEquipment?.equipmentType?.trim() || '',
+      equip_brand: resolvedEquipment?.equipmentBrand?.trim() || '',
+      equip_model: resolvedEquipment?.equipmentModel?.trim() || '',
+      equip_ns: resolvedEquipment?.equipmentNs?.trim() || '',
+      equip_range:
+        resolvedEquipment?.equipmentMeditionInterval?.trim() ||
+        this.getMeasurementInterval(order, resolvedEquipment),
+      signatary_name: order.signatoryName?.trim() || '',
+      value: '',
+      number: '',
+      medition_table: '{medition_table}',
+      comments: measurementStep?.observations?.trim() || '',
+    };
+  }
+
+  private buildMeditionTableRows(points: Point[]): MeditionTableRow[] {
+    return points.map((point) => ({
+      point_number: point.pointNumber,
+      area: point.location?.trim() || '',
+      electrode_type: this.getElectrodeTypeDisplay(point),
+      has_lightning_rod: point.hasLightningRod ? 'Sí' : 'No',
+
+      soil_cemento: point.soilType === 'cement',
+      soil_asfalto: point.soilType === 'asphalt',
+      soil_tierra: point.soilType === 'soil',
+
+      condition_seco: point.measurementCondition === 'dry',
+      condition_humedo: point.measurementCondition === 'wet',
+
+      voltage_yes: point.voltageStatus === 'presence',
+      voltage_no: point.voltageStatus === 'absence',
+
+      continuity_yes: point.hasContinuity === true,
+      continuity_no: point.hasContinuity === false,
+
+      measurement_1: this.formatMeditionTableValue(point.measurementData.p1_1m),
+      measurement_4: this.formatMeditionTableValue(point.measurementData.p1_4m),
+      measurement_7: this.formatMeditionTableValue(point.measurementData.p1_7m),
+      measurement_10: this.formatMeditionTableValue(point.measurementData.p1_10m),
+      measurement_13: this.formatMeditionTableValue(point.measurementData.p1_13m),
+      measurement_16: this.formatMeditionTableValue(point.measurementData.p1_16m),
+      measurement_19: this.formatMeditionTableValue(point.measurementData.p1_19m),
+
+      generator_source: this.labelGeneratorSource(point),
+      connected_equipment: this.getConnectedEquipmentRows(point)
+        .filter((item) => item && item !== '//')
+        .join(', '),
+    }));
+  }
+
   private buildClientAddress(plant: ClientPlant | null): string {
     if (!plant) {
       return '';
@@ -637,7 +838,6 @@ export class InformComponent implements OnInit, OnChanges {
       plant.municipality,
       plant.state,
       plant.country,
-      plant.postalCode ? `C. P. ${plant.postalCode}` : '',
     ]
       .map((part) => part?.trim() || '')
       .filter(Boolean)
@@ -693,6 +893,10 @@ export class InformComponent implements OnInit, OnChanges {
       month: '2-digit',
       year: 'numeric',
     }).format(value);
+  }
+
+  private formatMeditionTableValue(value: number | null | undefined): string {
+    return value != null ? value.toFixed(2) : '';
   }
 
   private getImpartialityAnswerLabel(value: boolean | null | undefined): string {
@@ -757,6 +961,10 @@ export class InformComponent implements OnInit, OnChanges {
   }
 
   private replaceWorkOrderTemplateValues(xml: string, data: WorkOrderBaseDocumentData): string {
+    return this.replaceBraceTemplateValues(xml, data);
+  }
+
+  private replaceBraceTemplateValues<T extends object>(xml: string, data: T): string {
     const parser = new DOMParser();
     const xmlDocument = parser.parseFromString(xml, 'application/xml');
     const parserError = xmlDocument.getElementsByTagName('parsererror')[0];
@@ -770,10 +978,13 @@ export class InformComponent implements OnInit, OnChanges {
       return xml;
     }
 
-    const placeholders = Object.entries(data) as Array<[keyof WorkOrderBaseDocumentData, string]>;
+    const placeholders = Object.entries(data) as Array<[keyof T, string]>;
 
     for (const [key, rawValue] of placeholders) {
       const placeholder = `{${String(key)}}`;
+      if ((rawValue || '') === placeholder) {
+        continue;
+      }
 
       while (true) {
         const occurrence = this.findWorkOrderPlaceholderOccurrence(textNodes, placeholder);
@@ -798,7 +1009,17 @@ export class InformComponent implements OnInit, OnChanges {
       }
     }
 
-    return new XMLSerializer().serializeToString(xmlDocument);
+    let serializedXml = new XMLSerializer().serializeToString(xmlDocument);
+
+    for (const [key, rawValue] of placeholders) {
+      const placeholder = `{${String(key)}}`;
+      serializedXml = serializedXml.replace(
+        new RegExp(this.escapeRegExp(placeholder), 'g'),
+        this.escapeXml(rawValue || '')
+      );
+    }
+
+    return serializedXml;
   }
 
   private findWorkOrderPlaceholderOccurrence(
@@ -849,6 +1070,10 @@ export class InformComponent implements OnInit, OnChanges {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private downloadGeneratedDocument(content: Uint8Array, fileName: string): void {
@@ -944,6 +1169,41 @@ export class InformComponent implements OnInit, OnChanges {
     }
   }
 
+  private async captureMeditionTableImage(): Promise<ReportEmbeddedImage | null> {
+    const previousTab = this.activeTab();
+    this.activeTab.set('tables');
+    await this.waitForDomRender();
+
+    try {
+      const element = document.getElementById('medition_table_wrap');
+      if (!element) {
+        return null;
+      }
+
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 3,
+        useCORS: true,
+        logging: false,
+      });
+
+      const blob = await this.canvasToBlob(canvas);
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+
+      return {
+        placeholder: 'medition_table',
+        bytes,
+        widthPx: canvas.width,
+        heightPx: canvas.height,
+        targetWidthEmu: 9_546_336,
+        targetHeightEmu: 1_609_344,
+      };
+    } finally {
+      this.activeTab.set(previousTab);
+      await this.waitForDomRender();
+    }
+  }
+
   private async embedImagesIntoDocument(
     zip: JSZip,
     images: ReportEmbeddedImage[]
@@ -977,7 +1237,11 @@ export class InformComponent implements OnInit, OnChanges {
         imageName,
         image.widthPx,
         image.heightPx,
-        nextDocPrId++
+        nextDocPrId++,
+        image.maxWidthEmu,
+        image.maxHeightEmu,
+        image.targetWidthEmu,
+        image.targetHeightEmu
       );
 
       const existingParagraphs = placeholderParagraphs.get(image.placeholder) ?? [];
@@ -1013,8 +1277,22 @@ export class InformComponent implements OnInit, OnChanges {
       'g'
     );
 
-    const replaced = xml.replace(paragraphPattern, imageParagraph);
-    return replaced.replace(splitParagraphPattern, imageParagraph);
+    const singleParagraphPattern = new RegExp(
+      `<w:p[^>]*>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<w:t>\\{${escapedPlaceholder}\\}<\\/w:t>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<\\/w:p>`,
+      'g'
+    );
+
+    const splitSingleParagraphPattern = new RegExp(
+      `<w:p[^>]*>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<w:t>\\{<\\/w:t>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<w:t>${escapedPlaceholder}<\\/w:t>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<w:t>\\}<\\/w:t>(?:(?!<w:p\\b|<\\/w:p>)[\\s\\S])*?<\\/w:p>`,
+      'g'
+    );
+
+    const replaced = xml
+      .replace(paragraphPattern, imageParagraph)
+      .replace(splitParagraphPattern, imageParagraph)
+      .replace(singleParagraphPattern, imageParagraph);
+
+    return replaced.replace(splitSingleParagraphPattern, imageParagraph);
   }
 
   private buildWordImageParagraph(
@@ -1022,10 +1300,16 @@ export class InformComponent implements OnInit, OnChanges {
     imageName: string,
     widthPx: number,
     heightPx: number,
-    docPrId: number
+    docPrId: number,
+    maxWidthEmu = 5_900_000,
+    maxHeightEmu = 7_200_000,
+    targetWidthEmu?: number,
+    targetHeightEmu?: number
   ): string {
-    const maxWidthEmu = 5_900_000;
-    const maxHeightEmu = 7_200_000;
+    if (targetWidthEmu && targetHeightEmu) {
+      return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:noProof/></w:rPr><w:drawing><wp:inline distT="0" distB="0" distL="114300" distR="114300" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="${targetWidthEmu}" cy="${targetHeightEmu}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${docPrId}" name="${imageName}"/><wp:cNvGraphicFramePr/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="${imageName}"/><pic:cNvPicPr preferRelativeResize="0"/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${relationshipId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${targetWidthEmu}" cy="${targetHeightEmu}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+    }
+
     let widthEmu = Math.round(widthPx * 9525);
     let heightEmu = Math.round(heightPx * 9525);
 
@@ -1082,6 +1366,21 @@ export class InformComponent implements OnInit, OnChanges {
     return new Promise((resolve) => requestAnimationFrame(() => resolve()));
   }
 
+  cancelGeneration(): void {
+    if (!this.isGenerating()) {
+      return;
+    }
+
+    this.cancelGenerationRequested = true;
+    this.generationStep.set('Cancelando...');
+  }
+
+  private ensureGenerationNotCancelled(): void {
+    if (this.cancelGenerationRequested) {
+      throw new Error('Generation cancelled by user');
+    }
+  }
+
   private askHumidityControlQuestion(): Promise<boolean | null> {
     this.showHumidityQuestion = true;
 
@@ -1120,13 +1419,30 @@ export class InformComponent implements OnInit, OnChanges {
       equipmentMeditionInterval: item.equipmentMeditionInterval || master.range,
       equipmentPrecition: item.equipmentPrecition || master.precition,
       equipmentSpecifyEquipment: item.equipmentSpecifyEquipment || master.especify_equipment,
+      equipmentVoltage: item.equipmentVoltage || master.voltage,
     };
   }
+
+  private getMeditionDocumentDate(order: workOrder, step: workOrderStep | null): string {
+    const date = step?.completedAt || step?.startedAt || order.observationDate || new Date();
+    return this.formatShortDate(date);
+  }
+
 }
 
 interface ReportEmbeddedImage {
-  placeholder: 'tabla_4_2_2_id' | 'tabla_5_1_id' | 'tabla_5_2_id' | 'tabla_5_3_id' | 'charts';
+  placeholder:
+    | 'tabla_4_2_2_id'
+    | 'tabla_5_1_id'
+    | 'tabla_5_2_id'
+    | 'tabla_5_3_id'
+    | 'charts'
+    | 'medition_table';
   bytes: Uint8Array;
   widthPx: number;
   heightPx: number;
+  maxWidthEmu?: number;
+  maxHeightEmu?: number;
+  targetWidthEmu?: number;
+  targetHeightEmu?: number;
 }

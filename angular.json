@@ -34,6 +34,11 @@
                 "output": "assets/documents"
               },
               {
+                "glob": "Medition_Base.docx",
+                "input": "src",
+                "output": "assets/documents"
+              },
+              {
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"

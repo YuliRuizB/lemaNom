@@ -377,7 +377,15 @@
             <div class="m-point-card__grid">
               <div class="m-point-card__field">
                 <span class="m-point-card__label">No.</span>
-                <input class="m-point-card__input" type="text" [ngModel]="point.pointNumber" readonly />
+                <input
+                  class="m-point-card__input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  [ngModel]="point.pointNumber"
+                  [disabled]="isReadOnly()"
+                  (ngModelChange)="updatePoint(point.idDoc, 'pointNumber', $event === '' ? point.pointNumber : +$event)"
+                />
               </div>
 
               <div class="m-point-card__field">

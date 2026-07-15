@@ -13,6 +13,17 @@
           ></div>
         </div>
         <p class="inform-progress-modal__pct">{{ generationProgress() }}%</p>
+        @if (canCancelGeneration()) {
+          <div class="inform-progress-modal__actions">
+            <button
+              class="inform-progress-modal__cancel"
+              type="button"
+              (click)="cancelGeneration()"
+            >
+              Cancelar
+            </button>
+          </div>
+        }
       </div>
     </div>
   }
@@ -66,6 +77,7 @@
       class="inform-toolbar__button"
       type="button"
       [disabled]="isGenerating() || workOrderStatus !== 'completed'"
+      (click)="generateMeditionDocument()"
     >
       Generar Registro de Mediciones
     </button>
@@ -314,6 +326,120 @@
     }
   </article>
   </div>
+
+  <article
+    id="medition_table_preview"
+    class="inform-section inform-section--full"
+  >
+    <h3 class="inform-section__title">Registro de mediciones</h3>
+
+    @if (isLoading()) {
+      <p class="inform-section__state">Cargando puntos...</p>
+    } @else if (!meditionTableRows().length) {
+      <p class="inform-section__state">
+        No se encontraron puntos de medición para construir la tabla.
+      </p>
+    } @else {
+      <div
+        id="medition_table_wrap"
+        class="inform-table-wrap inform-table-wrap--medition"
+      >
+        <table
+          id="medition_table_preview_table"
+          class="inform-table inform-table--medition"
+        >
+          <colgroup>
+            <col style="width: 1.7rem" />
+            <col style="width: 3.2rem" />
+            <col style="width: 3.5rem" />
+            <col style="width: 2.4rem" />
+            <col style="width: 1.2rem" />
+            <col style="width: 1.2rem" />
+            <col style="width: 1.2rem" />
+            <col style="width: 1.1rem" />
+            <col style="width: 1.1rem" />
+            <col style="width: 1.05rem" />
+            <col style="width: 1.05rem" />
+            <col style="width: 1.05rem" />
+            <col style="width: 1.05rem" />
+            <col style="width: 1.35rem" />
+            <col style="width: 1.35rem" />
+            <col style="width: 1.35rem" />
+            <col style="width: 1.35rem" />
+            <col style="width: 1.35rem" />
+            <col style="width: 1.35rem" />
+            <col style="width: 1.35rem" />
+            <col style="width: 4.6rem" />
+            <col style="width: 4.6rem" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th rowspan="3">No.</th>
+              <th rowspan="3">Área</th>
+              <th rowspan="3">Tipo de electrodo</th>
+              <th rowspan="3">Pararrayos</th>
+              <th colspan="5">Tipo y condición del suelo</th>
+              <th colspan="2">Voltaje</th>
+              <th colspan="2">Continuidad</th>
+              <th colspan="7">Mediciones</th>
+              <th rowspan="3">Fuentes Generadoras</th>
+              <th rowspan="3">Equipos Conectados</th>
+            </tr>
+            <tr>
+              <th colspan="3">Tipo</th>
+              <th colspan="2">Condición</th>
+              <th rowspan="2">Sí</th>
+              <th rowspan="2">No</th>
+              <th rowspan="2">Sí</th>
+              <th rowspan="2">No</th>
+              <th rowspan="2">1</th>
+              <th rowspan="2">4</th>
+              <th rowspan="2">7</th>
+              <th rowspan="2">10</th>
+              <th rowspan="2">13</th>
+              <th rowspan="2">16</th>
+              <th rowspan="2">19</th>
+            </tr>
+            <tr>
+              <th>Cemento</th>
+              <th>Asfalto</th>
+              <th>Tierra</th>
+              <th>Seco</th>
+              <th>Húmedo</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of meditionTableRows(); track row.point_number) {
+              <tr>
+                <td>{{ row.point_number }}</td>
+                <td>{{ row.area || '—' }}</td>
+                <td>{{ row.electrode_type || '—' }}</td>
+                <td>{{ row.has_lightning_rod || '—' }}</td>
+                <td>{{ row.soil_cemento ? 'X' : '' }}</td>
+                <td>{{ row.soil_asfalto ? 'X' : '' }}</td>
+                <td>{{ row.soil_tierra ? 'X' : '' }}</td>
+                <td>{{ row.condition_seco ? 'X' : '' }}</td>
+                <td>{{ row.condition_humedo ? 'X' : '' }}</td>
+                <td>{{ row.voltage_yes ? 'X' : '' }}</td>
+                <td>{{ row.voltage_no ? 'X' : '' }}</td>
+                <td>{{ row.continuity_yes ? 'X' : '' }}</td>
+                <td>{{ row.continuity_no ? 'X' : '' }}</td>
+                <td>{{ row.measurement_1 }}</td>
+                <td>{{ row.measurement_4 }}</td>
+                <td>{{ row.measurement_7 }}</td>
+                <td>{{ row.measurement_10 }}</td>
+                <td>{{ row.measurement_13 }}</td>
+                <td>{{ row.measurement_16 }}</td>
+                <td>{{ row.measurement_19 }}</td>
+                <td>{{ row.generator_source || '—' }}</td>
+                <td>{{ row.connected_equipment || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
   } @else {
     <section class="inform-charts">
       <h3 class="inform-charts__title">Gráficos</h3>

@@ -187,7 +187,11 @@ export class PlantModalComponent implements OnInit {
   }
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.toastService.warning('Hay datos requeridos o campos inválidos en la planta. Revísalos antes de guardar.');
+      return;
+    }
 
     this.saving.set(true);
     const v = this.form.getRawValue();

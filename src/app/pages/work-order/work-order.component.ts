@@ -1373,6 +1373,25 @@ export class WorkOrderComponent {
     return `${year}-${month}-${day}`;
   }
 
+  private parseDateInputValue(value: string): Date | null {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const [yearText, monthText, dayText] = trimmed.split('-');
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+
+    if (!year || !month || !day) {
+      return null;
+    }
+
+    const parsedDate = new Date(year, month - 1, day);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+  }
+
   private loadCurrentCustomerName(): void {
     this.authService.currentUser$
       .pipe(
@@ -1739,8 +1758,8 @@ export class WorkOrderComponent {
   }
 
   private buildWorkOrderPayload(currentUser: User): Omit<workOrder, 'idDoc' | 'updatedAt'> | null {
-    const createdAt = new Date(this.createForm.createdAt);
-    if (Number.isNaN(createdAt.getTime())) {
+    const createdAt = this.parseDateInputValue(this.createForm.createdAt);
+    if (!createdAt) {
       return null;
     }
 
@@ -1908,7 +1927,7 @@ export class WorkOrderComponent {
 
     const observerName = this.selectedOrderObserver().trim() || undefined;
     const dateValue = this.selectedOrderObservationDate();
-    const observationDate = dateValue ? new Date(dateValue) : undefined;
+    const observationDate = dateValue ? this.parseDateInputValue(dateValue) || undefined : undefined;
     const startTime = this.selectedOrderStartTime().trim() || undefined;
     const endTime = this.selectedOrderEndTime().trim() || undefined;
     const cableResistanceRaw = this.selectedOrderCableResistance();
@@ -1946,7 +1965,7 @@ export class WorkOrderComponent {
 
     const observerName = this.selectedOrderObserver().trim() || undefined;
     const dateValue = this.selectedOrderObservationDate();
-    const observationDate = dateValue ? new Date(dateValue) : undefined;
+    const observationDate = dateValue ? this.parseDateInputValue(dateValue) || undefined : undefined;
     const startTime = this.selectedOrderStartTime().trim() || undefined;
     const endTime = this.selectedOrderEndTime().trim() || undefined;
     const cableResistanceRaw = this.selectedOrderCableResistance();

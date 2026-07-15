@@ -64,22 +64,26 @@ export class MainShellComponent {
       }
 
       this.userService.getUserById(firebaseUser.uid).pipe(take(1)).subscribe((appUser) => {
-        this.currentAppUser = appUser;
-        this.displayName =
-          this.buildHeaderDisplayName(appUser) ||
-          firebaseUser.displayName ||
-          firebaseUser.email ||
-          'Usuario';
-        this.customerName = appUser?.customerName || '';
+        queueMicrotask(() => {
+          this.currentAppUser = appUser;
+          this.displayName =
+            this.buildHeaderDisplayName(appUser) ||
+            firebaseUser.displayName ||
+            firebaseUser.email ||
+            'Usuario';
+          this.customerName = appUser?.customerName || '';
 
-        if (appUser?.customerId) {
-          this.customerService.getCustomerById(appUser.customerId).pipe(take(1)).subscribe((customer) => {
-            this.customerLogoUrl = customer?.urlLogo || '';
+          if (appUser?.customerId) {
+            this.customerService.getCustomerById(appUser.customerId).pipe(take(1)).subscribe((customer) => {
+              queueMicrotask(() => {
+                this.customerLogoUrl = customer?.urlLogo || '';
+                this.cdr.markForCheck();
+              });
+            });
+          } else {
             this.cdr.markForCheck();
-          });
-        } else {
-          this.cdr.markForCheck();
-        }
+          }
+        });
       });
     });
   }
