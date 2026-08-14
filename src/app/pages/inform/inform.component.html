@@ -91,6 +91,79 @@
     </button>
   </div>
 
+  @if (clientLogoPreviewUrl()) {
+    <div class="inform-logo-preview-wrap">
+      <div id="inform-client-logo-preview" class="inform-client-logo-preview">
+        <img
+          id="inform-client-logo-preview-image"
+          class="inform-client-logo-preview__image"
+          [src]="clientLogoPreviewUrl()"
+          alt="Logo del cliente"
+        />
+      </div>
+    </div>
+  }
+
+  <div class="inform-middle-panel">
+    <div class="inform-middle-panel__content">
+      <div class="inform-schedule">
+        <div class="inform-schedule__header">
+          <div>          
+            <h3 class="inform-schedule__title">Programación del Servicio</h3>
+          </div>
+          <button
+            class="inform-schedule__save"
+            type="button"
+            [disabled]="isSavingServiceSchedule()"
+            (click)="saveServiceSchedule()"
+          >
+            {{ isSavingServiceSchedule() ? 'Guardando...' : 'Guardar programación' }}
+          </button>
+        </div>
+
+        <div class="inform-schedule__table-wrap">
+          <table class="inform-schedule__table">
+            <thead>
+              <tr>
+                <th>Actividad</th>
+                <th>Responsable</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of serviceScheduleRows(); track row.idDoc) {
+                <tr>
+                  <td>{{ row.activityLabel }}</td>
+                  <td>
+                    <select
+                      class="inform-schedule__input"
+                      [ngModel]="row.responsibleUserId"
+                      (ngModelChange)="updateServiceScheduleResponsible(row.idDoc, $event)"
+                    >
+                      <option value="">Selecciona signatario</option>
+                      @for (user of availableSignatories(); track user.idDoc) {
+                        <option [value]="user.idDoc">{{ getFormalUserName(user) }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      class="inform-schedule__input"
+                      type="date"
+                      [ngModel]="row.scheduledDateText"
+                      (ngModelChange)="updateServiceScheduleDate(row.idDoc, $event)"
+                    />
+                    
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="inform-tabs">
     <button
       class="inform-tabs__tab"
@@ -120,7 +193,7 @@
       id="table_422_title"
       class="inform-section__title"
     >
-      4.2.2.- Descripción de las fuentes generadoras de electricidad estática.
+     
     </h3>
 
     @if (isLoading()) {
@@ -167,7 +240,6 @@
       id="table_51_title"
       class="inform-section__title"
     >
-      5.1.- Valores de resistencia a tierra de la red de puesta a tierra e indicación de la continuidad eléctrica de los puntos de conexión del sistema.
     </h3>
 
     @if (isLoading()) {
@@ -191,7 +263,7 @@
               <th>Ubicación</th>
               <th>Tipo de electrodo</th>
               <th>Continuidad</th>
-              <th>Valor Registrado</th>
+              <th>Valor Registrado Ω</th>
               <th>Límite (Ω) NOM-022-STPS-2015</th>
             </tr>
           </thead>
@@ -205,7 +277,7 @@
                 <td>
                   {{
                     getCorrectedP113(point) != null
-                      ? (getCorrectedP113(point)! | number:'1.2-2') + ' Ω'
+                      ? (getCorrectedP113(point)! | number:'1.2-2') 
                       : '—'
                   }}
                 </td>
@@ -226,7 +298,6 @@
       id="table_52_title"
       class="inform-section__title"
     >
-      5.2 Valores de las mediciones de Humedad Relativa
     </h3>
 
     @if (isLoading()) {
@@ -267,64 +338,61 @@
     }
   </article>
 
-  <article
-    id="table_53"
-    class="inform-section"
-  >
-    <h3
-      id="table_53_title"
-      class="inform-section__title"
+  @if (isLoading() || lightningRodPoints().length) {
+    <article
+      id="table_53"
+      class="inform-section"
     >
-      5.3 Características del sistema de Pararrayos
-    </h3>
-
-    @if (isLoading()) {
-      <p class="inform-section__state">Cargando puntos...</p>
-    } @else if (!points().length) {
-      <p class="inform-section__state">
-        No se encontraron puntos de medición para mostrar en el informe.
-      </p>
-    } @else {
-      <div
-        id="table_53_wrap"
-        class="inform-table-wrap"
+      <h3
+        id="table_53_title"
+        class="inform-section__title"
       >
-        <table
-          id="table_53_table"
-          class="inform-table"
+      </h3>
+
+      @if (isLoading()) {
+        <p class="inform-section__state">Cargando puntos...</p>
+      } @else {
+        <div
+          id="table_53_wrap"
+          class="inform-table-wrap"
         >
-          <thead>
-            <tr>
-              <th>Punto</th>
-              <th>Tipo de sistema</th>
-              <th>Altura de las terminales (metros)</th>
-              <th>Ubicación</th>
-              <th>Radio de protección (m)</th>
-              <th>Área de cobertura de protección (Diámetro en m2)</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (point of points(); track point.idDoc) {
+          <table
+            id="table_53_table"
+            class="inform-table"
+          >
+            <thead>
               <tr>
-                <td>{{ point.pointNumber }}</td>
-                <td>{{ getSystemTypeLabel(point) }}</td>
-                <td>{{ getLightningRodHeightLabel(point) }}</td>
-                <td>{{ point.location || '—' }}</td>
-                <td>{{ getProtectionRadiusLabel(point) }}</td>
-                <td>
-                  {{
-                    getProtectionArea(point) != null
-                      ? (getProtectionArea(point)! | number:'1.2-2')
-                      : ''
-                  }}
-                </td>
+                <th>Punto</th>
+                <th>Tipo de sistema</th>
+                <th>Altura de las terminales (m)</th>
+                <th>Ubicación</th>
+                <th>Radio de protección (m)</th>
+                <th>Área de cobertura de protección (m2)</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  </article>
+            </thead>
+            <tbody>
+              @for (point of lightningRodPoints(); track point.idDoc) {
+                <tr>
+                  <td>{{ point.pointNumber }}</td>
+                  <td>{{ getSystemTypeLabel(point) }}</td>
+                  <td>{{ getLightningRodHeightLabel(point) }}</td>
+                  <td>{{ point.location || '—' }}</td>
+                  <td>{{ getProtectionRadiusLabel(point) }}</td>
+                  <td>
+                    {{
+                      getProtectionArea(point) != null
+                        ? (getProtectionArea(point)! | number:'1.0-0')
+                        : ''
+                    }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </article>
+  }
   </div>
 
   <article
@@ -344,99 +412,133 @@
         id="medition_table_wrap"
         class="inform-table-wrap inform-table-wrap--medition"
       >
-        <table
-          id="medition_table_preview_table"
-          class="inform-table inform-table--medition"
-        >
-          <colgroup>
-            <col style="width: 1.7rem" />
-            <col style="width: 3.2rem" />
-            <col style="width: 3.5rem" />
-            <col style="width: 2.4rem" />
-            <col style="width: 1.2rem" />
-            <col style="width: 1.2rem" />
-            <col style="width: 1.2rem" />
-            <col style="width: 1.1rem" />
-            <col style="width: 1.1rem" />
-            <col style="width: 1.05rem" />
-            <col style="width: 1.05rem" />
-            <col style="width: 1.05rem" />
-            <col style="width: 1.05rem" />
-            <col style="width: 1.35rem" />
-            <col style="width: 1.35rem" />
-            <col style="width: 1.35rem" />
-            <col style="width: 1.35rem" />
-            <col style="width: 1.35rem" />
-            <col style="width: 1.35rem" />
-            <col style="width: 1.35rem" />
-            <col style="width: 4.6rem" />
-            <col style="width: 4.6rem" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th rowspan="3">No.</th>
-              <th rowspan="3">Área</th>
-              <th rowspan="3">Tipo de electrodo</th>
-              <th rowspan="3">Pararrayos</th>
-              <th colspan="5">Tipo y condición del suelo</th>
-              <th colspan="2">Voltaje</th>
-              <th colspan="2">Continuidad</th>
-              <th colspan="7">Mediciones</th>
-              <th rowspan="3">Fuentes Generadoras</th>
-              <th rowspan="3">Equipos Conectados</th>
-            </tr>
-            <tr>
-              <th colspan="3">Tipo</th>
-              <th colspan="2">Condición</th>
-              <th rowspan="2">Sí</th>
-              <th rowspan="2">No</th>
-              <th rowspan="2">Sí</th>
-              <th rowspan="2">No</th>
-              <th rowspan="2">1</th>
-              <th rowspan="2">4</th>
-              <th rowspan="2">7</th>
-              <th rowspan="2">10</th>
-              <th rowspan="2">13</th>
-              <th rowspan="2">16</th>
-              <th rowspan="2">19</th>
-            </tr>
-            <tr>
-              <th>Cemento</th>
-              <th>Asfalto</th>
-              <th>Tierra</th>
-              <th>Seco</th>
-              <th>Húmedo</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of meditionTableRows(); track row.point_number) {
+        @for (rowsChunk of meditionTableChunks(); track $index) {
+          <div
+            class="inform-table-wrap__chunk"
+            [id]="'medition_table_chunk_' + $index"
+          >
+            <table
+              [id]="'medition_table_preview_table_' + $index"
+              class="inform-table inform-table--medition"
+            >
+            <colgroup>
+              <col style="width: 1.7rem" />
+              <col style="width: 3.2rem" />
+              <col style="width: 3.5rem" />
+              <col style="width: 2.4rem" />
+              <col style="width: 1.2rem" />
+              <col style="width: 1.2rem" />
+              <col style="width: 1.2rem" />
+              <col style="width: 1.1rem" />
+              <col style="width: 1.1rem" />
+              <col style="width: 1.05rem" />
+              <col style="width: 1.05rem" />
+              <col style="width: 1.05rem" />
+              <col style="width: 1.05rem" />
+              <col style="width: 1.35rem" />
+              <col style="width: 1.35rem" />
+              <col style="width: 1.35rem" />
+              <col style="width: 1.35rem" />
+              <col style="width: 1.35rem" />
+              <col style="width: 1.35rem" />
+              <col style="width: 1.35rem" />
+              <col style="width: 4.6rem" />
+              <col style="width: 4.6rem" />
+            </colgroup>
+            <thead>
               <tr>
-                <td>{{ row.point_number }}</td>
-                <td>{{ row.area || '—' }}</td>
-                <td>{{ row.electrode_type || '—' }}</td>
-                <td>{{ row.has_lightning_rod || '—' }}</td>
-                <td>{{ row.soil_cemento ? 'X' : '' }}</td>
-                <td>{{ row.soil_asfalto ? 'X' : '' }}</td>
-                <td>{{ row.soil_tierra ? 'X' : '' }}</td>
-                <td>{{ row.condition_seco ? 'X' : '' }}</td>
-                <td>{{ row.condition_humedo ? 'X' : '' }}</td>
-                <td>{{ row.voltage_yes ? 'X' : '' }}</td>
-                <td>{{ row.voltage_no ? 'X' : '' }}</td>
-                <td>{{ row.continuity_yes ? 'X' : '' }}</td>
-                <td>{{ row.continuity_no ? 'X' : '' }}</td>
-                <td>{{ row.measurement_1 }}</td>
-                <td>{{ row.measurement_4 }}</td>
-                <td>{{ row.measurement_7 }}</td>
-                <td>{{ row.measurement_10 }}</td>
-                <td>{{ row.measurement_13 }}</td>
-                <td>{{ row.measurement_16 }}</td>
-                <td>{{ row.measurement_19 }}</td>
-                <td>{{ row.generator_source || '—' }}</td>
-                <td>{{ row.connected_equipment || '—' }}</td>
+                <th class="inform-table__header-main">No.</th>
+                <th class="inform-table__header-main">Área</th>
+                <th class="inform-table__header-main">Tipo de electrodo</th>
+                <th class="inform-table__header-main">Pararrayos</th>
+                <th colspan="5" class="inform-table__header-group">Tipo y condición del suelo</th>
+                <th colspan="2" class="inform-table__header-group">Voltaje</th>
+                <th colspan="2" class="inform-table__header-group">Continuidad</th>
+                <th colspan="7" class="inform-table__header-group">Mediciones</th>
+                <th class="inform-table__header-main">Fuentes Generadoras</th>
+                <th class="inform-table__header-main">Equipos Conectados</th>
               </tr>
-            }
-          </tbody>
-        </table>
+              <tr>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th colspan="3" class="inform-table__header-subgroup">Tipo</th>
+                <th colspan="2" class="inform-table__header-subgroup">Condición</th>
+                <th class="inform-table__header-leaf">Sí</th>
+                <th class="inform-table__header-leaf">No</th>
+                <th class="inform-table__header-leaf">Sí</th>
+                <th class="inform-table__header-leaf">No</th>
+                <th class="inform-table__header-leaf">1</th>
+                <th class="inform-table__header-leaf">4</th>
+                <th class="inform-table__header-leaf">7</th>
+                <th class="inform-table__header-leaf">10</th>
+                <th class="inform-table__header-leaf">13</th>
+                <th class="inform-table__header-leaf">16</th>
+                <th class="inform-table__header-leaf">19</th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+              </tr>
+              <tr>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-leaf inform-table__header-leaf--compact">Cemento</th>
+                <th class="inform-table__header-leaf inform-table__header-leaf--compact">Asfalto</th>
+                <th class="inform-table__header-leaf inform-table__header-leaf--compact">Tierra</th>
+                <th class="inform-table__header-leaf inform-table__header-leaf--compact">Seco</th>
+                <th class="inform-table__header-leaf inform-table__header-leaf--compact">Húmedo</th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+                <th class="inform-table__header-spacer"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rowsChunk; track row.point_number) {
+                <tr>
+                  <td>{{ row.point_number }}</td>
+                  <td>{{ row.area || '—' }}</td>
+                  <td>{{ row.electrode_type || '—' }}</td>
+                  <td>{{ row.has_lightning_rod || '—' }}</td>
+                  <td>{{ row.soil_cemento ? 'X' : '' }}</td>
+                  <td>{{ row.soil_asfalto ? 'X' : '' }}</td>
+                  <td>{{ row.soil_tierra ? 'X' : '' }}</td>
+                  <td>{{ row.condition_seco ? 'X' : '' }}</td>
+                  <td>{{ row.condition_humedo ? 'X' : '' }}</td>
+                  <td>{{ row.voltage_yes ? 'X' : '' }}</td>
+                  <td>{{ row.voltage_no ? 'X' : '' }}</td>
+                  <td>{{ row.continuity_yes ? 'X' : '' }}</td>
+                  <td>{{ row.continuity_no ? 'X' : '' }}</td>
+                  <td>{{ row.measurement_1 }}</td>
+                  <td>{{ row.measurement_4 }}</td>
+                  <td>{{ row.measurement_7 }}</td>
+                  <td>{{ row.measurement_10 }}</td>
+                  <td>{{ row.measurement_13 }}</td>
+                  <td>{{ row.measurement_16 }}</td>
+                  <td>{{ row.measurement_19 }}</td>
+                  <td>{{ row.generator_source || '—' }}</td>
+                  <td>{{ row.connected_equipment || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+            </table>
+          </div>
+
+          @if ($index < meditionTableChunks().length - 1) {
+            <div class="inform-table-wrap__chunk-separator"></div>
+          }
+        }
       </div>
     }
   </article>

@@ -1086,6 +1086,27 @@ export class WorkOrderComponent {
     });
   }
 
+  canFinalizeSelectedOrderStep(step: workOrderStep): boolean {
+    return this.getFinalizeSelectedOrderStepBlockers(step).length === 0;
+  }
+
+  getFinalizeSelectedOrderStepTooltip(step: workOrderStep): string {
+    if (step.status !== 'in-progress') {
+      return 'Solo se puede completar un paso en progreso.';
+    }
+
+    if (this.isFinalizingStepId() === step.idDoc) {
+      return 'Se está completando este paso.';
+    }
+
+    const blockers = this.getFinalizeSelectedOrderStepBlockers(step);
+    if (!blockers.length) {
+      return 'Completar este paso del flujo.';
+    }
+
+    return `Falta para completar: ${blockers.join(' | ')}`;
+  }
+
   finalizeSelectedOrderStep(step: workOrderStep): void {
     const order = this.selectedOrder();
     if (!order || step.status !== 'in-progress' || this.isFinalizingStepId()) {
@@ -1098,33 +1119,9 @@ export class WorkOrderComponent {
       this.getSelectedNextAssignedUserName() ||
       (this.currentAppUser() ? this.getReadableUserName(this.currentAppUser()) : '');
 
-    if (!this.selectedOrderObserver().trim()) {
-      this.toastService.warning('Debes registrar el observador antes de completar la orden.');
-      return;
-    }
-
-    if (!this.selectedOrderObservationDate()) {
-      this.toastService.warning('Debes registrar la fecha del observador antes de completar la orden.');
-      return;
-    }
-
-    const cable = this.selectedOrderCableResistance();
-    if (!this.shouldHideCableResistanceInDetail() && (cable == null || isNaN(Number(cable)))) {
-      this.toastService.warning('Debes registrar el valor de resistencia de los cables antes de completar la orden.');
-      return;
-    }
-
-    const isMeasurementsStep = step.workflowId === 'ZHvnk9BPyKO6c4mJot5A';
-    if (isMeasurementsStep) {
-      const sig = step.clientVisitSignature;
-      if (!sig?.confirmedVisit || !sig?.signedByName?.trim() || !sig?.signatureDataUrl) {
-        this.toastService.warning('Debes completar la confirmación de visita con firma del cliente antes de completar la orden.');
-        return;
-      }
-    }
-
-    if (nextStep && !nextAssignedUserId) {
-      this.toastService.warning('Selecciona a quién se asignará el siguiente paso.');
+    const blockers = this.getFinalizeSelectedOrderStepBlockers(step);
+    if (blockers.length) {
+      this.toastService.warning(`Falta para completar la orden: ${blockers.join(', ')}.`);
       return;
     }
 
@@ -1178,7 +1175,54 @@ export class WorkOrderComponent {
           this.isFinalizingStepId.set(null);
           this.toastService.error('No fue posible finalizar el paso actual.');
         },
-      });
+        });
+  }
+
+  private getFinalizeSelectedOrderStepBlockers(step: workOrderStep): string[] {
+    if (step.status !== 'in-progress') {
+      return ['el paso no está en progreso'];
+    }
+
+    if (this.isFinalizingStepId() === step.idDoc) {
+      return ['el paso ya se está completando'];
+    }
+
+    const blockers: string[] = [];
+    const nextStep = this.getNextWorkflowStep(step);
+    const nextAssignedUserId = this.selectedNextAssignedUserId() || this.currentAppUser()?.idDoc || '';
+
+    if (!this.selectedOrderObserver().trim()) {
+      blockers.push('registrar el observador');
+    }
+
+    if (!this.selectedOrderObservationDate()) {
+      blockers.push('registrar la fecha del observador');
+    }
+
+    const cable = this.selectedOrderCableResistance();
+    if (!this.shouldHideCableResistanceInDetail() && (cable == null || isNaN(Number(cable)))) {
+      blockers.push('registrar la resistencia de los cables');
+    }
+
+    const isMeasurementsStep = step.workflowId === 'ZHvnk9BPyKO6c4mJot5A';
+    if (isMeasurementsStep) {
+      const sig = step.clientVisitSignature;
+      if (!sig?.confirmedVisit) {
+        blockers.push('confirmar la visita del cliente');
+      }
+      if (!sig?.signedByName?.trim()) {
+        blockers.push('capturar el nombre de quien firma');
+      }
+      if (!sig?.signatureDataUrl) {
+        blockers.push('capturar la firma del cliente');
+      }
+    }
+
+    if (nextStep && !nextAssignedUserId) {
+      blockers.push(`seleccionar responsable para "${nextStep.stepName}"`);
+    }
+
+    return blockers;
   }
 
   deleteSelectedOrder(): void {

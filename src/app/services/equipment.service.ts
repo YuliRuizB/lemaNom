@@ -69,6 +69,7 @@ export class EquipmentService {
     };
     if (data.brand)        payload['brand']        = data.brand;
     if (data.model)        payload['model']        = data.model;
+    if (data.polos)        payload['polos']        = data.polos;
     if (data.range)        payload['range']        = data.range;
     if (data.frecuency)    payload['frecuency']    = data.frecuency;
     if (data.precition)    payload['precition']    = data.precition;
@@ -84,7 +85,7 @@ export class EquipmentService {
     idDoc: string,
     data: Pick<
       equipment,
-      'name' | 'identifier' | 'ns' | 'brand' | 'model' | 'range' | 'frecuency' | 'precition' | 'especify_equipment' | 'voltage' | 'active'
+      'name' | 'identifier' | 'ns' | 'polos' | 'brand' | 'model' | 'range' | 'frecuency' | 'precition' | 'especify_equipment' | 'voltage' | 'active'
     >
   ): Observable<void> {
     const docRef = doc(this.firestore, 'equipment', idDoc);
@@ -95,6 +96,7 @@ export class EquipmentService {
       active: data.active,
       updatedAt: serverTimestamp(),
     };
+    if (data.polos !== undefined)     payload['polos']     = data.polos || null;
     if (data.brand !== undefined)     payload['brand']     = data.brand || null;
     if (data.model !== undefined)     payload['model']     = data.model || null;
     if (data.range !== undefined)     payload['range']     = data.range || null;
@@ -273,6 +275,7 @@ export class EquipmentService {
       idDoc: id,
       name: data['name'],
       identifier: data['identifier'],
+      polos: data['polos'],
       brand: data['brand'],
       model: data['model'],
       ns: data['ns'],

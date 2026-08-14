@@ -133,6 +133,10 @@
               <span class="detail-item__value">{{ eq.ns }}</span>
             </div>
             <div class="detail-item">
+              <span class="detail-item__label">Polos</span>
+              <span class="detail-item__value">{{ eq.polos || '—' }}</span>
+            </div>
+            <div class="detail-item">
               <span class="detail-item__label">Marca</span>
               <span class="detail-item__value">{{ eq.brand || '—' }}</span>
             </div>
@@ -208,6 +212,10 @@
               <div class="edit-field">
                 <label class="edit-field__label">Marca</label>
                 <input class="edit-field__input" type="text" formControlName="brand" />
+              </div>
+              <div class="edit-field">
+                <label class="edit-field__label">Polos</label>
+                <input class="edit-field__input" type="text" formControlName="polos" />
               </div>
               <div class="edit-field">
                 <label class="edit-field__label">Modelo</label>

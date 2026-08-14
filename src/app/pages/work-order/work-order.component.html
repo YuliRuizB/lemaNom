@@ -310,14 +310,16 @@
                       Fecha creación: {{ step.createdAt | date:'dd/MM/yyyy' }}
                     </span>
                   }
-                  <button
-                    class="wo-step-card__finish"
-                    type="button"
-                    [disabled]="step.status !== 'in-progress' || isFinalizingStepId() === step.idDoc"
-                    (click)="finalizeSelectedOrderStep(step)"
-                  >
-                    {{ isFinalizingStepId() === step.idDoc ? 'Completando...' : 'Completar Orden' }}
-                  </button>
+                  <span [attr.title]="getFinalizeSelectedOrderStepTooltip(step)">
+                    <button
+                      class="wo-step-card__finish"
+                      type="button"
+                      [disabled]="!canFinalizeSelectedOrderStep(step)"
+                      (click)="finalizeSelectedOrderStep(step)"
+                    >
+                      {{ isFinalizingStepId() === step.idDoc ? 'Completando...' : 'Completar Orden' }}
+                    </button>
+                  </span>
                 </div>
               </div>
             </div>
@@ -772,14 +774,16 @@
                       Fecha creación: {{ step.createdAt | date:'dd/MM/yyyy' }}
                     </span>
                   }
-                  <button
-                    class="wo-step-card__finish"
-                    type="button"
-                    [disabled]="step.status !== 'in-progress' || isFinalizingStepId() === step.idDoc"
-                    (click)="finalizeSelectedOrderStep(step)"
-                  >
-                    {{ isFinalizingStepId() === step.idDoc ? 'Completando...' : 'Completar Orden' }}
-                  </button>
+                  <span [attr.title]="getFinalizeSelectedOrderStepTooltip(step)">
+                    <button
+                      class="wo-step-card__finish"
+                      type="button"
+                      [disabled]="!canFinalizeSelectedOrderStep(step)"
+                      (click)="finalizeSelectedOrderStep(step)"
+                    >
+                      {{ isFinalizingStepId() === step.idDoc ? 'Completando...' : 'Completar Orden' }}
+                    </button>
+                  </span>
                 </div>
               </div>
             </div>

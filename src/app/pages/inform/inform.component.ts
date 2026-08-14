@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnChanges, OnInit, SimpleChanges, computed, inject, signal } from '@angular/core';
-import html2canvas from 'html2canvas';
-import JSZip from 'jszip';
+import { Storage, getBlob, ref } from '@angular/fire/storage';
+import { FormsModule } from '@angular/forms';
 import { catchError, firstValueFrom, forkJoin, of, switchMap, take } from 'rxjs';
 
 import { ClientPlant } from '../../interfaces/client.interface';
@@ -11,6 +11,7 @@ import { MeditionTableRow } from '../../interfaces/documents/meditionTable.inter
 import { WorkOrderBaseDocumentData } from '../../interfaces/documents/workOrderBase.interface';
 import { equipment } from '../../interfaces/meditionType.interface';
 import { Point } from '../../interfaces/measurements.interface';
+import { User } from '../../interfaces/user.interface';
 import {
   WorkOrderImpartiality,
   WorkOrderServiceScheduleActivity,
@@ -22,21 +23,24 @@ import {
 import { ClientService } from '../../services/client.service';
 import { EquipmentService } from '../../services/equipment.service';
 import { ToastService } from '../../services/toast.service';
+import { UserService } from '../../services/user.service';
 import { WorkOrderService } from '../../services/work-order.service';
 
 @Component({
   selector: 'app-inform',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './inform.component.html',
   styleUrl: './inform.component.scss',
 })
 export class InformComponent implements OnInit, OnChanges {
+  private readonly signatoryRoleId = '97YgNetUGyyC7Bnm2I2Z';
   private readonly table422Id = 'table_422';
   private readonly table51Id = 'table_51';
   private readonly table52Id = 'table_52';
   private readonly table53Id = 'table_53';
   private readonly imagePlaceholderKeys = new Set<keyof InformNom22Data>([
+    'client_image',
     'tabla_4_2_2_id',
     'tabla_5_1_id',
     'tabla_5_2_id',
@@ -63,6 +67,8 @@ export class InformComponent implements OnInit, OnChanges {
   private clientService = inject(ClientService);
   private equipmentService = inject(EquipmentService);
   private toastService = inject(ToastService);
+  private userService = inject(UserService);
+  private storage = inject(Storage);
 
   @Input() workOrderId = '';
   @Input() workOrderStatus = '';
@@ -75,20 +81,29 @@ export class InformComponent implements OnInit, OnChanges {
   generationProgress = signal(0);
   generationStep = signal('');
   canCancelGeneration = signal(false);
+  clientLogoPreviewUrl = signal('');
   showHumidityQuestion = false;
   activeTab = signal<'tables' | 'charts'>('tables');
   points = signal<Point[]>([]);
   measurementStep = signal<workOrderStep | null>(null);
   stepEquipments = signal<workOrderEquipment[]>([]);
   workOrderBaseData = signal<WorkOrderBaseDocumentData | null>(null);
+  availableSignatories = signal<User[]>([]);
+  serviceScheduleRows = signal<InformServiceScheduleRow[]>([]);
+  isSavingServiceSchedule = signal(false);
+  lightningRodPoints = computed(() => this.points().filter((point) => this.hasLightningRodEnabled(point)));
   meditionTableRows = computed(() => this.buildMeditionTableRows(this.points()));
+  meditionTableChunks = computed(() => this.chunkMeditionTableRows(this.meditionTableRows(), 15));
   private humidityQuestionResolver: ((value: boolean | null) => void) | null = null;
   private cancelGenerationRequested = false;
+  private html2canvasLoader?: Promise<typeof import('html2canvas')['default']>;
+  private jszipLoader?: Promise<any>;
   readonly factorCorreccion = computed(
     () => this.stepEquipments().find((equipment) => equipment.promedioFC != null)?.promedioFC ?? null
   );
 
   ngOnInit(): void {
+    this.loadSignatories();
     this.loadInformData();
   }
 
@@ -104,6 +119,7 @@ export class InformComponent implements OnInit, OnChanges {
       this.measurementStep.set(null);
       this.stepEquipments.set([]);
       this.workOrderBaseData.set(null);
+      this.serviceScheduleRows.set([]);
       this.isLoading.set(false);
       return;
     }
@@ -160,12 +176,18 @@ export class InformComponent implements OnInit, OnChanges {
         return;
       }
 
-      const [plant, equipments, serviceSchedule] = await Promise.all([
+      const [client, plant, equipments, serviceSchedule, signatoryUser] = await Promise.all([
+        order.clientId
+          ? firstValueFrom(this.clientService.getClientById(order.clientId))
+          : Promise.resolve(null),
         order.clientId && order.plantId
           ? firstValueFrom(this.clientService.getClientPlantById(order.clientId, order.plantId))
           : Promise.resolve(null),
         firstValueFrom(this.workOrderService.getEquipments(this.workOrderId)),
         firstValueFrom(this.workOrderService.getServiceSchedule(this.workOrderId)),
+        order.signatoryId
+          ? firstValueFrom(this.userService.getUserById(order.signatoryId))
+          : Promise.resolve(null),
       ]);
 
       const mainEquipment = equipments.find((equipment) => equipment.active) ?? equipments[0] ?? null;
@@ -176,11 +198,83 @@ export class InformComponent implements OnInit, OnChanges {
       const resolvedEquipment = this.mergeWorkOrderEquipmentWithMaster(mainEquipment, masterEquipment);
 
       this.workOrderBaseData.set(
-        this.buildWorkOrderBaseData(order, plant, resolvedEquipment, serviceSchedule)
+        this.buildWorkOrderBaseData(order, plant, resolvedEquipment, serviceSchedule, signatoryUser)
       );
+      this.clientLogoPreviewUrl.set(client?.urlLogo?.trim() || client?.brandUrl?.trim() || '');
+      this.serviceScheduleRows.set(this.toInformServiceScheduleRows(serviceSchedule));
     } catch {
       this.workOrderBaseData.set(null);
+      this.clientLogoPreviewUrl.set('');
+      this.serviceScheduleRows.set([]);
     }
+  }
+
+  private loadSignatories(): void {
+    this.userService
+      .getUsersByRole(this.signatoryRoleId)
+      .pipe(take(1))
+      .subscribe({
+        next: (users) => {
+          this.availableSignatories.set(
+            users
+              .filter((user) => user.active)
+              .sort((a, b) => this.getFormalUserName(a).localeCompare(this.getFormalUserName(b)))
+          );
+        },
+        error: () => {
+          this.availableSignatories.set([]);
+        },
+      });
+  }
+
+  getFormalUserName(user: User | null | undefined): string {
+    if (!user) {
+      return '';
+    }
+
+    return [user.prefix, user.firstName, user.lastName].filter((value) => !!value?.trim()).join(' ');
+  }
+
+  updateServiceScheduleResponsible(rowId: string, userId: string): void {
+    const user = this.availableSignatories().find((item) => item.idDoc === userId);
+    this.serviceScheduleRows.update((rows) =>
+      rows.map((row) =>
+        row.idDoc === rowId
+          ? {
+              ...row,
+              responsibleUserId: user?.idDoc || '',
+              responsibleUserName: this.getFormalUserName(user),
+            }
+          : row
+      )
+    );
+  }
+
+  updateServiceScheduleDate(rowId: string, value: string): void {
+    this.serviceScheduleRows.update((rows) =>
+      rows.map((row) => (row.idDoc === rowId ? { ...row, scheduledDateText: value } : row))
+    );
+  }
+
+  saveServiceSchedule(): void {
+    if (!this.workOrderId || this.isSavingServiceSchedule()) {
+      return;
+    }
+
+    this.isSavingServiceSchedule.set(true);
+    const items = this.buildServiceSchedulePayload();
+
+    this.workOrderService.saveServiceSchedule(this.workOrderId, items).pipe(take(1)).subscribe({
+      next: async () => {
+        await this.loadWorkOrderBasePreview();
+        this.isSavingServiceSchedule.set(false);
+        this.toastService.success('La programación del servicio se guardó correctamente.');
+      },
+      error: () => {
+        this.isSavingServiceSchedule.set(false);
+        this.toastService.error('No fue posible guardar la programación del servicio.');
+      },
+    });
   }
 
   labelGeneratorSource(point: Point): string {
@@ -266,6 +360,16 @@ export class InformComponent implements OnInit, OnChanges {
     return Math.PI * Math.pow(point.protectionRadius, 2);
   }
 
+  private hasLightningRodEnabled(point: Point): boolean {
+    const value = point.hasLightningRod as boolean | string | null | undefined;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === 'si' || normalized === 'sí' || normalized === 'yes' || normalized === 'true';
+    }
+
+    return value === true;
+  }
+
   getVoltageLabel(point: Point): string {
     return point.voltageStatus === 'absence'
       ? 'Ausencia'
@@ -277,7 +381,7 @@ export class InformComponent implements OnInit, OnChanges {
   }
 
   getP15Resistance(point: Point): number | null {
-    return point.measurementData.p1_13m ?? null;
+    return this.getCorrectedMeasurementValue(point, 'p1_13m');
   }
 
   getConnectedEquipmentRows(point: Point): string[] {
@@ -290,8 +394,27 @@ export class InformComponent implements OnInit, OnChanges {
     return this.measurementDistances.map((item) => ({
       label: item.label,
       distance: item.distance,
-      value: point.measurementData[item.key] ?? null,
+      value: this.getCorrectedMeasurementValue(point, item.key),
     }));
+  }
+
+  private getCorrectedMeasurementValue(
+    point: Point,
+    key: keyof Point['measurementData']
+  ): number | null {
+    const measurement = point.measurementData[key];
+    if (measurement == null) {
+      return null;
+    }
+
+    const factor = this.factorCorreccion();
+    const correctedByFactor = factor != null ? measurement * factor : measurement;
+
+    if (this.cableResistance == null) {
+      return correctedByFactor;
+    }
+
+    return correctedByFactor - this.cableResistance;
   }
 
   getChartPolyline(point: Point): string {
@@ -393,7 +516,8 @@ export class InformComponent implements OnInit, OnChanges {
 
       this.generationStep.set('Procesando documento...');
       this.ensureGenerationNotCancelled();
-      const zip = await JSZip.loadAsync(templateBuffer);
+      const JSZipModule = await this.getJSZip();
+      const zip = await JSZipModule.loadAsync(templateBuffer);
       const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
 
       if (!xmlEntries.length) {
@@ -411,12 +535,20 @@ export class InformComponent implements OnInit, OnChanges {
       this.generationStep.set('Capturando tablas...');
       this.ensureGenerationNotCancelled();
       const tableImages = await this.captureReportTableImages(includeHumidityControl);
+      const clientLogoImage = await this.captureClientLogoImage(informData.client_image);
+      if (!clientLogoImage) {
+        await this.removeDelimitedPlaceholderFromDocument(zip, 'client_image', '{{', '}}');
+      }
       this.generationProgress.set(65);
 
       this.generationStep.set('Capturando gráficas...');
       this.ensureGenerationNotCancelled();
       const chartImages = await this.captureChartImages();
-      const reportImages = [...tableImages, ...chartImages];
+      const reportImages = [
+        ...(clientLogoImage ? [clientLogoImage] : []),
+        ...tableImages,
+        ...chartImages,
+      ];
       this.generationProgress.set(78);
 
       if (reportImages.length) {
@@ -436,7 +568,8 @@ export class InformComponent implements OnInit, OnChanges {
 
       this.generationStep.set('Descargando...');
       this.ensureGenerationNotCancelled();
-      const fileName = `${(informData.inform_number || 'informe').replace(/[^\w.-]+/g, '_')}.docx`;
+      const safeInformNumber = (informData.inform_number || 'informe').replace(/[^\w.-]+/g, '_');
+      const fileName = `${safeInformNumber}.docx`;
       this.downloadGeneratedDocument(generatedDoc, fileName);
       this.generationProgress.set(100);
       this.generationStep.set('¡Informe generado!');
@@ -493,7 +626,8 @@ export class InformComponent implements OnInit, OnChanges {
 
       this.generationStep.set('Procesando documento...');
       this.ensureGenerationNotCancelled();
-      const zip = await JSZip.loadAsync(templateBuffer);
+      const JSZipModule = await this.getJSZip();
+      const zip = await JSZipModule.loadAsync(templateBuffer);
       const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
 
       if (!xmlEntries.length) {
@@ -518,7 +652,9 @@ export class InformComponent implements OnInit, OnChanges {
       this.generationProgress.set(95);
       this.generationStep.set('Descargando...');
       this.ensureGenerationNotCancelled();
-      const fileName = `${(workOrderData.ot_number || 'orden_trabajo').replace(/[^\w.-]+/g, '_')}.docx`;
+      const safeOtNumber = (workOrderData.ot_number || 'sin_ot').replace(/[^\w.-]+/g, '_');
+      const safeInformNumber = (workOrderData.inform_num || 'sin_informe').replace(/[^\w.-]+/g, '_');
+      const fileName = `OT-${safeOtNumber}-${safeInformNumber}.docx`;
       this.downloadGeneratedDocument(generatedDoc, fileName);
       this.generationProgress.set(100);
       this.generationStep.set('¡Orden de trabajo generada!');
@@ -567,7 +703,8 @@ export class InformComponent implements OnInit, OnChanges {
 
       this.generationStep.set('Procesando documento...');
       this.ensureGenerationNotCancelled();
-      const zip = await JSZip.loadAsync(templateBuffer);
+      const JSZipModule = await this.getJSZip();
+      const zip = await JSZipModule.loadAsync(templateBuffer);
       const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
 
       if (!xmlEntries.length) {
@@ -584,13 +721,13 @@ export class InformComponent implements OnInit, OnChanges {
       this.generationProgress.set(62);
       this.generationStep.set('Capturando tabla de mediciones...');
       this.ensureGenerationNotCancelled();
-      const meditionTableImage = await this.captureMeditionTableImage();
+      const meditionTableImages = await this.captureMeditionTableImages();
 
-      if (meditionTableImage) {
+      if (meditionTableImages.length) {
         this.generationProgress.set(78);
         this.generationStep.set('Integrando tabla al documento...');
         this.ensureGenerationNotCancelled();
-        await this.embedImagesIntoDocument(zip, [meditionTableImage]);
+        await this.embedImagesIntoDocument(zip, meditionTableImages);
       }
 
       this.generationProgress.set(82);
@@ -630,7 +767,9 @@ export class InformComponent implements OnInit, OnChanges {
       throw new Error('La orden de trabajo no fue encontrada.');
     }
 
-    const [client, plant, equipments] = await Promise.all([
+    console.log('InformData observerName', order.observerName);
+
+    const [client, plant, equipments, signatoryUser] = await Promise.all([
       order.clientId
         ? firstValueFrom(this.clientService.getClientById(order.clientId))
         : Promise.resolve(null),
@@ -638,6 +777,9 @@ export class InformComponent implements OnInit, OnChanges {
         ? firstValueFrom(this.clientService.getClientPlantById(order.clientId, order.plantId))
         : Promise.resolve(null),
       firstValueFrom(this.workOrderService.getEquipments(this.workOrderId)),
+      order.signatoryId
+        ? firstValueFrom(this.userService.getUserById(order.signatoryId))
+        : Promise.resolve(null),
     ]);
 
     const mainEquipment = equipments.find((equipment) => equipment.active) ?? equipments[0] ?? null;
@@ -647,25 +789,31 @@ export class InformComponent implements OnInit, OnChanges {
         : null;
     const resolvedEquipment = this.mergeWorkOrderEquipmentWithMaster(mainEquipment, masterEquipment);
     const today = new Date();
+    const orderCreatedAt = order.createdAt || today;
+    const measurementStep = this.measurementStep();
     const serviceSchedule = await firstValueFrom(
       this.workOrderService.getServiceSchedule(this.workOrderId).pipe(take(1))
     );
 
     this.workOrderBaseData.set(
-      this.buildWorkOrderBaseData(order, plant, resolvedEquipment, serviceSchedule)
+      this.buildWorkOrderBaseData(order, plant, resolvedEquipment, serviceSchedule, signatoryUser)
     );
 
     return {
-      client_image: client?.urlLogo?.trim() || '',
-      client_name: client?.name?.trim() || order.clientName?.trim() || '',
+      client_image: client?.urlLogo?.trim() || client?.brandUrl?.trim() || '',
+      client_name: client?.legalName?.trim() || client?.name?.trim() || order.clientName?.trim() || '',
       client_activity: client?.client_activity?.trim() || '',
-      client_address: this.buildClientAddress(plant),
+      client_address: this.buildClientAddressForInform(plant),
       inform_number: order.informNumber?.trim() || '',
-      date_address: this.buildDateAddress(plant, today),
+      date_address: this.buildDateAddress(plant, orderCreatedAt),
+      date_address_med: this.buildDateAddress(
+        plant,
+        order.observationDate || orderCreatedAt
+      ),
       client_rfc: client?.rfc?.trim() || '',
       client_phone: client?.phone?.trim() || '',
       date: this.formatLongDate(today),
-      signatario_name: order.signatoryName?.trim() || '',
+      signatario_name: order.observerName?.trim() || '',
       identifier: resolvedEquipment?.equipmentType?.trim() || '',
       model: resolvedEquipment?.equipmentModel?.trim() || '',
       ns: resolvedEquipment?.equipmentNs?.trim() || '',
@@ -682,7 +830,7 @@ export class InformComponent implements OnInit, OnChanges {
       tabla_4_2_2_id: this.table422Id,
       tabla_5_1_id: this.table51Id,
       tabla_5_2_id: includeHumidityControl ? this.table52Id : '',
-      tabla_5_3_id: this.table53Id,
+      tabla_5_3_id: this.lightningRodPoints().length ? this.table53Id : '',
       charts: '',
     };
   }
@@ -691,8 +839,11 @@ export class InformComponent implements OnInit, OnChanges {
     order: workOrder,
     plant: ClientPlant | null,
     equipment: workOrderEquipment | null,
-    serviceSchedule: WorkOrderServiceScheduleItem[]
+    serviceSchedule: WorkOrderServiceScheduleItem[],
+    signatoryUser: User | null
   ): WorkOrderBaseDocumentData {
+    console.log('WorkOrderBaseData observerName', order.observerName);
+
     const scheduleByKey = new Map(
       serviceSchedule.map((item) => [item.activityKey, item] as const)
     );
@@ -713,7 +864,7 @@ export class InformComponent implements OnInit, OnChanges {
       contact_num: plant?.contactPhone?.trim() || '',
 
       service_name: order.nomCategoryServiceName?.trim() || order.nomName?.trim() || '',
-      signatario_name: order.signatoryName?.trim() || '',
+      signatario_name: order.observerName?.trim() || '',
       equip_name: equipment?.equipmentType?.trim() || equipment?.equipmentName?.trim() || '',
 
       q1: this.getImpartialityAnswerLabel(impartiality.familiarAffinity),
@@ -750,19 +901,35 @@ export class InformComponent implements OnInit, OnChanges {
       throw new Error('La orden de trabajo no fue encontrada.');
     }
 
-    const [plant, equipments] = await Promise.all([
+    const [plant, equipments, signatoryUser] = await Promise.all([
       order.clientId && order.plantId
         ? firstValueFrom(this.clientService.getClientPlantById(order.clientId, order.plantId))
         : Promise.resolve(null),
       firstValueFrom(this.workOrderService.getEquipments(this.workOrderId)),
+      order.signatoryId
+        ? firstValueFrom(this.userService.getUserById(order.signatoryId))
+        : Promise.resolve(null),
     ]);
 
     const mainEquipment = equipments.find((equipment) => equipment.active) ?? equipments[0] ?? null;
+    const measurementStepEquipment =
+      this.stepEquipments().find(
+        (equipment) =>
+          equipment.idDoc === mainEquipment?.idDoc ||
+          equipment.equipmentId === mainEquipment?.equipmentId
+      ) ?? null;
+    const effectiveEquipment = mainEquipment
+      ? {
+          ...mainEquipment,
+          equipmentVoltage:
+            measurementStepEquipment?.equipmentVoltage || mainEquipment.equipmentVoltage,
+        }
+      : null;
     const masterEquipment =
-      mainEquipment?.equipmentId
-        ? await firstValueFrom(this.equipmentService.getEquipmentById(mainEquipment.equipmentId))
+      effectiveEquipment?.equipmentId
+        ? await firstValueFrom(this.equipmentService.getEquipmentById(effectiveEquipment.equipmentId))
         : null;
-    const resolvedEquipment = this.mergeWorkOrderEquipmentWithMaster(mainEquipment, masterEquipment);
+    const resolvedEquipment = this.mergeWorkOrderEquipmentWithMaster(effectiveEquipment, masterEquipment);
     const measurementStep = this.measurementStep();
 
     return {
@@ -783,9 +950,12 @@ export class InformComponent implements OnInit, OnChanges {
       equip_range:
         resolvedEquipment?.equipmentMeditionInterval?.trim() ||
         this.getMeasurementInterval(order, resolvedEquipment),
-      signatary_name: order.signatoryName?.trim() || '',
-      value: '',
-      number: '',
+      signatary_name: this.getFormalUserName(signatoryUser) || order.signatoryName?.trim() || '',
+      value_volts:
+        resolvedEquipment?.equipmentVoltage?.trim() ||
+        masterEquipment?.voltage?.trim() ||
+        '',
+      number_polos: masterEquipment?.polos?.trim() || '',
       medition_table: '{medition_table}',
       comments: measurementStep?.observations?.trim() || '',
     };
@@ -826,6 +996,19 @@ export class InformComponent implements OnInit, OnChanges {
     }));
   }
 
+  private chunkMeditionTableRows(rows: MeditionTableRow[], chunkSize: number): MeditionTableRow[][] {
+    if (!rows.length) {
+      return [];
+    }
+
+    const chunks: MeditionTableRow[][] = [];
+    for (let index = 0; index < rows.length; index += chunkSize) {
+      chunks.push(rows.slice(index, index + chunkSize));
+    }
+
+    return chunks;
+  }
+
   private buildClientAddress(plant: ClientPlant | null): string {
     if (!plant) {
       return '';
@@ -838,6 +1021,25 @@ export class InformComponent implements OnInit, OnChanges {
       plant.municipality,
       plant.state,
       plant.country,
+    ]
+      .map((part) => part?.trim() || '')
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  private buildClientAddressForInform(plant: ClientPlant | null): string {
+    if (!plant) {
+      return '';
+    }
+
+    return [
+      plant.street,
+      plant.exteriorNumber,
+      plant.colony,
+      plant.municipality,
+      plant.state,
+      plant.country,
+      plant.postalCode ? `C. P. ${plant.postalCode.trim()}` : '',
     ]
       .map((part) => part?.trim() || '')
       .filter(Boolean)
@@ -895,6 +1097,32 @@ export class InformComponent implements OnInit, OnChanges {
     }).format(value);
   }
 
+  private toDateInputValue(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private parseDateInputValue(value: string): Date | undefined {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+
+    const [yearText, monthText, dayText] = trimmed.split('-');
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+
+    if (!year || !month || !day) {
+      return undefined;
+    }
+
+    const parsedDate = new Date(year, month - 1, day);
+    return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+  }
+
   private formatMeditionTableValue(value: number | null | undefined): string {
     return value != null ? value.toFixed(2) : '';
   }
@@ -920,6 +1148,51 @@ export class InformComponent implements OnInit, OnChanges {
     return date ? this.formatShortDate(date) : '';
   }
 
+  private toInformServiceScheduleRows(items: WorkOrderServiceScheduleItem[]): InformServiceScheduleRow[] {
+    const byKey = new Map(items.map((item) => [item.activityKey, item] as const));
+
+    return this.getDefaultServiceScheduleTemplates().map((template) => {
+      const item = byKey.get(template.activityKey);
+
+      return {
+        idDoc: item?.idDoc || template.idDoc,
+        activityKey: template.activityKey,
+        activityLabel: template.activityLabel,
+        responsibleUserId: item?.responsibleUserId || '',
+        responsibleUserName: item?.responsibleUserName || '',
+        scheduledDateText: item?.scheduledDate ? this.toDateInputValue(item.scheduledDate) : '',
+        order: template.order,
+      };
+    });
+  }
+
+  private buildServiceSchedulePayload(): WorkOrderServiceScheduleItem[] {
+    return this.serviceScheduleRows().map((row) => ({
+      idDoc: row.idDoc,
+      workOrderId: this.workOrderId,
+      activityKey: row.activityKey,
+      activityLabel: row.activityLabel,
+      responsibleUserId: row.responsibleUserId || undefined,
+      responsibleUserName: row.responsibleUserName || undefined,
+      scheduledDate: this.parseDateInputValue(row.scheduledDateText),
+      order: row.order,
+      active: true,
+      createdAt: new Date(),
+    }));
+  }
+
+  private getDefaultServiceScheduleTemplates(): InformServiceScheduleRow[] {
+    return [
+      { idDoc: '01-reconocimiento', activityKey: 'reconocimiento', activityLabel: 'Reconocimiento', responsibleUserId: '', responsibleUserName: '', scheduledDateText: '', order: 1 },
+      { idDoc: '02-medicion', activityKey: 'medicion', activityLabel: 'Medición', responsibleUserId: '', responsibleUserName: '', scheduledDateText: '', order: 2 },
+      { idDoc: '03-plano', activityKey: 'plano', activityLabel: 'Plano', responsibleUserId: '', responsibleUserName: '', scheduledDateText: '', order: 3 },
+      { idDoc: '04-generar_y_revisar_informe', activityKey: 'generar_y_revisar_informe', activityLabel: 'Generar y revisar informe', responsibleUserId: '', responsibleUserName: '', scheduledDateText: '', order: 4 },
+      { idDoc: '05-revision_formato_campo', activityKey: 'revision_formato_campo', activityLabel: 'Revisión del formato de campo', responsibleUserId: '', responsibleUserName: '', scheduledDateText: '', order: 5 },
+      { idDoc: '06-impresion_informe', activityKey: 'impresion_informe', activityLabel: 'Impresión informe', responsibleUserId: '', responsibleUserName: '', scheduledDateText: '', order: 6 },
+      { idDoc: '07-entrega_y_facturacion', activityKey: 'entrega_y_facturacion', activityLabel: 'Entrega y Facturación', responsibleUserId: '', responsibleUserName: '', scheduledDateText: '', order: 7 },
+    ];
+  }
+
   private buildEmptyImpartialityForInform(): WorkOrderImpartiality {
     return {
       familiarAffinity: null,
@@ -934,30 +1207,22 @@ export class InformComponent implements OnInit, OnChanges {
   }
 
   private replaceTemplateValues(xml: string, data: InformNom22Data): string {
-    const replacements = Object.entries(data).filter(([, value]) => typeof value === 'string') as Array<
-      [keyof InformNom22Data, string]
-    >;
+    const replacements = Object.entries(data)
+      .filter(([, value]) => typeof value === 'string')
+      .filter(([key, value]) => {
+        const typedKey = key as keyof InformNom22Data;
+        if (this.stackedImagePlaceholderKeys.has(typedKey)) {
+          return false;
+        }
 
-    let output = xml;
+        if (this.imagePlaceholderKeys.has(typedKey) && value) {
+          return false;
+        }
 
-    for (const [key, value] of replacements) {
-      if (this.stackedImagePlaceholderKeys.has(key)) {
-        continue;
-      }
+        return true;
+      }) as Array<[keyof InformNom22Data, string]>;
 
-      if (this.imagePlaceholderKeys.has(key) && value) {
-        continue;
-      }
-      const escapedValue = this.escapeXml(value);
-      output = output.replace(new RegExp(`\\{\\{${String(key)}\\}\\}`, 'g'), escapedValue);
-    }
-
-    output = output.replace(
-      /<w:t>\{\{inform_num<\/w:t><\/w:r><w:r[^>]*>[\s\S]*?<w:t>ber<\/w:t><\/w:r><w:r[^>]*>[\s\S]*?<w:t>\}\}<\/w:t>/g,
-      `<w:t>${this.escapeXml(data.inform_number)}</w:t>`
-    );
-
-    return output;
+    return this.replaceDelimitedTemplateValues(xml, replacements, '{{', '}}');
   }
 
   private replaceWorkOrderTemplateValues(xml: string, data: WorkOrderBaseDocumentData): string {
@@ -1020,6 +1285,105 @@ export class InformComponent implements OnInit, OnChanges {
     }
 
     return serializedXml;
+  }
+
+  private replaceDelimitedTemplateValues<T extends string>(
+    xml: string,
+    replacements: Array<[T, string]>,
+    opening: string,
+    closing: string
+  ): string {
+    const parser = new DOMParser();
+    const xmlDocument = parser.parseFromString(xml, 'application/xml');
+    const parserError = xmlDocument.getElementsByTagName('parsererror')[0];
+
+    if (parserError) {
+      return xml;
+    }
+
+    const textNodes = Array.from(xmlDocument.getElementsByTagName('w:t'));
+    if (!textNodes.length) {
+      return xml;
+    }
+
+    for (const [key, rawValue] of replacements) {
+      const placeholder = `${opening}${String(key)}${closing}`;
+
+      while (true) {
+        const occurrence = this.findPlaceholderOccurrence(textNodes, placeholder);
+        if (!occurrence) {
+          break;
+        }
+
+        const startText = textNodes[occurrence.startNodeIndex].textContent ?? '';
+        const endText = textNodes[occurrence.endNodeIndex].textContent ?? '';
+        const prefix = startText.slice(0, occurrence.startOffset);
+        const suffix = endText.slice(occurrence.endOffset + 1);
+
+        textNodes[occurrence.startNodeIndex].textContent = `${prefix}${rawValue || ''}${suffix}`;
+
+        for (
+          let nodeIndex = occurrence.startNodeIndex + 1;
+          nodeIndex <= occurrence.endNodeIndex;
+          nodeIndex += 1
+        ) {
+          textNodes[nodeIndex].textContent = '';
+        }
+      }
+    }
+
+    let serializedXml = new XMLSerializer().serializeToString(xmlDocument);
+
+    for (const [key, rawValue] of replacements) {
+      const placeholder = `${opening}${String(key)}${closing}`;
+      serializedXml = serializedXml.replace(
+        new RegExp(this.escapeRegExp(placeholder), 'g'),
+        this.escapeXml(rawValue || '')
+      );
+    }
+
+    return serializedXml;
+  }
+
+  private findPlaceholderOccurrence(
+    textNodes: Element[],
+    placeholder: string
+  ): {
+    startNodeIndex: number;
+    startOffset: number;
+    endNodeIndex: number;
+    endOffset: number;
+  } | null {
+    let combined = '';
+    const charMap: Array<{ nodeIndex: number; offset: number }> = [];
+
+    textNodes.forEach((node, nodeIndex) => {
+      const value = node.textContent ?? '';
+      for (let offset = 0; offset < value.length; offset += 1) {
+        combined += value[offset];
+        charMap.push({ nodeIndex, offset });
+      }
+    });
+
+    const start = combined.indexOf(placeholder);
+    if (start === -1) {
+      return null;
+    }
+
+    const end = start + placeholder.length - 1;
+    const startPosition = charMap[start];
+    const endPosition = charMap[end];
+
+    if (!startPosition || !endPosition) {
+      return null;
+    }
+
+    return {
+      startNodeIndex: startPosition.nodeIndex,
+      startOffset: startPosition.offset,
+      endNodeIndex: endPosition.nodeIndex,
+      endOffset: endPosition.offset,
+    };
   }
 
   private findWorkOrderPlaceholderOccurrence(
@@ -1092,42 +1456,156 @@ export class InformComponent implements OnInit, OnChanges {
   private async captureReportTableImages(
     includeHumidityControl: boolean
   ): Promise<ReportEmbeddedImage[]> {
-    const targets = [
-      { placeholder: 'tabla_4_2_2_id', elementId: this.table422Id },
-      { placeholder: 'tabla_5_1_id', elementId: this.table51Id },
-      ...(includeHumidityControl
-        ? ([{ placeholder: 'tabla_5_2_id', elementId: this.table52Id }] as const)
-        : []),
-      { placeholder: 'tabla_5_3_id', elementId: this.table53Id },
-    ] as const;
+    const previousTab = this.activeTab();
+    this.activeTab.set('tables');
+    await this.waitForDomRender();
 
-    const results: ReportEmbeddedImage[] = [];
+    try {
+      const targets = [
+        { placeholder: 'tabla_4_2_2_id', elementId: this.table422Id },
+        { placeholder: 'tabla_5_1_id', elementId: this.table51Id },
+        ...(includeHumidityControl
+          ? ([{ placeholder: 'tabla_5_2_id', elementId: this.table52Id }] as const)
+          : []),
+        { placeholder: 'tabla_5_3_id', elementId: this.table53Id },
+      ] as const;
 
-    for (const target of targets) {
-      const element = document.getElementById(target.elementId);
-      if (!element) {
-        continue;
+      const results: ReportEmbeddedImage[] = [];
+
+      const html2canvas = await this.getHtml2Canvas();
+
+      for (const target of targets) {
+        const element = document.getElementById(target.elementId);
+        if (!element) {
+          continue;
+        }
+
+        const canvas = await html2canvas(element, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+
+        const blob = await this.canvasToBlob(canvas);
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+
+        results.push({
+          placeholder: target.placeholder,
+          bytes,
+          widthPx: canvas.width,
+          heightPx: canvas.height,
+        });
       }
 
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
+      return results;
+    } finally {
+      this.activeTab.set(previousTab);
+      await this.waitForDomRender();
+    }
+  }
 
-      const blob = await this.canvasToBlob(canvas);
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-
-      results.push({
-        placeholder: target.placeholder,
-        bytes,
-        widthPx: canvas.width,
-        heightPx: canvas.height,
-      });
+  private async captureClientLogoImage(imageUrl: string): Promise<ReportEmbeddedImage | null> {
+    const imageSrc = imageUrl.trim() || this.clientLogoPreviewUrl().trim();
+    if (!imageSrc) {
+      return null;
     }
 
-    return results;
+    let preparedLogo: { blob: Blob; width: number; height: number; dataUrl: string } | null = null;
+
+    try {
+      const storageBlob = await getBlob(ref(this.storage, imageSrc));
+      const { blob, width, height } = await this.convertImageBlobToPng(storageBlob);
+      const dataUrl = await this.blobToDataUrl(blob);
+      preparedLogo = { blob, width, height, dataUrl };
+    } catch {
+      preparedLogo = null;
+    }
+
+    if (!preparedLogo) {
+      try {
+        const directImageResult = await this.loadRemoteImageAsPng(imageSrc);
+        const dataUrl = await this.blobToDataUrl(directImageResult.blob);
+        preparedLogo = { ...directImageResult, dataUrl };
+      } catch {
+        preparedLogo = null;
+      }
+    }
+
+    if (!preparedLogo) {
+      return null;
+    }
+
+    const bytes = new Uint8Array(await preparedLogo.blob.arrayBuffer());
+    return {
+      placeholder: 'client_image',
+      bytes,
+      widthPx: preparedLogo.width,
+      heightPx: preparedLogo.height,
+      maxWidthEmu: 2_300_000,
+      maxHeightEmu: 1_100_000,
+      targetWidthEmu: 2_300_000,
+      targetHeightEmu: 900_000,
+    };
+  }
+
+  private waitForClientLogoRender(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const image = document.getElementById('inform-client-logo-preview-image') as HTMLImageElement | null;
+      if (!image) {
+        reject(new Error('No fue posible preparar el logo del cliente.'));
+        return;
+      }
+
+      if (image.complete && image.naturalWidth > 0) {
+        resolve();
+        return;
+      }
+
+      const cleanup = () => {
+        image.onload = null;
+        image.onerror = null;
+      };
+
+      image.onload = () => {
+        cleanup();
+        resolve();
+      };
+
+      image.onerror = () => {
+        cleanup();
+        reject(new Error('No fue posible cargar el logo del cliente.'));
+      };
+    });
+  }
+
+  private async loadRemoteImageAsPng(
+    imageUrl: string
+  ): Promise<{ blob: Blob; width: number; height: number }> {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.referrerPolicy = 'no-referrer';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('No fue posible cargar el logo del cliente.'));
+      img.src = imageUrl;
+    });
+
+    const width = image.naturalWidth || image.width || 1;
+    const height = image.naturalHeight || image.height || 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('No fue posible preparar el canvas del logo del cliente.');
+    }
+
+    context.drawImage(image, 0, 0, width, height);
+
+    const blob = await this.canvasToBlob(canvas);
+    return { blob, width, height };
   }
 
   private async captureChartImages(): Promise<ReportEmbeddedImage[]> {
@@ -1136,6 +1614,7 @@ export class InformComponent implements OnInit, OnChanges {
     await this.waitForDomRender();
 
     try {
+      const html2canvas = await this.getHtml2Canvas();
       const results: ReportEmbeddedImage[] = [];
 
       for (const point of this.points()) {
@@ -1169,35 +1648,42 @@ export class InformComponent implements OnInit, OnChanges {
     }
   }
 
-  private async captureMeditionTableImage(): Promise<ReportEmbeddedImage | null> {
+  private async captureMeditionTableImages(): Promise<ReportEmbeddedImage[]> {
     const previousTab = this.activeTab();
     this.activeTab.set('tables');
     await this.waitForDomRender();
 
     try {
-      const element = document.getElementById('medition_table_wrap');
-      if (!element) {
-        return null;
+      const html2canvas = await this.getHtml2Canvas();
+      const results: ReportEmbeddedImage[] = [];
+
+      for (let index = 0; index < this.meditionTableChunks().length; index += 1) {
+        const element = document.getElementById(`medition_table_chunk_${index}`);
+        if (!element) {
+          continue;
+        }
+
+        const canvas = await html2canvas(element, {
+          backgroundColor: '#ffffff',
+          scale: 3,
+          useCORS: true,
+          logging: false,
+        });
+
+        const blob = await this.canvasToBlob(canvas);
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+
+        results.push({
+          placeholder: 'medition_table',
+          bytes,
+          widthPx: canvas.width,
+          heightPx: canvas.height,
+          targetWidthEmu: 9_546_336,
+          targetHeightEmu: 1_609_344,
+        });
       }
 
-      const canvas = await html2canvas(element, {
-        backgroundColor: '#ffffff',
-        scale: 3,
-        useCORS: true,
-        logging: false,
-      });
-
-      const blob = await this.canvasToBlob(canvas);
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-
-      return {
-        placeholder: 'medition_table',
-        bytes,
-        widthPx: canvas.width,
-        heightPx: canvas.height,
-        targetWidthEmu: 9_546_336,
-        targetHeightEmu: 1_609_344,
-      };
+      return results;
     } finally {
       this.activeTab.set(previousTab);
       await this.waitForDomRender();
@@ -1205,7 +1691,7 @@ export class InformComponent implements OnInit, OnChanges {
   }
 
   private async embedImagesIntoDocument(
-    zip: JSZip,
+    zip: any,
     images: ReportEmbeddedImage[]
   ): Promise<void> {
     const documentFile = zip.file('word/document.xml');
@@ -1253,7 +1739,11 @@ export class InformComponent implements OnInit, OnChanges {
       documentXml = this.replaceParagraphPlaceholderWithImage(
         documentXml,
         placeholder,
-        placeholder === 'charts' ? this.joinImageParagraphsWithPageBreaks(paragraphs) : paragraphs.join('')
+        placeholder === 'charts'
+          ? this.joinImageParagraphsWithPageBreaks(paragraphs)
+          : placeholder === 'medition_table'
+            ? paragraphs.join('')
+            : paragraphs.join('')
       );
     }
 
@@ -1335,6 +1825,35 @@ export class InformComponent implements OnInit, OnChanges {
     return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
   }
 
+  private async removeDelimitedPlaceholderFromDocument(
+    zip: any,
+    placeholder: string,
+    opening: string,
+    closing: string
+  ): Promise<void> {
+    const xmlEntries = zip.file(/^word\/(document|header\d+|footer\d+)\.xml$/);
+    for (const xmlEntry of xmlEntries) {
+      const currentXml = await xmlEntry.async('string');
+      const updatedXml = this.replaceDelimitedTemplateValues(
+        currentXml,
+        [[placeholder, '']],
+        opening,
+        closing
+      );
+      zip.file(xmlEntry.name, updatedXml);
+    }
+  }
+
+  private getHtml2Canvas(): Promise<typeof import('html2canvas')['default']> {
+    this.html2canvasLoader ??= import('html2canvas').then((module) => module.default);
+    return this.html2canvasLoader;
+  }
+
+  private getJSZip(): Promise<any> {
+    this.jszipLoader ??= import('jszip').then((module) => module.default);
+    return this.jszipLoader;
+  }
+
   private getNextRelationshipId(relsXml: string): number {
     const matches = Array.from(relsXml.matchAll(/Id="rId(\d+)"/g));
     return matches.length
@@ -1360,6 +1879,70 @@ export class InformComponent implements OnInit, OnChanges {
         reject(new Error('No fue posible convertir la tabla a imagen.'));
       }, 'image/png');
     });
+  }
+
+  private blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('No fue posible convertir el logo del cliente.'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+
+  private getImageDimensionsFromBlob(blob: Blob): Promise<{ width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(blob);
+      const image = new Image();
+
+      image.onload = () => {
+        const width = image.naturalWidth || 1;
+        const height = image.naturalHeight || 1;
+        URL.revokeObjectURL(objectUrl);
+        resolve({ width, height });
+      };
+
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('No fue posible leer el tamaño de la imagen.'));
+      };
+
+      image.src = objectUrl;
+    });
+  }
+
+  private async convertImageBlobToPng(
+    blob: Blob
+  ): Promise<{ blob: Blob; width: number; height: number }> {
+    const objectUrl = URL.createObjectURL(blob);
+
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('No fue posible cargar la imagen del cliente.'));
+        img.src = objectUrl;
+      });
+
+      const width = image.naturalWidth || 1;
+      const height = image.naturalHeight || 1;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error('No fue posible preparar el canvas del logo del cliente.');
+      }
+
+      context.drawImage(image, 0, 0, width, height);
+
+      const pngBlob = await this.canvasToBlob(canvas);
+      return { blob: pngBlob, width, height };
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
   }
 
   private waitForDomRender(): Promise<void> {
@@ -1432,6 +2015,7 @@ export class InformComponent implements OnInit, OnChanges {
 
 interface ReportEmbeddedImage {
   placeholder:
+    | 'client_image'
     | 'tabla_4_2_2_id'
     | 'tabla_5_1_id'
     | 'tabla_5_2_id'
@@ -1445,4 +2029,14 @@ interface ReportEmbeddedImage {
   maxHeightEmu?: number;
   targetWidthEmu?: number;
   targetHeightEmu?: number;
+}
+
+interface InformServiceScheduleRow {
+  idDoc: string;
+  activityKey: WorkOrderServiceScheduleActivity;
+  activityLabel: string;
+  responsibleUserId: string;
+  responsibleUserName: string;
+  scheduledDateText: string;
+  order: number;
 }

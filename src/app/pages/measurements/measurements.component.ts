@@ -13,7 +13,6 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, map, of, switchMap, take } from 'rxjs';
-import * as XLSX from 'xlsx';
 
 import { AuthService } from '../../services/auth.service';
 import { CalibrationRow, equipment } from '../../interfaces/meditionType.interface';
@@ -47,6 +46,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   private workOrderService = inject(WorkOrderService);
   private equipmentService = inject(EquipmentService);
   private toastService = inject(ToastService);
+  private xlsxLoader?: Promise<typeof import('xlsx')>;
 
   equipments = signal<workOrderEquipment[]>([]);
   points = signal<Point[]>([]);
@@ -484,7 +484,8 @@ export class MeasurementsComponent implements OnInit, OnChanges {
     return sources.map((s) => this.labelGeneratorSource(s)).join(', ');
   }
 
-  exportToExcel(): void {
+  async exportToExcel(): Promise<void> {
+    const XLSX = await this.getXlsx();
     const rows = this.points().map((p) => ({
       'Punto No.': p.pointNumber,
       'Ubicación': p.location ?? '',
@@ -673,6 +674,11 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   private toDateTimeLocalValue(value: Date): string {
     const pad = (part: number) => String(part).padStart(2, '0');
     return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+  }
+
+  private getXlsx(): Promise<typeof import('xlsx')> {
+    this.xlsxLoader ??= import('xlsx');
+    return this.xlsxLoader;
   }
 
   private merge(item: workOrderEquipment, master: equipment | null): workOrderEquipment {

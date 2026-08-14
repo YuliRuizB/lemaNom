@@ -15,8 +15,8 @@ export interface MeditionBaseDocumentData {
   equip_ns: string;
   equip_range: string;
   signatary_name: string;
-  value: string;
-  number: string;
+  value_volts: string;
+  number_polos: string;
   medition_table: string;
   comments: string;
 }

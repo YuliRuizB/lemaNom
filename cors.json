@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "http://localhost:4200",
+      "https://lemanom-73945.web.app"
+    ],
+    "method": ["GET", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type"]
+  }
+]

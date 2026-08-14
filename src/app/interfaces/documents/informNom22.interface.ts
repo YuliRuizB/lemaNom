@@ -4,6 +4,7 @@ export interface InformNom22Data {
   client_address: string; // clientPlant choseed, street + exteriorNumber + colony + municipality + state + country + postalCode
   inform_number: string; //workOrder.informNumber
   date_address: string; // plant chossed municipality + state + current date
+  date_address_med: string; // plant + fecha en que inicio la medicion
   client_rfc: string; // client.rfc
   client_phone: string; // client.phone
   client_activity: string; // client.activity

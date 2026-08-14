@@ -3,6 +3,7 @@ export interface equipment {
   idDoc: string;
   name: string;
   identifier: string;
+  polos?: string;
   brand?: string;
   model?: string;
   ns: string;
