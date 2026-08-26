@@ -34,6 +34,7 @@ import { LightingMeasurementsComponent } from '../lighting-measurements/lighting
 import { LightingRecognitionComponent } from '../lighting-recognition/lighting-recognition.component';
 import { LightingReviewComponent } from '../lighting-review/lighting-review.component';
 import { MeasurementsComponent } from '../measurements/measurements.component';
+import { MeasurementsCompletionState } from '../measurements/measurements.component';
 
 type WorkOrderView = workOrder & {
   serviceName: string;
@@ -133,6 +134,7 @@ export class WorkOrderComponent {
   selectedOrderStartTime = signal('');
   selectedOrderEndTime = signal('');
   isSavingObserver = signal(false);
+  measurementCompletionStates = signal<Record<string, MeasurementsCompletionState>>({});
   selectedOrderCableResistance = signal<number | null>(null);
   selectedOrderServiceSchedule = signal<WorkOrderServiceScheduleRow[]>([]);
   isEditingOrder = signal(false);
@@ -710,6 +712,7 @@ export class WorkOrderComponent {
     this.selectedOrderStartTime.set(order.startTime || '');
     this.selectedOrderEndTime.set(order.endTime || '');
     this.selectedOrderCableResistance.set(order.cableResistance ?? null);
+    this.measurementCompletionStates.set({});
     this.selectedOrderServiceSchedule.set(this.buildDefaultServiceScheduleRows());
     this.loadSelectedOrderDetail(order);
     if (order.clientId && order.plantId) {
@@ -780,6 +783,7 @@ export class WorkOrderComponent {
     this.selectedOrderStartTime.set('');
     this.selectedOrderEndTime.set('');
     this.selectedOrderCableResistance.set(null);
+    this.measurementCompletionStates.set({});
     this.selectedOrderServiceSchedule.set([]);
     this.isSavingObserver.set(false);
     this.isEditingOrder.set(false);
@@ -1206,6 +1210,9 @@ export class WorkOrderComponent {
 
     const isMeasurementsStep = step.workflowId === 'ZHvnk9BPyKO6c4mJot5A';
     if (isMeasurementsStep) {
+      if (!this.measurementCompletionStates()[step.idDoc]?.hasRequiredVoltage) {
+        blockers.push('seleccionar y guardar el voltaje del equipo de medición');
+      }
       const sig = step.clientVisitSignature;
       if (!sig?.confirmedVisit) {
         blockers.push('confirmar la visita del cliente');
@@ -1223,6 +1230,16 @@ export class WorkOrderComponent {
     }
 
     return blockers;
+  }
+
+  onMeasurementsCompletionStateChange(
+    stepId: string,
+    completionState: MeasurementsCompletionState
+  ): void {
+    this.measurementCompletionStates.update((states) => ({
+      ...states,
+      [stepId]: completionState,
+    }));
   }
 
   deleteSelectedOrder(): void {

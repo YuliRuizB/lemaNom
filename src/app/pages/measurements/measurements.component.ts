@@ -2,9 +2,11 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   ElementRef,
+  EventEmitter,
   Input,
   OnChanges,
   OnInit,
+  Output,
   SimpleChanges,
   ViewChild,
   computed,
@@ -41,6 +43,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   @Input() workflowStepId = '';
   @Input() cableResistance: number | null = null;
   @Input() workOrderStatus: workOrder['status'] | null = null;
+  @Output() completionStateChange = new EventEmitter<MeasurementsCompletionState>();
 
   private authService = inject(AuthService);
   private workOrderService = inject(WorkOrderService);
@@ -109,6 +112,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
   private loadMeasurementData(): void {
     if (!this.workOrderId || !this.workflowStepId) {
       this.isLoading.set(false);
+      this.emitCompletionState();
       return;
     }
 
@@ -122,6 +126,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
           if (!items.length) {
             this.equipments.set([]);
             this.isLoading.set(false);
+            this.emitCompletionState();
             return;
           }
 
@@ -163,6 +168,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
               this.workflowStepStatus.set(step?.status ?? null);
               this.applyClientVisitSignature(step?.clientVisitSignature);
               this.isLoading.set(false);
+              this.emitCompletionState();
 
               // Para equipos con voltaje guardado pero sin promedioFC, calcularlo automáticamente
               merged
@@ -219,6 +225,7 @@ export class MeasurementsComponent implements OnInit, OnChanges {
           delete updated[item.idDoc];
           return updated;
         });
+        this.emitCompletionState();
         this.savingVoltageId.set(null);
         this.toastService.success('Voltaje actualizado correctamente.');
       },
@@ -262,6 +269,21 @@ export class MeasurementsComponent implements OnInit, OnChanges {
       .map((r) => r.patron! / r.valorMedido!);
     if (!fcs.length) return null;
     return fcs.reduce((a, b) => a + b, 0) / fcs.length;
+  }
+
+  private emitCompletionState(): void {
+    this.completionStateChange.emit({
+      hasRequiredVoltage: this.hasRequiredVoltageSelection(),
+    });
+  }
+
+  private hasRequiredVoltageSelection(): boolean {
+    const equipments = this.displayedEquipments();
+    if (!equipments.length) {
+      return false;
+    }
+
+    return equipments.every((item) => !!item.equipmentVoltage?.trim());
   }
 
   addPoint(): void {
@@ -696,4 +718,8 @@ export class MeasurementsComponent implements OnInit, OnChanges {
       equipmentSpecifyEquipment: item.equipmentSpecifyEquipment || master.especify_equipment,
     };
   }
+}
+
+export interface MeasurementsCompletionState {
+  hasRequiredVoltage: boolean;
 }

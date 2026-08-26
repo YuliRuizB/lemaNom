@@ -39,6 +39,10 @@ export class InformComponent implements OnInit, OnChanges {
   private readonly table51Id = 'table_51';
   private readonly table52Id = 'table_52';
   private readonly table53Id = 'table_53';
+  private readonly noLightningRodText =
+    'La empresa no cuenta con sistema de protección contra descargas eléctricas atmosféricas.';
+  private readonly yesLightningRodText =
+    'Si la empresa cuenta con pararrayos se pone la tabla correspondiente con la siguiente leyenda:';
   private readonly imagePlaceholderKeys = new Set<keyof InformNom22Data>([
     'client_image',
     'tabla_4_2_2_id',
@@ -798,6 +802,7 @@ export class InformComponent implements OnInit, OnChanges {
     this.workOrderBaseData.set(
       this.buildWorkOrderBaseData(order, plant, resolvedEquipment, serviceSchedule, signatoryUser)
     );
+    const hasLightningRodData = this.lightningRodPoints().length > 0;
 
     return {
       client_image: client?.urlLogo?.trim() || client?.brandUrl?.trim() || '',
@@ -827,10 +832,12 @@ export class InformComponent implements OnInit, OnChanges {
       especify_equipment:
         resolvedEquipment?.equipmentSpecifyEquipment?.trim() ||
         this.getEquipmentDescription(resolvedEquipment),
+      no_pararrayos_title: hasLightningRodData ? '' : this.noLightningRodText,
+      si_pararrayos_title: hasLightningRodData ? this.yesLightningRodText : '',
       tabla_4_2_2_id: this.table422Id,
       tabla_5_1_id: this.table51Id,
       tabla_5_2_id: includeHumidityControl ? this.table52Id : '',
-      tabla_5_3_id: this.lightningRodPoints().length ? this.table53Id : '',
+      tabla_5_3_id: hasLightningRodData ? this.table53Id : '',
       charts: '',
     };
   }

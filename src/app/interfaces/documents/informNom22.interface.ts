@@ -19,6 +19,8 @@ export interface InformNom22Data {
   precition: string; // workorder.equipment.precition
   frecuency: string; // workorder.equipment.frecuency
   especify_equipment: string; // workorder.equipment.especify_equipment
+  no_pararrayos_title?: string;
+  si_pararrayos_title?: string;
   tabla_4_2_2_id?: string;
   tabla_5_1_id?: string;
   tabla_5_2_id?: string;
